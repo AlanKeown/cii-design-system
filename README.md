@@ -33,6 +33,7 @@ packages/
   svelte/               Typed, reusable Svelte components
 docs/
   product-design-spec.md
+  mapping-components-spec.md   Plan for Leaflet, MapLibre and OpenLayers map components
 ```
 
 The initial shared library exports **Button, TextField, Alert and StatusChip**. Both applications use the same implementation. Portal-specific record logic, tables, dialogs and navigation remain in the portal app; this migration does not claim a complete design-system component catalogue.

@@ -1,5 +1,11 @@
 # Repository rules
 
+## Commits and pushes
+
+- Do not commit changes without the user's explicit authorization for that commit. Requests to implement, fix, finish, or validate work do not authorize committing.
+- Obtain separate explicit authorization before pushing. Permission to commit does not authorize pushing.
+- Leave changes uncommitted for review unless the user explicitly instructs otherwise.
+
 ## TypeScript for Svelte and SvelteKit
 
 - Write all authored Svelte and SvelteKit code in TypeScript.
