@@ -1,0 +1,20 @@
+{
+  "name": "@cii/tokens",
+  "version": "0.2.0",
+  "type": "module",
+  "files": [
+    "tokens.json",
+    "tokens.css"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./tokens.json": "./tokens.json"
+  },
+  "scripts": {
+    "build": "node --experimental-strip-types build.ts",
+    "prepack": "npm run build"
+  }
+}

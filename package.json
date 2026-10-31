@@ -1,0 +1,45 @@
+{
+  "name": "cii-design-system",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.17.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @cii/docs",
+    "dev:portal": "npm run dev --workspace @cii/community-portal",
+    "build:packages": "npm run build --workspace @cii/tokens && npm run build --workspace @cii/svelte",
+    "build": "npm run build:packages && npm run build --workspace @cii/docs && npm run build --workspace @cii/community-portal",
+    "check": "npm run check:tooling && npm run build:packages && npm run check --workspaces --if-present",
+    "test": "npm run test:unit && playwright test",
+    "test:portal": "playwright test --project portal",
+    "test:docs": "playwright test --project docs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:tooling": "tsc --project tsconfig.json",
+    "test:unit": "npm run test:unit --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@sveltejs/kit": "^3.1.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@sveltepress/theme-default": "^8.11.0",
+    "@sveltepress/vite": "^1.10.0",
+    "@types/node": "^24.19.2",
+    "prettier": "^3.6.2",
+    "prettier-plugin-svelte": "^3.4.0",
+    "sirv": "^3.0.2",
+    "svelte": "^5.57.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5"
+  },
+  "overrides": {
+    "@sveltejs/kit": "$@sveltejs/kit",
+    "@sveltejs/enhanced-img": "^1.0.0"
+  }
+}

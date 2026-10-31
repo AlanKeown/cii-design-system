@@ -1,0 +1,29 @@
+{
+  "name": "@cii/community-portal",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5187 --strictPort",
+    "build": "vite build",
+    "preview": "node --experimental-strip-types ../../scripts/preview.ts 4187",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts"
+  },
+  "dependencies": {
+    "@cii/svelte": "0.2.0",
+    "@cii/tokens": "0.2.0"
+  },
+  "devDependencies": {
+    "svelte": "^5.57.2",
+    "@sveltejs/kit": "^3.1.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "vite": "^8.3.5",
+    "typescript": "~6.0.3",
+    "svelte-check": "^4.7.7",
+    "@sveltejs/adapter-static": "^4.0.0"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+.svelte-kit/
+build/
+dist/
+package-lock.json
+test-results/
+playwright-report/
+docs/product-design-spec.md
+apps/docs/src/routes/**/*.md
+packages/tokens/tokens.css
