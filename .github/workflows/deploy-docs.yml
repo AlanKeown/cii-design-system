@@ -1,0 +1,57 @@
+name: Deploy docs
+on:
+  # Deploy only after the Verify workflow passes for a push to main.
+  workflow_run:
+    workflows: [Verify]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    env:
+      # Each docs site is published at /<repo>/<site>/ on GitHub Pages.
+      PAGES_BASE: /${{ github.event.repository.name }}
+      BASE_PATH: /${{ github.event.repository.name }}/design-system
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Deploy the exact commit that passed verification.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:packages
+      - run: npm run build --workspace @cii/docs
+      - name: Assemble Pages site
+        run: |
+          mkdir -p _site
+          cp -r apps/docs/build _site/design-system
+          cp pages/*.html _site/
+          sed -i "s#__PAGES_BASE__#$PAGES_BASE#g" _site/*.html
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}design-system/
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

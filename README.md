@@ -108,7 +108,17 @@ The original specification is preserved in `docs/product-design-spec.md`. The do
 
 ## Deployment
 
-Deploy `apps/docs/build` and `apps/community-portal/build` independently as static sites. The repository makes no assumptions about a hosting provider or production hostname. Navigation from the documentation to the portal currently explains the local run command rather than assuming a deployed portal URL.
+Documentation sites deploy to GitHub Pages from `.github/workflows/deploy-docs.yml` after the Verify workflow passes for a push to `main`; it can also be run manually from the Actions tab. Each site is published under its own subpath of the repository's Pages site; the design system docs are at `https://alankeown.github.io/cii-design-system/design-system/`. The site-wide `index.html` (a redirect to the docs) and `404.html` live in `pages/`, where `__PAGES_BASE__` is replaced with `/<repo>` at deploy time. Set `BASE_PATH` when building to match the published path:
+
+```sh
+BASE_PATH=/cii-design-system/design-system npm run build --workspace @cii/docs
+BASE_PATH=/cii-design-system/design-system npm run preview --workspace @cii/docs
+BASE_PATH=/cii-design-system/design-system npm run test:docs
+```
+
+Without `BASE_PATH`, the docs build, preview and tests serve from `/`. To add another docs site, build it with its own `BASE_PATH` and copy its build into `_site/<site>/` in the deploy workflow, then add it to the links in `pages/404.html`.
+
+Application demos, starting with the community portal, are intended for Cloudflare and are not deployed yet. Navigation from the documentation to the portal currently explains the local run command rather than assuming a deployed portal URL.
 
 ## Verification and limitations
 

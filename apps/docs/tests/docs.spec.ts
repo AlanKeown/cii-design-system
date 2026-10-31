@@ -5,7 +5,7 @@ test('documentation navigation and shared button interaction', async ({
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('./');
   await expect(
     page.getByRole('heading', {
       name: 'CII Design System',
@@ -39,7 +39,7 @@ test('documentation navigation and shared button interaction', async ({
 test('text field connects labels, errors and successful form feedback', async ({
   page
 }) => {
-  await page.goto('/components/text-field/');
+  await page.goto('components/text-field/');
   const preview = page.getByRole('region', { name: 'Text field example' });
   await expect(preview).toHaveAttribute('data-ready', 'true');
   const input = preview.getByRole('textbox', { name: 'Member name' });
@@ -68,7 +68,7 @@ test('alerts support dynamic feedback and previews fit a narrow viewport', async
   page
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/components/alert/');
+  await page.goto('components/alert/');
   const preview = page.getByRole('region', { name: 'Alert example' });
   await expect(preview).toHaveAttribute('data-ready', 'true');
   await preview.getByRole('button', { name: 'Show success message' }).click();
@@ -84,7 +84,7 @@ test('alerts support dynamic feedback and previews fit a narrow viewport', async
 });
 
 test('production search returns documented components', async ({ page }) => {
-  await page.goto('/components/button/');
+  await page.goto('components/button/');
   await expect(
     page.getByRole('region', { name: 'Button example' })
   ).toHaveAttribute('data-ready', 'true');

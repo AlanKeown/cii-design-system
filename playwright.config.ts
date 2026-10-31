@@ -13,12 +13,14 @@ export default defineConfig({
     {
       name: 'docs',
       testDir: './apps/docs/tests',
-      use: { baseURL: 'http://127.0.0.1:4188' }
+      // Trailing slash so relative page.goto() paths resolve under BASE_PATH.
+      use: { baseURL: `http://127.0.0.1:4188${process.env.BASE_PATH ?? ''}/` }
     }
   ],
   webServer: [
     {
       command: 'npm run preview -w @cii/community-portal',
+      env: { BASE_PATH: '' },
       wait: { stdout: /Local:/ }
     },
     { command: 'npm run preview -w @cii/docs', wait: { stdout: /Local:/ } }

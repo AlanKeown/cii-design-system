@@ -89,7 +89,10 @@ export default defineConfig({
         description:
           'Accessible Svelte components and patterns for community services.'
       },
-      svelteKitOptions: { adapter: adapter() },
+      svelteKitOptions: {
+        adapter: adapter(),
+        paths: { base: (process.env.BASE_PATH ?? '') as '' | `/${string}` }
+      },
       theme: defaultTheme({
         logo: '/logo.svg',
         navbar: [
