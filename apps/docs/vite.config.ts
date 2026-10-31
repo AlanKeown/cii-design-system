@@ -99,7 +99,7 @@ export default defineConfig({
           { title: 'Get started', to: '/getting-started/' },
           { title: 'Components', to: '/components/' },
           { title: 'Patterns', to: '/patterns/' },
-          { title: 'Portal', to: '/examples/community-portal/' }
+          { title: 'Live portal', to: 'https://cii-community-portal.pages.dev' }
         ],
         sidebar: { '/': sidebar },
         themeColor: {

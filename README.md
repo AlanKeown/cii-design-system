@@ -120,9 +120,11 @@ Without `BASE_PATH`, the docs build, preview and tests serve from `/`. To add an
 
 The community portal is live at [cii-community-portal.pages.dev](https://cii-community-portal.pages.dev). `.github/workflows/deploy-portal.yml` uploads the static build to the existing Cloudflare Pages project `cii-community-portal` after successful verification on `main`. Manual deployments have the same branch and verification requirements as the docs workflow. Both workflows deploy the exact commit they checked, rather than whichever commit is newest when the job starts.
 
-The portal uses Cloudflare Pages Direct Upload through GitHub Actions; it does not require Cloudflare’s native GitHub integration. Configure repository Actions secrets `CLOUDFLARE_API_TOKEN` (Cloudflare Pages Edit access for the target account) and `CLOUDFLARE_ACCOUNT_ID`. `GITHUB_TOKEN` is supplied automatically by GitHub. The deployment action and Wrangler version are explicitly selected in the workflow. Navigation from the documentation to the portal currently explains the local run command rather than linking to the deployed portal.
+The portal uses Cloudflare Pages Direct Upload through GitHub Actions; it does not require Cloudflare’s native GitHub integration. Configure repository Actions secrets `CLOUDFLARE_API_TOKEN` (Cloudflare Pages Edit access for the target account) and `CLOUDFLARE_ACCOUNT_ID`. `GITHUB_TOKEN` is supplied automatically by GitHub. The deployment action and Wrangler version are explicitly selected in the workflow. The documentation navbar and portal guide link to the live demo.
 
 ## Verification and limitations
+
+`npm run check:typescript` enforces the rules in `AGENTS.md`: authored JavaScript files and Svelte script blocks without `lang="ts"` are rejected, including documentation examples. Generated output and third-party directories are excluded. The check also preserves strict TypeScript settings and runs as part of `npm run check` in CI.
 
 Browser tests cover record validation/persistence, member program assignment, theme persistence, case closure, filtering, CSV downloads, role previews, command search and responsive navigation. Keyboard regressions cover dialog names and modality, focus wrapping/restoration and transitions, error-summary focus and field links, drawer tab navigation, table sorting/mixed selection and live result announcements. Documentation tests exercise live components, validation associations, dynamic alerts, production search and narrow-screen layout. Automated tests do not constitute WCAG certification.
 

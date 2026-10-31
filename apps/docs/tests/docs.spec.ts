@@ -104,3 +104,18 @@ test('production search returns documented components', async ({ page }) => {
     page.getByRole('region', { name: 'Text field example' })
   ).toBeVisible();
 });
+
+test('documentation links to the live portal', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto('examples/community-portal/');
+  const guideLink = page.getByRole('link', {
+    name: 'Open the Common Ground community portal'
+  });
+  await expect(guideLink).toHaveAttribute(
+    'href',
+    'https://cii-community-portal.pages.dev'
+  );
+  await expect(
+    page.getByRole('link', { name: 'Live portal', exact: true }).first()
+  ).toHaveAttribute('href', 'https://cii-community-portal.pages.dev');
+});

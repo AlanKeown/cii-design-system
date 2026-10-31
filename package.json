@@ -15,14 +15,15 @@
     "dev:portal": "npm run dev --workspace @cii/community-portal",
     "build:packages": "npm run build --workspace @cii/tokens && npm run build --workspace @cii/svelte",
     "build": "npm run build:packages && npm run build --workspace @cii/docs && npm run build --workspace @cii/community-portal",
-    "check": "npm run check:tooling && npm run build:packages && npm run check --workspaces --if-present",
+    "check": "npm run check:typescript && npm run check:tooling && npm run build:packages && npm run check --workspaces --if-present",
     "test": "npm run test:unit && playwright test",
     "test:portal": "playwright test --project portal",
     "test:docs": "playwright test --project docs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:tooling": "tsc --project tsconfig.json",
-    "test:unit": "npm run test:unit --workspaces --if-present"
+    "test:unit": "node --experimental-strip-types --test scripts/*.test.ts && npm run test:unit --workspaces --if-present",
+    "check:typescript": "node --experimental-strip-types scripts/check-typescript.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

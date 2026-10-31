@@ -5,13 +5,17 @@ description: Community portal in the CII Design System.
 
 Common Ground is the reference application for the design system. It demonstrates members, programs, events, donations, support cases, reports and administration.
 
+## Try the live demo
+
+[Open the Common Ground community portal](https://cii-community-portal.pages.dev). The demo uses fictional records stored in your browser. Changes are local to that browser and are not shared with other users.
+
 ## Run locally
 
 ```sh
 npm run dev:portal
 ```
 
-Open **http://localhost:5187**. The development URL is local to your machine; deploy the portal separately when sharing it with others.
+Open **http://localhost:5187**. The development URL is local to your machine. Use the live demo link above when sharing the portal with others.
 
 ## Shared implementation
 
@@ -34,7 +38,7 @@ Business data, role previews, navigation, local persistence and record workflows
 
 The [catalogue](/components/) separates four shared exports from application guidance. Multiselect, Radio group and Tag are documented future patterns without current portal examples. Toggle guidance records the distinction between a switch and the existing theme action button.
 
-Component and pattern guides explicitly record current gaps, including tab keyboard relationships, overlay inertness, local input error associations, report range enforcement, draft lifecycle and hardcoded theme values. Recommended behaviour is not a claim that the demo already implements it. This documentation pass does not extract new shared components or change portal behaviour.
+Component and pattern guides document implemented accessibility behaviour and remaining gaps, including draft lifecycle, production authorization and hardcoded theme values. This documentation pass does not extract new shared components or change portal behaviour.
 
 ## Existing data
 
