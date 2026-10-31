@@ -1,5 +1,7 @@
 # CII Mapping Components — Development Specification (v0.1)
 
+> **Superseded.** This specification is replaced by [svelte-mapping-components-development-plan.md](./svelte-mapping-components-development-plan.md) (v0.3). Where the two disagree, the plan wins. The parts of this document that still apply have been folded into the plan; see its "Status of the earlier specification" section. This document is kept for reference only.
+
 This specification describes how to build the CII mapping components. It covers simple maps that combine several data sources, through to capturing and editing spatial data. The components run on three open-source map engines, **Leaflet**, **MapLibre GL JS** and **OpenLayers**, behind one typed Svelte 5 API.
 
 It is written for the engineers who will build the `@cii/maps` package and for the designers and reviewers who accept it. It sits alongside [product-design-spec.md](./product-design-spec.md); where that document sets rules (accessibility, tokens, feedback states, audit), this one applies them to maps rather than repeating them.
