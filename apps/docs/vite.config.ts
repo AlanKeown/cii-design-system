@@ -3,7 +3,10 @@ import { defaultTheme } from '@sveltepress/theme-default';
 import { sveltepress } from '@sveltepress/vite';
 import { defineConfig } from 'vite';
 import { designSidebar } from '../../scripts/design-documents.ts';
-import { syncDesignDocs } from '../../scripts/sync-design-docs.ts';
+import {
+  protectDesignExamples,
+  syncDesignDocs
+} from '../../scripts/sync-design-docs.ts';
 
 const sidebar = [
   {
@@ -101,6 +104,7 @@ export default defineConfig({
       }
     },
     sveltepress({
+      remarkPlugins: (plugins) => [protectDesignExamples, ...plugins],
       siteConfig: {
         title: 'CII Design System',
         description:

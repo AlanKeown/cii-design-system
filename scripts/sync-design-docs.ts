@@ -50,8 +50,14 @@ export function rewriteDocumentLinks(source: string, slug: string): string {
   );
 }
 
-/** SveltePress uses template literals for inline code; render examples as literal text. */
-export function protectExamples(source: string): string {
+interface MarkdownNode {
+  type: string;
+  value?: string;
+  children?: MarkdownNode[];
+}
+
+/** Protect literal examples after Markdown parsing, before SveltePress emits Svelte. */
+export function protectDesignExamples() {
   const escape = (text: string): string =>
     text
       .replaceAll('&', '&amp;')
@@ -59,16 +65,20 @@ export function protectExamples(source: string): string {
       .replaceAll('>', '&gt;')
       .replaceAll('{', '&#123;')
       .replaceAll('}', '&#125;');
-  return mapProse(source, (line) =>
-    line
-      .split(/(`+[^`]*`+)/g)
-      .map((part, index) =>
-        index % 2
-          ? `<code>${escape(part.replace(/^`+|`+$/g, ''))}</code>`
-          : part.replaceAll('{', '&#123;').replaceAll('}', '&#125;')
-      )
-      .join('')
-  );
+  return (tree: MarkdownNode, file: { value: unknown }): void => {
+    if (!String(file.value).includes(generatedNotice)) return;
+    const visit = (node: MarkdownNode): void => {
+      if (node.type === 'inlineCode') {
+        node.type = 'html';
+        node.value = `<code>${escape(node.value ?? '')}</code>`;
+      } else if (node.type === 'text' && /[{}]/.test(node.value ?? '')) {
+        node.type = 'html';
+        node.value = escape(node.value ?? '');
+      }
+      node.children?.forEach(visit);
+    };
+    visit(tree);
+  };
 }
 
 function frontmatter(title: string, description: string): string {
@@ -89,7 +99,7 @@ export async function syncDesignDocs(): Promise<void> {
     await writePage(
       doc.slug,
       frontmatter(doc.title, doc.description) +
-        protectExamples(rewriteDocumentLinks(source, doc.slug))
+        rewriteDocumentLinks(source, doc.slug)
     );
   }
   const list = (archived: boolean): string =>
