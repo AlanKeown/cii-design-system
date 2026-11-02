@@ -54,6 +54,29 @@ interface MarkdownNode {
   type: string;
   value?: string;
   children?: MarkdownNode[];
+  data?: { hProperties?: Record<string, unknown> };
+}
+
+/** Keep permalink labels from being repeated in a heading's accessible name. */
+export function labelDesignHeadings() {
+  return (tree: MarkdownNode, file: { value: unknown }): void => {
+    if (!String(file.value).includes(generatedNotice)) return;
+    const visit = (node: MarkdownNode): void => {
+      if (node.type === 'heading') {
+        const anchor = node.children?.find((child) => child.type === 'Anchor');
+        const label = anchor?.data?.hProperties?.ariaLabel;
+        if (typeof label === 'string') {
+          node.data ??= {};
+          node.data.hProperties = {
+            ...node.data.hProperties,
+            ariaLabel: label
+          };
+        }
+      }
+      node.children?.forEach(visit);
+    };
+    visit(tree);
+  };
 }
 
 /** Protect literal examples after Markdown parsing, before SveltePress emits Svelte. */

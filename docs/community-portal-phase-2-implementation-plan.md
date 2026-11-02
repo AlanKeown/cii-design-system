@@ -1,0 +1,152 @@
+# Community portal backend: Phase 2 implementation plan
+
+Status: proposed implementation sequence. Prepared 3 November 2026 against the current repository and Phase 2 of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
+
+The outcome is the existing local demo running through Cloudflare Pages Functions, with browser operations behind `PortalBackend` and database enum drift checked at compile time. Browser data, drafts, recovery, permissions preview and reporting must continue to work.
+
+This document plans the work; it does not implement or deploy it. Leave implementation changes uncommitted for review. Commit, push and production deployment are subsequent release actions requiring the user's authorization.
+
+## Scope and current state
+
+Phase 1 supplies six migrations, the local Supabase configuration and the database CI job. Phase 2 consumes that schema to generate types; it needs no production Supabase credentials or further database migrations.
+
+| Area         | Current implementation                                                        | Phase 2 change                                                                                |
+| ------------ | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Hosting      | Portal uses `adapter-static`; root layout prerenders                          | Use `adapter-cloudflare`, keeping SSR and hydration enabled                                   |
+| Preview      | Portal and docs both use `scripts/preview.ts`                                 | Portal runs through Wrangler; docs retain the static preview                                  |
+| Workspace    | Page loads storage in `onMount` and auto-saves the full snapshot in an effect | Local backend owns operations and explicit persistence                                        |
+| Record forms | Dialog builds records and calls a synchronous parent callback                 | Dialog submits validated form values and awaits the backend result                            |
+| Attribution  | `records.ts` and page activity hard-code Sarah Mitchell                       | Required actor parameter in helpers; local backend supplies the demo actor                    |
+| Types        | No generated database types or enum parity assertions                         | Checked-in generated types, root generation script, compile-time tests and CI freshness check |
+| Deployment   | Workflow uploads `apps/community-portal/build`                                | Upload `.svelte-kit/cloudflare` from the portal workspace                                     |
+
+Authentication, Supabase clients, live APIs, invitations, account deletion, production variables and keep-alive remain in their later phases. Implement the shared reset method, but leave the new Administration reset UI for Phase 4. Keep this supporting plan outside the published design-document collection unless publication is requested.
+
+## 1. Establish the baseline
+
+- [ ] Run the existing checks, build and tests; record any unrelated failures before changing behavior.
+- [ ] Confirm `npm run db:start`, `npm run db:reset`, `npm run db:test` and `npm run db:lint` succeed against the local database.
+- [ ] Record existing storage behavior: empty storage is initialized; valid legacy snapshots are upgraded; unreadable snapshots survive until replacement is confirmed; unavailable storage permits in-memory use with a warning; drafts remain independent of workspace saving.
+- [ ] Capture the existing portal test coverage for CRUD, drawer actions, bulk archive, saved views, reports, theme, navigation, role preview and accessibility. Use it as the regression baseline.
+
+## 2. Switch the portal runtime and prepare deployment
+
+Files: `apps/community-portal/package.json`, `vite.config.ts`, `wrangler.jsonc`, `src/routes/+layout.ts`, root `package-lock.json`, `.gitignore`, `playwright.config.ts` and `.github/workflows/deploy-portal.yml`.
+
+- [ ] Replace the portal's static adapter dependency with a Cloudflare adapter release compatible with the installed SvelteKit 3 version. Resolve and lock the actual release during implementation rather than assuming the parent plan's adapter major is still correct. The docs workspace keeps its static adapter.
+- [ ] Add portal devDependency `wrangler` pinned to `4.156.0`, matching the deployment workflow. Update the lockfile through npm.
+- [ ] Configure `adapter-cloudflare` through the existing `sveltekit({ adapter })` call in `vite.config.ts`.
+- [ ] Remove the root layout's `prerender = true`; delete the file if that leaves it empty. Keep SSR enabled so this phase exercises the future server runtime.
+- [ ] Add a Pages configuration with project name `cii-community-portal`, `pages_build_output_dir: '.svelte-kit/cloudflare'` and the parent plan's compatibility date `2026-10-01`. Start with `nodejs_compat`; retain only the compatibility support required by the built application after checking it under Wrangler. Add no Supabase or Turnstile bindings, including production overrides.
+- [ ] Ignore `.dev.vars`, `.dev.vars.*` and Wrangler's local `.wrangler/` state. If an example vars file is introduced, explicitly keep it trackable.
+- [ ] Set portal preview to `wrangler pages dev .svelte-kit/cloudflare --port 4187 --ip 0.0.0.0`. Leave the shared sirv script and docs preview unchanged.
+- [ ] Update only the portal Playwright server readiness check to match the pinned Wrangler's actual ready output; keep port 4187 and the existing portal project. Confirm that the local-mode test process has no Supabase bindings from developer env files or inherited configuration.
+- [ ] Update the deploy action's working directory to `apps/community-portal` and its command to `pages deploy .svelte-kit/cloudflare --project-name=cii-community-portal --branch=main`. Preserve the successful-Verify gate, exact verified SHA checkout and existing concurrency protection. Add no migration step in this phase.
+
+Checkpoint: the production build contains the Worker and generated `_routes.json`; `/` goes through SSR, static assets bypass the Function, and existing portal browser tests run under Wrangler. Changing the adapter without changing the deploy path is an incomplete change.
+
+The adapter output, routing exclusions and Wrangler preview approach follow the [SvelteKit Cloudflare adapter documentation](https://svelte.dev/docs/kit/adapter-cloudflare). Pages uses the committed Wrangler configuration when `pages_build_output_dir` is present; review its settings before release. See [Pages configuration](https://developers.cloudflare.com/pages/functions/wrangler-configuration/).
+
+## 3. Add generated types and enforce parity
+
+Files: root `package.json`, a TypeScript generation helper if needed, `src/lib/backend/database.types.ts`, `tests/unit/database-parity.test.ts` and `.github/workflows/ci.yml`.
+
+- [ ] Add root `db:types` using the pinned CLI to run `supabase gen types typescript --local --schema public`. Generate from the freshly migrated local database, never from handwritten interfaces or production.
+- [ ] Write successful output to `apps/community-portal/src/lib/backend/database.types.ts`. Prefer a small TypeScript helper that captures output and writes only after generation succeeds, so a CLI failure cannot truncate the checked-in file.
+- [ ] Establish one formatting convention for the generated file. Either format generation and CI identically or exclude this generated artifact from Prettier and compare raw CLI output. Do not let the generation check and `format:check` fight each other.
+- [ ] Use type-only imports for `Database`. Keep this phase free of Supabase runtime dependencies.
+- [ ] Add bidirectional type equality assertions for every database enum: `app_role` ↔ `Role`, `app_module` ↔ `Module`, all five record-status enums ↔ their corresponding `statuses` unions, and `case_priority` ↔ `priorities[number]`.
+- [ ] Keep the test in `tests/unit/`, which the portal tsconfig already includes. Ensure a mismatch fails `npm run check`; Node execution alone does not validate types. Verify this once with a temporary mismatch, then restore it.
+- [ ] Do not claim enum parity for Administration status or saved-view sort: these are SQL text/check constraints, not generated enums. Their database validation remains covered by Phase 1 tests.
+- [ ] Extend the existing `database` CI job after reset/lint to regenerate types and fail on a diff against the checked-in file. Preserve cleanup with `if: always()`. Keep the main verify job independent of a running database by consuming checked-in types.
+
+Checkpoint: generating twice yields no diff, clean CI detects stale types, and a deliberate enum mismatch fails type checking. Local generation is supported by the [Supabase type-generation documentation](https://supabase.com/docs/guides/api/rest/generating-types).
+
+## 4. Implement the local backend and persistence lifecycle
+
+Files: `src/lib/backend/types.ts`, `src/lib/backend/local.ts`, `src/lib/records.ts` and focused unit tests. Retain `persistence.ts` as the validated storage boundary.
+
+- [ ] Define `SessionInfo`, `Workspace`, `PortalBackend` and `BackendError` as specified in §7.3, using existing model types and Promise-based operations. Do not invent a signed-in organisation or session for local mode.
+- [ ] Add an instance factory for the local backend. Inject storage access, the demo actor, clock and ID generator so it can be tested in plain Node without `$env`, `$app` or DOM globals.
+- [ ] Keep workspace state per browser instance. Never put a mutable workspace in a server module singleton. Acquire `localStorage` only after mount and handle access itself throwing.
+- [ ] Give the local implementation an explicit lifecycle separate from the shared contract: initialize/load, read a cloned snapshot, set the theme, inspect persistence status and replace unreadable storage after UI confirmation. These local concerns must not force future live implementations to expose browser storage.
+- [ ] Preserve `community-portal-v1`, the version-2 snapshot envelope, legacy decoding, draft keys and all validation. On initialization, explicitly persist empty/valid migrated workspaces where the current effect would do so.
+- [ ] Implement create, update, bulk archive and saved-view saving with existing validators and helpers. The adapter assigns IDs/timestamps/actor metadata and owns audit updates; page code must not add duplicate entries. Preserve user-visible activity descriptions for drawer actions through local orchestration without adding browser-specific requirements to `PortalBackend`.
+- [ ] Pass the actor explicitly to `buildRecord`, `changeRecord` and the record archive helper; update every caller and existing helper test. Continue to use Sarah Mitchell for local attribution.
+- [ ] Implement `reportRows` with `selectReportRows`, retaining inclusive date bounds, open-ended dates and empty results for reversed ranges. Implement `resetDemoData` using a fresh clone of seed records, clearing workspace audit and saved views while retaining theme and independent drafts.
+- [ ] Persist explicitly after each successful mutation and theme change. Serialize operations or guard overlapping writes so two awaited operations cannot overwrite each other's changes.
+- [ ] Preserve in-memory use when saving is paused or storage fails. Keep corrupt bytes untouched until replacement is confirmed; warn that changes are unsaved. Storage failures must not silently discard the in-memory update or falsely announce durable saving. Domain/validation failures reject with the shared error shape and leave records unchanged.
+- [ ] Return copies or otherwise prevent callers from mutating adapter-owned state outside an operation. Keep reactive proxies out of serialized snapshots.
+
+Checkpoint: the adapter can load legacy data, mutate records, produce activity, reload a valid snapshot and recover from storage failures without a browser or database.
+
+## 5. Route the UI through the asynchronous interface
+
+Files: `src/routes/+page.ts`, `+page.svelte`, `src/lib/components/RecordFormDialog.svelte`, `Reports.svelte` and, where needed, `RecordDrawer.svelte`.
+
+- [ ] Add a minimal typed page load returning `{ mode: 'local' }`. It is a stable discriminator for the current phase; runtime live-mode detection and authenticated loading belong to later phases.
+- [ ] Initialize the local adapter after mount, preserving `data-ready`, query/hash navigation and deterministic SSR seed content. Keep the actor/profile unchanged for visitors.
+- [ ] Replace page-level workspace loading, direct mutation and the broad auto-save effect with backend operations and explicit local snapshot synchronization. The page owns view state; the adapter owns workspace data, audit and persistence status.
+- [ ] Change the dialog callback to submit form values plus the editing context and return a Promise. Create through `createRecord`; edit through `updateRecord`, preserving the original `updatedAt` for the optional expected timestamp. Keep client validation and focus behavior; the backend validates again.
+- [ ] Await successful operations before closing dialogs, clearing selections or displaying success toasts. Keep entries and selection available on rejection. Map `fieldErrors` onto the existing error summary and fields.
+- [ ] Add pending states to form and drawer/bulk operations, preventing duplicate submissions and stale completions after navigation. Ensure a rejected operation releases its pending state.
+- [ ] Route status changes, notes, assignments, attendance and bulk archive through backend methods. Apply returned records and refreshed local audit/views; preserve selection and detail behavior.
+- [ ] Route saved views through `saveView`; persist theme changes explicitly through the local lifecycle. Keep draft save/restore in the existing persistence helpers.
+- [ ] Route report loading through `reportRows`, preserving filters, summary and CSV content. Guard stale asynchronous results when users change module/date range quickly; keep the existing invalid-range message.
+- [ ] Keep role preview client-side and retain the existing permission matrix. Do not add live-mode role switching or a reset button yet.
+
+Checkpoint: create/edit/archive, drawer actions, saved views and theme survive reload; reporting and CSV remain equivalent; corrupt-storage recovery and drafts still pass existing tests. All authored scripts remain TypeScript with strict checking. Validate changed Svelte components with the Svelte MCP tools during implementation.
+
+## 6. Validate the integrated change
+
+Add tests at the boundaries being changed rather than duplicating existing low-level persistence tests.
+
+| Layer                             | Required evidence                                                                                                                                                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local backend unit tests          | Create/update/archive, ID and actor attribution, single activity entries, saved views, report bounds, reset, overlapping operations, returned-value isolation, paused/unavailable/quota-failed storage and confirmed recovery |
+| Existing record/persistence tests | Existing validation, legacy snapshots and draft behavior still pass after actor signature changes                                                                                                                             |
+| Compile-time checks               | All eight public enums match; temporary mismatch demonstrably fails                                                                                                                                                           |
+| Browser tests under Wrangler      | Existing portal, storage and accessibility suites pass without weakening assertions; add reload coverage where saved views/theme or async mutations lack it                                                                   |
+| Async UI checks                   | Controlled delayed/rejected backend operations prove pending state, duplicate-submit prevention, retained form values and actionable errors; do not add public test-only routes                                               |
+| Build/runtime smoke checks        | `/` and `/?module=Members` render and hydrate; no browser-only global is accessed during SSR; unknown routes return 404; static assets load through generated exclusions                                                      |
+| CI                                | Existing `verify` and `database` jobs pass, including generated-type freshness; no production service is needed                                                                                                               |
+
+Run, in order:
+
+```sh
+npm run db:start
+npm run db:reset
+npm run db:test
+npm run db:lint
+npm run db:types
+npm run format:check
+npm run check
+npm run build
+npm test
+git diff --check
+```
+
+The build precedes browser tests because Playwright starts the production preview. Confirm the portal server is Wrangler and the docs server remains sirv. Stop the local database after validation if it was started for this task. Review the generated types and lockfile alongside authored changes.
+
+## 7. Release separately and measure CPU
+
+Complete all local work and present the tested diff before requesting any release action. Preserve the repository's separate commit and push authorizations. This planning request does not authorize release.
+
+- [ ] Record the previous deployment ID and rollback target. Inspect existing Pages settings before the Wrangler configuration takes ownership; ensure Phase 2 remains local mode in production.
+- [ ] After authorization, release Phase 2 on its own using the existing verified-commit workflow. Do not combine it with authentication or live data.
+- [ ] On the existing production origin, check an existing browser profile's data and a fresh profile: create/edit/archive, reload, saved views, theme, drafts, reports/CSV, role preview and recovery. Retaining the origin and storage keys is necessary to retain visitors' existing browser data.
+- [ ] Exercise a modest batch of full document requests for `/`, with a few initial requests and repeated warm requests. Record deployment ID, UTC window, request count, CPU quantiles exposed by Cloudflare and any invocation errors. Use Pages **Functions Metrics → CPU time per execution**, not response duration or browser navigation timing. Separate static-asset traffic from Function requests. See [Pages metrics](https://developers.cloudflare.com/pages/functions/metrics/).
+- [ ] Verify CPU remains below the current free-plan 10 ms budget with headroom and no CPU-limit failures. A proposed engineering target is p95 below 8 ms where available; this is a planning target, not a platform guarantee. If results approach the limit, profile and reduce SSR work before accepting the phase. A paid-plan change requires a separate decision. See [Workers runtime limits](https://developers.cloudflare.com/workers/platform/limits/).
+- [ ] Record the important measurement limit: Phase 2 SSR renders the existing seed workspace; saved browser data is loaded after hydration. This validates local-mode SSR only. Repeat measurement after Phase 4 introduces server-loaded workspaces and auth overhead; a large localStorage snapshot cannot simulate that server cost.
+- [ ] Roll back to the recorded deployment if production behavior regresses or resource limits fail; investigate before continuing.
+
+## Completion criteria
+
+- [ ] Repository checks, the full build and all existing tests pass; portal browser tests use Wrangler.
+- [ ] Generated database types are checked in, reproducible and guarded by compile-time parity and CI freshness checks.
+- [ ] Every workspace mutation uses the local backend; storage compatibility, recovery, theme, drafts and activity are preserved.
+- [ ] Deployment workflow points to the Cloudflare build and still deploys only verified commits.
+- [ ] Reviewable implementation is left uncommitted unless separately authorized.
+- [ ] Following an authorized release, production smoke checks and recorded CPU measurements pass. Until then, report implementation as ready for release and keep the production/CPU checklist incomplete.
+
+Implementation order: runtime switch → generated types and parity → local adapter and actor helpers → asynchronous UI integration → full validation → authorized standalone release and measurement. Keep runtime and application refactors independently reviewable, but ship them together as Phase 2 once verified.

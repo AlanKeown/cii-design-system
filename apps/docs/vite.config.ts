@@ -4,6 +4,7 @@ import { sveltepress } from '@sveltepress/vite';
 import { defineConfig } from 'vite';
 import { designSidebar } from '../../scripts/design-documents.ts';
 import {
+  labelDesignHeadings,
   protectDesignExamples,
   syncDesignDocs
 } from '../../scripts/sync-design-docs.ts';
@@ -104,7 +105,11 @@ export default defineConfig({
       }
     },
     sveltepress({
-      remarkPlugins: (plugins) => [protectDesignExamples, ...plugins],
+      remarkPlugins: (plugins) => [
+        protectDesignExamples,
+        ...plugins,
+        labelDesignHeadings
+      ],
       siteConfig: {
         title: 'CII Design System',
         description:

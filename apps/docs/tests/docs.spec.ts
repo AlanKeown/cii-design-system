@@ -46,9 +46,9 @@ test('design documents connect current plans and archived specifications under t
     name: 'Decisions already taken for this plan',
     exact: true
   });
-  const id = await section.getAttribute('id');
-  expect(id).toBeTruthy();
-  await page.goto(`design/mapping/#${id}`);
+  const hash = await section.getByRole('link').getAttribute('href');
+  expect(hash).toMatch(/^#.+/);
+  await page.goto(`design/mapping/${hash}`);
   await expect(section).toBeInViewport();
   expect(errors).toEqual([]);
 });
