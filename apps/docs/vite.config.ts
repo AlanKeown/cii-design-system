@@ -2,6 +2,8 @@ import adapter from '@sveltejs/adapter-static';
 import { defaultTheme } from '@sveltepress/theme-default';
 import { sveltepress } from '@sveltepress/vite';
 import { defineConfig } from 'vite';
+import { designSidebar } from '../../scripts/design-documents.ts';
+import { syncDesignDocs } from '../../scripts/sync-design-docs.ts';
 
 const sidebar = [
   {
@@ -76,6 +78,7 @@ const sidebar = [
     title: 'Project',
     items: [
       { title: 'Community portal', to: '/examples/community-portal/' },
+      { title: 'Design documents', to: '/design/' },
       { title: 'Migration notes', to: '/migration/' }
     ]
   }
@@ -83,6 +86,20 @@ const sidebar = [
 
 export default defineConfig({
   plugins: [
+    {
+      name: 'design-document-watch',
+      configureServer(server) {
+        const sources = new URL('../../docs/', import.meta.url).pathname;
+        server.watcher.add(sources);
+        server.watcher.on('change', (filename) => {
+          if (filename.startsWith(sources)) {
+            void syncDesignDocs().catch((error: unknown) =>
+              server.config.logger.error(String(error))
+            );
+          }
+        });
+      }
+    },
     sveltepress({
       siteConfig: {
         title: 'CII Design System',
@@ -94,14 +111,32 @@ export default defineConfig({
         paths: { base: (process.env.BASE_PATH ?? '') as '' | `/${string}` }
       },
       theme: defaultTheme({
+        highlighter: {
+          languages: [
+            'svelte',
+            'sh',
+            'js',
+            'html',
+            'ts',
+            'md',
+            'css',
+            'scss',
+            'sql',
+            'json',
+            'jsonc',
+            'mermaid',
+            'yaml'
+          ]
+        },
         logo: '/logo.svg',
         navbar: [
           { title: 'Get started', to: '/getting-started/' },
           { title: 'Components', to: '/components/' },
           { title: 'Patterns', to: '/patterns/' },
+          { title: 'Design documents', to: '/design/' },
           { title: 'Live portal', to: 'https://cii-community-portal.pages.dev' }
         ],
-        sidebar: { '/': sidebar },
+        sidebar: { '/design/': designSidebar, '/': sidebar },
         themeColor: {
           light: '#F5F7FB',
           dark: '#0A121C',

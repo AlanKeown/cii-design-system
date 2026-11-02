@@ -7,9 +7,13 @@
     "#lib/*": "./src/lib/*"
   },
   "scripts": {
+    "sync:design": "node --experimental-strip-types ../../scripts/sync-design-docs.ts",
+    "predev": "npm run sync:design",
     "dev": "vite --host 0.0.0.0 --port 5188 --strictPort",
+    "prebuild": "npm run sync:design",
     "build": "vite build",
     "preview": "node --experimental-strip-types ../../scripts/preview.ts 4188",
+    "precheck": "npm run sync:design",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {

@@ -22,3 +22,20 @@ jobs:
         with:
           name: browser-test-results
           path: test-results/
+  # Runs the Supabase migrations on a fresh local database, then the pgTAP permission suite.
+  # Part of the Verify workflow, so portal deployments are gated on it too.
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:start
+      - run: npm run db:reset
+      - run: npm run db:test
+      - run: npm run db:lint
+      - if: always()
+        run: npm run db:stop

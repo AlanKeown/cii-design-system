@@ -1,0 +1,161 @@
+-- Shared fixtures for the pgTAP suite. Included by each test with \ir; the .psql extension keeps
+-- pg_prove from running it as a test. Everything lives in pg_temp and in transaction-local
+-- settings, so it disappears when each test file rolls back.
+--
+-- Users:  ann (owner of org 'a'), ben (owner of org 'b'), cat (owner of org 'c').
+-- Org 'a' and org 'b' are seeded with pg_temp.demo(); org 'c' is empty.
+
+create extension if not exists pgtap with schema extensions;
+
+create function pg_temp.ann() returns uuid language sql immutable as $$ select 'a0000000-0000-4000-8000-000000000001'::uuid $$;
+create function pg_temp.ben() returns uuid language sql immutable as $$ select 'b0000000-0000-4000-8000-000000000002'::uuid $$;
+create function pg_temp.cat() returns uuid language sql immutable as $$ select 'c0000000-0000-4000-8000-000000000003'::uuid $$;
+
+create function pg_temp.org(p_name text) returns uuid language sql stable as $$
+  select current_setting('test.org_' || p_name)::uuid
+$$;
+
+-- Sets the JWT claims auth.uid() reads, without changing the database role.
+create function pg_temp.claims(p_user uuid) returns void language sql as $$
+  select set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
+$$;
+
+-- Acts as a signed-in user through the Data API: claims plus the authenticated role.
+-- Undo with `reset role;`.
+create function pg_temp.login(p_user uuid) returns void language plpgsql as $$
+begin
+  perform pg_temp.claims(p_user);
+  perform set_config('role', 'authenticated', true);
+end;
+$$;
+
+create function pg_temp.make_user(p_id uuid, p_email text) returns void language sql as $$
+  insert into auth.users (id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  values (p_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', p_email, '{}', '{}', now(), now());
+$$;
+
+-- A small version of initialRecords from apps/community-portal/src/lib/data.ts.
+create function pg_temp.demo() returns jsonb language sql immutable as $$
+  select '{
+    "Programs": [
+      {"kind": "Programs", "id": "P-101", "name": "Food pantry", "status": "Active", "type": "Food relief",
+       "location": "Parramatta", "date": "2026-09-01", "capacity": 40, "participants": 28},
+      {"kind": "Programs", "id": "P-102", "name": "Wellbeing circle", "status": "Pending", "type": "Wellbeing",
+       "location": "Sydney", "date": "2026-10-01", "capacity": 24, "participants": 18}
+    ],
+    "Members": [
+      {"kind": "Members", "id": "M-1001", "name": "Amelia Thompson", "email": "amelia@example.org",
+       "phone": "0400 123 456", "status": "Active", "type": "Community member", "location": "Parramatta",
+       "tags": "Family support", "date": "2026-10-23", "notes": "Prefers contact by email.", "programId": "P-101"},
+      {"kind": "Members", "id": "M-1002", "name": "Noah Williams", "email": "noah@example.org",
+       "status": "Active", "type": "Volunteer", "location": "Sydney", "date": "2026-09-14"},
+      {"kind": "Members", "id": "M-1003", "name": "Olivia Chen", "email": "", "status": "Pending",
+       "type": "Donor", "location": "Penrith", "date": "2026-08-02"}
+    ],
+    "Events": [
+      {"kind": "Events", "id": "E-201", "name": "Community lunch", "status": "Upcoming", "type": "Community",
+       "location": "Parramatta", "date": "2026-11-20", "attendees": 34}
+    ],
+    "Donations": [
+      {"kind": "Donations", "id": "D-301", "name": "Monthly gift", "status": "Acknowledged",
+       "type": "Monthly giving", "location": "Online", "date": "2026-10-05", "amount": 150}
+    ],
+    "Cases": [
+      {"kind": "Cases", "id": "C-401", "name": "Housing support", "status": "Open", "priority": "High",
+       "type": "Housing", "location": "Parramatta", "date": "2026-10-20", "memberId": "M-1001",
+       "notes": "Private case note."}
+    ],
+    "Administration": []
+  }'::jsonb
+$$;
+
+-- Runs a statement as the current role and reports how many rows it touched.
+create function pg_temp.affected(p_sql text) returns integer language plpgsql as $$
+declare
+  v_count integer;
+begin
+  execute p_sql;
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+create function pg_temp.can_read(p_table text, p_org uuid) returns boolean language plpgsql as $$
+declare
+  v_found boolean;
+begin
+  execute format('select exists (select 1 from public.%I where org_id = $1)', p_table) into v_found using p_org;
+  return v_found;
+end;
+$$;
+
+-- Tries a minimal valid insert, then rolls it back. True if RLS allowed it.
+create function pg_temp.can_insert(p_table text, p_org uuid) returns boolean language plpgsql as $$
+begin
+  begin
+    execute case p_table
+      when 'members' then format(
+        'insert into public.members (org_id, name, status, date) values (%L, ''Probe'', ''Active'', ''2026-01-01'')', p_org)
+      when 'programs' then format(
+        'insert into public.programs (org_id, name, status, date, capacity, participants) values (%L, ''Probe'', ''Active'', ''2026-01-01'', 1, 0)', p_org)
+      when 'events' then format(
+        'insert into public.events (org_id, name, status, date, attendees) values (%L, ''Probe'', ''Upcoming'', ''2026-01-01'', 0)', p_org)
+      when 'donations' then format(
+        'insert into public.donations (org_id, name, status, date, amount) values (%L, ''Probe'', ''Needs receipt'', ''2026-01-01'', 1)', p_org)
+      when 'cases' then format(
+        'insert into public.cases (org_id, name, status, date, priority, member_id) values (%L, ''Probe'', ''Open'', ''2026-01-01'', ''Normal'', ''M-1001'')', p_org)
+    end;
+    raise exception using errcode = 'P0099', message = 'probe';
+  exception
+    when sqlstate 'P0099' then return true;
+    when insufficient_privilege then return false;
+  end;
+end;
+$$;
+
+-- Tries to update every row of the organisation, then rolls it back. True if any row was writable.
+create function pg_temp.can_update(p_table text, p_org uuid) returns boolean language plpgsql as $$
+declare
+  v_count integer := 0;
+begin
+  begin
+    execute format('update public.%I set location = location || '' '' where org_id = $1', p_table) using p_org;
+    get diagnostics v_count = row_count;
+    raise exception using errcode = 'P0099', message = 'probe';
+  exception
+    when sqlstate 'P0099' then return v_count > 0;
+    when insufficient_privilege then return false;
+  end;
+end;
+$$;
+
+-- Creates the three users, their workspaces through ensure_workspace(), and seeds orgs 'a' and 'b'.
+create function pg_temp.setup() returns void language plpgsql as $$
+declare
+  v_org uuid;
+begin
+  perform pg_temp.make_user(pg_temp.ann(), 'ann@example.test');
+  perform pg_temp.make_user(pg_temp.ben(), 'ben@example.test');
+  perform pg_temp.make_user(pg_temp.cat(), 'cat@example.test');
+
+  perform pg_temp.claims(pg_temp.ann());
+  select w.org_id into v_org from public.ensure_workspace() w;
+  perform set_config('test.org_a', v_org::text, true);
+  perform public.seed_demo_workspace(v_org, pg_temp.demo());
+
+  perform pg_temp.claims(pg_temp.ben());
+  select w.org_id into v_org from public.ensure_workspace() w;
+  perform set_config('test.org_b', v_org::text, true);
+  perform public.seed_demo_workspace(v_org, pg_temp.demo());
+
+  perform pg_temp.claims(pg_temp.cat());
+  select w.org_id into v_org from public.ensure_workspace() w;
+  perform set_config('test.org_c', v_org::text, true);
+
+  perform set_config('request.jwt.claims', '', true);
+end;
+$$;
+
+-- pgTAP's functions live in the extensions schema; tests call them while acting as a user.
+-- Rolled back with the rest of the test.
+grant usage on schema extensions to authenticated;

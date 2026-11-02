@@ -24,6 +24,7 @@ The system uses deep blue and lilac, accessible forms, clear feedback and layout
 - [Components](/components/) — the complete catalogue, availability, live examples and planned components.
 - [Patterns](/patterns/) — compose dashboards, record forms/details, reports and bulk workflows.
 - [Community portal](/examples/community-portal/) — see the components in a working application.
+- [Design documents](/design/) — product specifications, development plans and archived proposals.
 
 ## Available in this release
 

@@ -1,5 +1,78 @@
 import { test, expect } from '@playwright/test';
 
+test('design documents connect current plans and archived specifications under the deployment base', async ({
+  page
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto('./');
+  await page
+    .getByRole('link', { name: 'Design documents', exact: true })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/design\/$/);
+  await expect(
+    page.getByRole('heading', { name: 'Current documents', exact: true })
+  ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'Mapping development plan', exact: true })
+    .last()
+    .click();
+  await expect(page).toHaveURL(/\/design\/mapping\/$/);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Svelte Unified Mapping Components — Development Plan',
+      exact: true
+    })
+  ).toBeVisible();
+  await expect(
+    page.locator('pre').filter({ hasText: '<script lang="ts">' }).first()
+  ).toBeAttached();
+  await page
+    .getByRole('link', { name: 'mapping-components-spec.md', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/design\/archive\/mapping-spec\/$/);
+  await expect(page.getByText('Superseded.', { exact: true })).toBeVisible();
+  await page.reload();
+  await page
+    .getByRole('link', {
+      name: 'svelte-mapping-components-development-plan.md',
+      exact: true
+    })
+    .click();
+  await expect(page).toHaveURL(/\/design\/mapping\/$/);
+  const section = page.getByRole('heading', {
+    name: 'Decisions already taken for this plan',
+    exact: true
+  });
+  const id = await section.getAttribute('id');
+  expect(id).toBeTruthy();
+  await page.goto(`design/mapping/#${id}`);
+  await expect(section).toBeInViewport();
+  expect(errors).toEqual([]);
+});
+
+test('design documents load directly on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [slug, heading] of [
+    [
+      'product',
+      'Community Organisation Portal — Product Design Specification (v1.0)'
+    ],
+    ['portal-backend', 'Community Portal Backend — Development Plan']
+  ]) {
+    const response = await page.goto(`design/${slug}/`);
+    expect(response?.status()).toBe(200);
+    await expect(
+      page.getByRole('heading', { name: heading, exact: true })
+    ).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth)
+    ).toBeLessThanOrEqual(390);
+  }
+});
+
 test('documentation navigation and shared button interaction', async ({
   page
 }) => {
