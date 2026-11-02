@@ -1,5 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { PageProps } from './$types';
+  import {
+    createLocalBackend,
+    localActor,
+    type LocalBackend
+  } from '#lib/backend/local.ts';
+  import { backendError, PortalBackendError } from '#lib/backend/types.ts';
   import { goto } from '$app/navigation';
   import { Button, Alert, StatusChip } from '@cii/svelte';
   import { modules, permissions, initialRecords, singular } from '#lib/data.ts';
@@ -7,6 +14,7 @@
     isRecordModule,
     recordValue,
     type Module,
+    type RecordForm,
     type Role,
     type PortalRecord,
     type SortKey,
@@ -14,12 +22,10 @@
     type AuditEntry
   } from '#lib/model.ts';
   import {
-    putRecord,
-    archiveRecords,
+    buildRecord,
     changeRecord,
     type RecordChanges
   } from '#lib/records.ts';
-  import { loadWorkspace, saveWorkspace } from '#lib/persistence.ts';
   import { today, timestamp, money, date } from '#lib/format.ts';
   import { downloadCsv } from '#lib/reporting.ts';
   import { modalDialog } from '#lib/modal-dialog.ts';
@@ -28,6 +34,11 @@
   import Reports from '#lib/components/Reports.svelte';
   import Dashboard from '#lib/components/Dashboard.svelte';
 
+  let { data }: PageProps = $props();
+  let backend: LocalBackend | undefined;
+  let mounted = false;
+  let viewVersion = 0;
+  let actionPending = $state(false);
   let records = $state(structuredClone(initialRecords));
   let module = $state<Module>('Dashboard');
   let role = $state<Role>('Admin');
@@ -102,38 +113,57 @@
       : []
   );
 
+  function syncWorkspace() {
+    if (!backend || !mounted) return;
+    ({ records, audit, savedViews, dark } = backend.readSnapshot());
+    const persistence = backend.persistenceStatus();
+    storageAllowed = persistence.saved;
+    recoveryNeeded = persistence.recoveryNeeded;
+    storageError = persistence.message;
+  }
   onMount(() => {
-    try {
-      const result = loadWorkspace(localStorage);
-      if (result.status === 'loaded') {
-        ({ records, audit, savedViews, dark } = result.snapshot);
-        storageAllowed = true;
-      } else if (result.status === 'empty') storageAllowed = true;
-      else {
-        storageError = result.message;
-        recoveryNeeded = result.status === 'invalid';
-      }
-    } catch {
-      storageError =
-        'Browser storage is unavailable. Changes cannot be saved; export your work before leaving.';
-    }
+    mounted = true;
+    if (data.mode === 'local')
+      backend = createLocalBackend({ storage: () => localStorage });
+    syncWorkspace();
     ready = true;
     const initialModule =
       new URL(location.href).searchParams.get('module') ||
       decodeURIComponent(location.hash.slice(1));
     module =
       allowed.find((candidate) => candidate === initialModule) ?? 'Dashboard';
+    return () => {
+      mounted = false;
+      viewVersion++;
+    };
   });
-  $effect(() => {
-    if (ready && storageAllowed) {
-      try {
-        saveWorkspace(localStorage, { records, audit, savedViews, dark });
-      } catch {
-        storageError =
-          'Changes could not be saved in this browser. Export your records before leaving.';
-      }
+  function requireBackend(): LocalBackend {
+    if (!backend)
+      throw new PortalBackendError(
+        'offline',
+        'The workspace is still loading. Please try again.'
+      );
+    return backend;
+  }
+  async function mutate<T>(operation: () => Promise<T>): Promise<T> {
+    if (actionPending)
+      throw new PortalBackendError(
+        'conflict',
+        'Another change is still being saved.'
+      );
+    actionPending = true;
+    try {
+      const result = await operation();
+      syncWorkspace();
+      return result;
+    } finally {
+      actionPending = false;
     }
-  });
+  }
+  function toggleTheme() {
+    requireBackend().setDark(!dark);
+    syncWorkspace();
+  }
   function replaceSavedWorkspace() {
     if (
       !confirm(
@@ -141,9 +171,8 @@
       )
     )
       return;
-    storageAllowed = true;
-    recoveryNeeded = false;
-    storageError = '';
+    requireBackend().replaceSavedWorkspace();
+    syncWorkspace();
   }
   function notify(text: string) {
     toast = text;
@@ -153,6 +182,7 @@
   }
   function navigate(next: Module) {
     if (!allowed.includes(next)) return;
+    viewVersion++;
     module = next;
     query = '';
     status = 'All statuses';
@@ -166,17 +196,12 @@
     });
   }
   function changeRole() {
+    viewVersion++;
     if (!allowed.includes(module)) navigate('Dashboard');
     detail = null;
     modal = false;
     command = false;
     notify('Previewing ' + role + ' permissions');
-  }
-  function log(action: string, record: string) {
-    audit = [
-      { action, record, by: 'Sarah Mitchell', at: timestamp() },
-      ...audit
-    ];
   }
   function rememberFocus() {
     const active = document.activeElement;
@@ -189,18 +214,40 @@
     command = true;
   }
   function create(record: PortalRecord | null = null) {
-    if (!canWrite || !isRecordModule(module)) return;
+    if (!canWrite || !isRecordModule(module) || actionPending) return;
+    viewVersion++;
     rememberFocus();
     editing = record;
     detail = null;
     modal = true;
   }
-  function save(record: PortalRecord) {
-    if (!canWrite || record.kind !== module) return;
-    putRecord(records, record);
-    log(editing ? 'Updated' : 'Created', record.name);
+  async function save(form: RecordForm) {
+    if (!canWrite || !isRecordModule(module))
+      throw new PortalBackendError(
+        'forbidden',
+        'You cannot save records in this view.'
+      );
+    const version = viewVersion;
+    const target = module;
+    const original = editing;
+    const values = $state.snapshot(form);
+    const saved = await mutate(() =>
+      original
+        ? requireBackend().updateRecord(
+            buildRecord(
+              target,
+              values,
+              original.id,
+              original.updatedAt ?? timestamp(),
+              localActor
+            ),
+            original.updatedAt
+          )
+        : requireBackend().createRecord(target, values)
+    );
+    if (!mounted || version !== viewVersion) return;
     modal = false;
-    notify('Saved ' + singular[record.kind]);
+    notify('Saved ' + singular[saved.kind]);
   }
   function download(data: PortalRecord[], name: string) {
     downloadCsv(data, name);
@@ -211,31 +258,53 @@
       ? selected.filter((value) => value !== id)
       : [...selected, id];
   }
-  function bulkArchive() {
-    if (!canWrite || !isRecordModule(module)) return;
+  async function bulkArchive() {
+    if (!canWrite || !isRecordModule(module) || actionPending) return;
     if (!confirm('Archive ' + selected.length + ' selected records?')) return;
-    archiveRecords(records, module, selected, timestamp());
-    log('Archived', selected.length + ' ' + module.toLowerCase());
-    selected = [];
-    notify('Selected records archived');
+    const target = module;
+    const ids = [...selected];
+    const version = viewVersion;
+    try {
+      await mutate(() => requireBackend().archiveRecords(target, ids));
+      if (!mounted || version !== viewVersion) return;
+      selected = [];
+      notify('Selected records archived');
+    } catch (error) {
+      if (mounted && version === viewVersion)
+        notify(backendError(error).message);
+    }
   }
-  function updateDetail(changes: RecordChanges, action: string) {
-    if (!canWrite || !detail) return;
-    const next = changeRecord(detail, changes, timestamp());
-    putRecord(records, next);
+  async function updateDetail(changes: RecordChanges, action: string) {
+    if (!canWrite || !detail)
+      throw new PortalBackendError(
+        'forbidden',
+        'You cannot update this record.'
+      );
+    const original = $state.snapshot(detail);
+    const version = viewVersion;
+    const next = await mutate(() =>
+      requireBackend().updateRecord(
+        changeRecord(original, changes, timestamp(), localActor),
+        original.updatedAt,
+        action
+      )
+    );
+    if (!mounted || version !== viewVersion) return;
     detail = next;
-    log(action, next.name);
     notify(action);
   }
-  function saveView() {
-    if (!isRecordModule(module)) return;
+  async function saveView() {
+    if (!isRecordModule(module) || actionPending) return;
     const name = prompt('Name this saved view');
-    if (name?.trim()) {
-      savedViews = [
-        ...savedViews,
-        { name: name.trim(), module, query, status, sort }
-      ];
-      notify('View saved');
+    if (!name?.trim()) return;
+    const view = { name: name.trim(), module, query, status, sort };
+    const version = viewVersion;
+    try {
+      await mutate(() => requireBackend().saveView(view));
+      if (mounted && version === viewVersion) notify('View saved');
+    } catch (error) {
+      if (mounted && version === viewVersion)
+        notify(backendError(error).message);
     }
   }
   function sortBy(key: SortKey) {
@@ -246,6 +315,7 @@
     }
   }
   function showRecord(record: PortalRecord) {
+    viewVersion++;
     rememberFocus();
     detail = record;
   }
@@ -259,6 +329,7 @@
 >
 <svelte:window
   onpopstate={() => {
+    viewVersion++;
     const next =
       new URL(location.href).searchParams.get('module') || 'Dashboard';
     module = allowed.find((m) => m === next) ?? 'Dashboard';
@@ -347,7 +418,8 @@
         ><button
           class="icon"
           aria-label={dark ? 'Use light theme' : 'Use dark theme'}
-          onclick={() => (dark = !dark)}>{dark ? '☀' : '☾'}</button
+          disabled={!ready}
+          onclick={toggleTheme}>{dark ? '☀' : '☾'}</button
         ><button
           class="icon notification"
           aria-label="View activity notifications"
@@ -406,7 +478,13 @@
           onQuickAdd={openCommand}
         />
       {:else if module === 'Reports'}
-        <Reports {records} {allowed} {role} onDownload={download} />
+        <Reports
+          {allowed}
+          {role}
+          loadRows={(module, from, to) =>
+            requireBackend().reportRows(module, from, to)}
+          onDownload={download}
+        />
       {:else}
         <div class="page-heading">
           <div>
@@ -484,7 +562,8 @@
                     : 'location'}</label
                 ><label
                   ><input type="checkbox" bind:checked={compact} /> Compact rows</label
-                ><button onclick={saveView}>Save current view</button
+                ><button disabled={actionPending} onclick={saveView}
+                  >Save current view</button
                 >{#each savedViews.filter((v) => v.module === module) as v (v)}<button
                     onclick={() => {
                       query = v.query;
@@ -503,8 +582,11 @@
                     rows.filter((r) => selected.includes(r.id)),
                     module.toLowerCase() + '-selected'
                   )}>Export selected</button
-              >{#if canWrite}<button class="danger" onclick={bulkArchive}
-                  >Archive selected</button
+              >{#if canWrite}<button
+                  class="danger"
+                  disabled={actionPending}
+                  aria-busy={actionPending}
+                  onclick={bulkArchive}>Archive selected</button
                 >{/if}<button onclick={() => (selected = [])}>Clear</button>
             </div>{/if}
           <div class="table-scroll">
@@ -731,7 +813,11 @@
       {records}
       {audit}
       {canWrite}
-      onClose={() => (detail = null)}
+      pending={actionPending}
+      onClose={() => {
+        viewVersion++;
+        detail = null;
+      }}
       onEdit={create}
       onUpdate={updateDetail}
     />
@@ -743,7 +829,10 @@
       returnFocus={modalReturnFocus}
       members={records.Members}
       onSave={save}
-      onClose={() => (modal = false)}
+      onClose={() => {
+        viewVersion++;
+        modal = false;
+      }}
       onNotify={notify}
     />
   {/if}

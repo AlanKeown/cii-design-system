@@ -22,6 +22,48 @@ async function openMemberForm(page: Page) {
   return page.getByRole('dialog');
 }
 
+test('bulk archive and saved views persist across a reload', async ({
+  page
+}) => {
+  await ready(page, '/?module=Members');
+  await page
+    .getByRole('checkbox', { name: 'Select Amelia Thompson', exact: true })
+    .check();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page
+    .getByRole('button', { name: 'Archive selected', exact: true })
+    .click();
+  await expect(page.getByRole('status')).toContainText(
+    'Selected records archived'
+  );
+  await page.getByRole('textbox', { name: 'Search members' }).fill('Amelia');
+  await page
+    .getByRole('combobox', { name: 'Filter by status' })
+    .selectOption('Archived');
+  await page.locator('.view-options summary').click();
+  page.once('dialog', (dialog) => dialog.accept('Archived Amelia'));
+  await page
+    .getByRole('button', { name: 'Save current view', exact: true })
+    .click();
+  await expect(page.getByRole('status')).toContainText('View saved');
+  await page.reload();
+  await expect(page.locator('.app')).toHaveAttribute('data-ready', 'true');
+  await page.locator('.view-options summary').click();
+  await page
+    .getByRole('button', { name: 'Archived Amelia', exact: true })
+    .click();
+  await expect(
+    page.getByRole('textbox', { name: 'Search members' })
+  ).toHaveValue('Amelia');
+  await expect(
+    page.getByRole('combobox', { name: 'Filter by status' })
+  ).toHaveValue('Archived');
+  const row = page
+    .getByRole('row')
+    .filter({ has: page.getByRole('button', { name: /Amelia Thompson/ }) });
+  await expect(row.getByText('Archived', { exact: true })).toBeVisible();
+});
+
 for (const raw of [
   '{invalid-json',
   JSON.stringify({

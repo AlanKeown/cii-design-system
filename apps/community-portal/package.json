@@ -9,21 +9,23 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5187 --strictPort",
     "build": "vite build",
-    "preview": "node --experimental-strip-types ../../scripts/preview.ts 4187",
+    "preview": "wrangler pages dev .svelte-kit/cloudflare --port 4187 --ip 0.0.0.0",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts"
+    "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts",
+    "test:components:serve": "vite --config tests/fixtures/vite.config.ts --host 127.0.0.1 --port 4186 --strictPort"
   },
   "dependencies": {
     "@cii/svelte": "0.2.0",
     "@cii/tokens": "0.2.0"
   },
   "devDependencies": {
-    "svelte": "^5.57.2",
+    "@sveltejs/adapter-cloudflare": "^8.0.2",
     "@sveltejs/kit": "^3.1.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
-    "vite": "^8.3.5",
-    "typescript": "~6.0.3",
+    "svelte": "^5.57.2",
     "svelte-check": "^4.7.7",
-    "@sveltejs/adapter-static": "^4.0.0"
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
+    "wrangler": "4.156.0"
   }
 }

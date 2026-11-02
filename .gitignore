@@ -8,3 +8,7 @@ playwright-report/
 .env.*
 !.env.example
 apps/docs/src/routes/design/
+
+.dev.vars
+.dev.vars.*
+.wrangler/

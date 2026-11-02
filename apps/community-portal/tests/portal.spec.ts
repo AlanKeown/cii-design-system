@@ -159,3 +159,20 @@ test('module URLs survive reloads and browser history', async ({ page }) => {
     page.getByRole('heading', { name: 'Members', exact: true })
   ).toBeVisible();
 });
+
+test('Cloudflare serves SSR documents, static assets and real 404 responses', async ({
+  request
+}) => {
+  const document = await request.get('/');
+  expect(document.status()).toBe(200);
+  const html = await document.text();
+  expect(html).toContain('Common Ground');
+  expect(html).toContain('Good morning, Sarah');
+  const script = html.match(/\/_app\/immutable\/entry\/start\.[\w-]+\.js/)?.[0];
+  expect(script).toBeTruthy();
+  const asset = await request.get(script!);
+  expect(asset.status()).toBe(200);
+  expect(asset.headers()['content-type']).toMatch(/javascript/);
+  const missing = await request.get('/missing-phase-2-route');
+  expect(missing.status()).toBe(404);
+});

@@ -1,24 +1,28 @@
 <script lang="ts">
-  import { Button, StatusChip } from '@cii/svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { Button, StatusChip, Alert } from '@cii/svelte';
   import {
     recordModules,
-    type PortalRecords,
     type PortalRecord,
     type Module,
     type RecordModule,
     type Role
   } from '../model.ts';
   import { date, money, today } from '../format.ts';
-  import { selectReportRows } from '../reporting.ts';
+  import { backendError } from '../backend/types.ts';
   let {
-    records,
     allowed,
     role,
+    loadRows,
     onDownload
   }: {
-    records: PortalRecords;
     allowed: Module[];
     role: Role;
+    loadRows: (
+      module: RecordModule,
+      from: string,
+      to: string
+    ) => Promise<PortalRecord[]>;
     onDownload: (records: PortalRecord[], name: string) => void;
   } = $props();
   let reportModule = $state<RecordModule>('Members');
@@ -27,9 +31,31 @@
   const invalidRange = $derived(
     !!reportFrom && !!reportTo && reportFrom > reportTo
   );
-  const reportRows = $derived(
-    selectReportRows(records[reportModule], reportFrom, reportTo)
-  );
+  let reportRows = $state<PortalRecord[]>([]);
+  let loading = $state(true);
+  let reportError = $state('');
+  let requestVersion = 0;
+  onMount(() => {
+    void loadReport();
+  });
+  onDestroy(() => {
+    requestVersion++;
+  });
+  async function loadReport() {
+    const version = ++requestVersion;
+    reportRows = [];
+    reportError = '';
+    loading = !invalidRange;
+    if (invalidRange) return;
+    try {
+      const rows = await loadRows(reportModule, reportFrom, reportTo);
+      if (version === requestVersion) reportRows = rows;
+    } catch (error) {
+      if (version === requestVersion) reportError = backendError(error).message;
+    } finally {
+      if (version === requestVersion) loading = false;
+    }
+  }
 </script>
 
 <div class="page-heading">
@@ -40,16 +66,24 @@
   </div>
   <Button
     class="primary"
-    disabled={invalidRange}
+    disabled={invalidRange || loading || !!reportError}
     onclick={() =>
       onDownload(reportRows, reportModule.toLowerCase() + '-report')}
     >↓ Export CSV</Button
   >
 </div>
-<section class="panel">
+<section class="panel" aria-busy={loading}>
+  {#if reportError}<Alert tone="danger" role="alert">{reportError}</Alert>{/if}
   <div class="report-controls">
     <label
-      >Report<select bind:value={reportModule}
+      >Report<select
+        bind:value={
+          () => reportModule,
+          (value) => {
+            reportModule = value as RecordModule;
+            void loadReport();
+          }
+        }
         >{#each recordModules.filter((m) => m !== 'Administration' && (role === 'Board Member' || allowed.includes(m))) as m (m)}<option
             >{m}</option
           >{/each}</select
@@ -59,14 +93,26 @@
         type="date"
         aria-invalid={invalidRange}
         aria-describedby={invalidRange ? 'report-range-error' : undefined}
-        bind:value={reportFrom}
+        bind:value={
+          () => reportFrom,
+          (value) => {
+            reportFrom = value;
+            void loadReport();
+          }
+        }
       /></label
     ><label
       >To<input
         type="date"
         aria-invalid={invalidRange}
         aria-describedby={invalidRange ? 'report-range-error' : undefined}
-        bind:value={reportTo}
+        bind:value={
+          () => reportTo,
+          (value) => {
+            reportTo = value;
+            void loadReport();
+          }
+        }
       /></label
     >
   </div>
@@ -81,10 +127,13 @@
   >
     {invalidRange
       ? 'Choose an end date after the start date.'
-      : reportRows.length +
-        ' ' +
-        reportModule.toLowerCase() +
-        ' records in this period.'}
+      : loading
+        ? 'Loading report…'
+        : reportError ||
+          reportRows.length +
+            ' ' +
+            reportModule.toLowerCase() +
+            ' records in this period.'}
   </p>
   <div class="report-summary">
     <span>{reportRows.length}<small>records in this period</small></span><span

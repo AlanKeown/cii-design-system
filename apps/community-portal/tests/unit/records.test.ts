@@ -15,23 +15,25 @@ import { selectReportRows } from '../../src/lib/reporting.ts';
 
 const at = '2026-10-31T01:00:00.000Z';
 const date = '2026-10-31';
+const actor = 'Test actor';
 
 test('every record kind can be created, edited and archived without losing required fields', () => {
   const records = structuredClone(initialRecords);
   for (const module of recordModules) {
     const form = { ...emptyForm(module, date), name: 'New record', amount: 25 };
-    const record = buildRecord(module, form, 'new-' + module, at);
+    const record = buildRecord(module, form, 'new-' + module, at, actor);
     putRecord(records, record);
-    const updated = changeRecord(record, { notes: 'Follow up' }, at);
+    const updated = changeRecord(record, { notes: 'Follow up' }, at, actor);
     putRecord(records, updated);
     assert.equal(
       records[module].filter((item) => item.id === record.id).length,
       1
     );
-    archiveRecords(records, module, [record.id], at);
+    archiveRecords(records, module, [record.id], at, actor);
     const saved = records[module].find((item) => item.id === record.id);
     assert.equal(saved?.status, 'Archived');
     assert.equal(saved?.notes, 'Follow up');
+    assert.equal(saved?.updatedBy, actor);
     assert.deepEqual(decodeRecord(module, saved), saved);
   }
 });
@@ -57,7 +59,7 @@ test('record validation rejects missing module fields and records in the wrong c
   }
   assert.throws(() => decodeRecord('Members', initialRecords.Donations[0]));
   assert.throws(() =>
-    changeRecord(initialRecords.Donations[0]!, { attendees: 2 }, at)
+    changeRecord(initialRecords.Donations[0]!, { attendees: 2 }, at, actor)
   );
 });
 
@@ -71,7 +73,7 @@ test('names, email, calendar dates, statuses and roles are validated', () => {
   };
   const errors = validateForm('Members', form);
   assert.ok(errors.name && errors.email && errors.date && errors.status);
-  assert.throws(() => buildRecord('Members', form, 'bad', at));
+  assert.throws(() => buildRecord('Members', form, 'bad', at, actor));
   assert.ok(
     validateForm('Administration', {
       ...emptyForm('Administration', date),
@@ -113,7 +115,8 @@ test('donation amounts must be finite and positive', () => {
     'Donations',
     { ...emptyForm('Donations', date), name: 'Donor', amount: '12.50' },
     'D-new',
-    at
+    at,
+    actor
   );
   assert.equal(saved.kind === 'Donations' && saved.amount, 12.5);
 });

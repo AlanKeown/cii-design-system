@@ -8,3 +8,7 @@ playwright-report/
 docs/product-design-spec.md
 apps/docs/src/routes/**/*.md
 packages/tokens/tokens.css
+
+apps/community-portal/src/lib/backend/database.types.ts
+
+.wrangler/

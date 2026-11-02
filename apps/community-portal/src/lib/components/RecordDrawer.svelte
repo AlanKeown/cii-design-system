@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { Button, StatusChip } from '@cii/svelte';
+  import { Button, StatusChip, Alert } from '@cii/svelte';
+  import { onDestroy } from 'svelte';
+  import { backendError } from '../backend/types.ts';
   import { singular } from '../data.ts';
   import {
     recordValue,
@@ -15,6 +17,7 @@
     records,
     audit,
     canWrite,
+    pending = false,
     onClose,
     onEdit,
     onUpdate,
@@ -24,9 +27,10 @@
     records: PortalRecords;
     audit: AuditEntry[];
     canWrite: boolean;
+    pending?: boolean;
     onClose: () => void;
     onEdit: (record: PortalRecord) => void;
-    onUpdate: (changes: RecordChanges, action: string) => void;
+    onUpdate: (changes: RecordChanges, action: string) => Promise<void>;
     returnFocus: HTMLElement | null;
   } = $props();
   const module = $derived(detail.kind);
@@ -49,6 +53,30 @@
     event.preventDefault();
     tab = tabs[next];
     document.getElementById(tabId(tab))?.focus();
+  }
+  let updateError = $state('');
+  let saving = $state(false);
+  const busy = $derived(pending || saving);
+  let disposed = false;
+  onDestroy(() => {
+    disposed = true;
+  });
+  async function update(
+    changes: RecordChanges,
+    action: string
+  ): Promise<boolean> {
+    if (busy) return false;
+    saving = true;
+    updateError = '';
+    try {
+      await onUpdate(changes, action);
+      return !disposed;
+    } catch (error) {
+      if (!disposed) updateError = backendError(error).message;
+      return false;
+    } finally {
+      if (!disposed) saving = false;
+    }
   }
   let note = $state('');
   let assignment = $state('');
@@ -74,11 +102,14 @@
       onclick={() => onClose()}>✕</button
     >
   </div>
+  {#if updateError}<Alert tone="danger" role="alert">{updateError}</Alert>{/if}
   <StatusChip>{detail.status}</StatusChip>
   <h2 id="detail-title">{detail.name}</h2>
   <p class="subtle">{recordValue(detail, 'email') || detail.type}</p>
-  {#if canWrite}<Button class="primary" onclick={() => onEdit(detail)}
-      >Edit {singular[module]}</Button
+  {#if canWrite}<Button
+      class="primary"
+      disabled={busy}
+      onclick={() => onEdit(detail)}>Edit {singular[module]}</Button
     >{/if}
   <div class="detail-tabs" role="tablist" aria-label="Record details">
     {#each tabs as t (t)}<button
@@ -111,23 +142,27 @@
           </div>{/each}
       </dl>
       {#if canWrite && detail.kind === 'Cases'}<button
+          disabled={busy}
+          aria-busy={busy}
           onclick={() =>
-            onUpdate(
+            update(
               { status: detail.status === 'Closed' ? 'Open' : 'Closed' },
               detail.status === 'Closed' ? 'Reopened case' : 'Closed case'
             )}
           >{detail.status === 'Closed' ? 'Reopen case' : 'Close case'}</button
         >{/if}
       {#if canWrite && module === 'Donations' && detail.status !== 'Acknowledged'}<button
+          disabled={busy}
+          aria-busy={busy}
           onclick={() =>
-            onUpdate(
-              { status: 'Acknowledged' },
-              'Marked donation acknowledged'
-            )}>Mark acknowledged</button
+            update({ status: 'Acknowledged' }, 'Marked donation acknowledged')}
+          >Mark acknowledged</button
         >{/if}
       {#if canWrite && detail.kind === 'Events'}<button
+          disabled={busy}
+          aria-busy={busy}
           onclick={() =>
-            onUpdate(
+            update(
               {
                 attendees: Number(recordValue(detail, 'attendees') ?? 0) + 1
               },
@@ -146,18 +181,23 @@
         {detail.notes || 'No notes yet.'}
       </p>
       {#if canWrite}<label
-          >Add note<textarea bind:value={note} rows="4"></textarea></label
+          >Add note<textarea disabled={busy} bind:value={note} rows="4"
+          ></textarea></label
         ><Button
           class="primary"
-          disabled={!note.trim()}
-          onclick={() => {
-            onUpdate(
-              {
-                notes: (detail.notes ? detail.notes + '\n\n' : '') + note.trim()
-              },
-              'Added note'
-            );
-            note = '';
+          disabled={busy || !note.trim()}
+          loading={saving}
+          onclick={async () => {
+            if (
+              await update(
+                {
+                  notes:
+                    (detail.notes ? detail.notes + '\n\n' : '') + note.trim()
+                },
+                'Added note'
+              )
+            )
+              note = '';
           }}>Save note</Button
         >{/if}
     {:else}<h3>Connected records</h3>
@@ -165,16 +205,16 @@
           >
             {p.name}
           </p>{:else}<p>No program assigned.</p>{/each}{#if canWrite}<label
-            >Assign to a program<select bind:value={assignment}
+            >Assign to a program<select disabled={busy} bind:value={assignment}
               ><option value="">Choose a program</option
               >{#each records.Programs as p (p.id)}<option value={p.id}
                   >{p.name}</option
                 >{/each}</select
             ></label
           ><button
-            disabled={!assignment}
+            disabled={busy || !assignment}
             onclick={() =>
-              onUpdate({ programId: assignment }, 'Assigned program')}
+              update({ programId: assignment }, 'Assigned program')}
             >Assign program</button
           >{/if}{:else if detail.kind === 'Cases' && detail.memberId}<p>
           Member: {records.Members.find(

@@ -7,8 +7,13 @@ export default defineConfig({
     {
       name: 'portal',
       testDir: './apps/community-portal/tests',
-      testIgnore: '**/unit/**',
+      testIgnore: ['**/unit/**', '**/components/**', '**/fixtures/**'],
       use: { baseURL: 'http://127.0.0.1:4187' }
+    },
+    {
+      name: 'portal-components',
+      testDir: './apps/community-portal/tests/components',
+      use: { baseURL: 'http://127.0.0.1:4186' }
     },
     {
       name: 'docs',
@@ -19,9 +24,17 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'npm run preview -w @cii/community-portal',
-      env: { BASE_PATH: '' },
+      command: 'npm run test:components:serve -w @cii/community-portal',
       wait: { stdout: /Local:/ }
+    },
+    {
+      command: 'npm run preview -w @cii/community-portal',
+      env: {
+        BASE_PATH: '',
+        CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false',
+        WRANGLER_SEND_METRICS: 'false'
+      },
+      wait: { stdout: /Ready on/ }
     },
     { command: 'npm run preview -w @cii/docs', wait: { stdout: /Local:/ } }
   ]

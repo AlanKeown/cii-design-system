@@ -348,7 +348,8 @@ export function buildRecord(
   module: RecordModule,
   form: RecordForm,
   id: string,
-  at: string
+  at: string,
+  actor: string
 ): PortalRecord {
   if (Object.keys(validateForm(module, form)).length)
     throw new Error('Invalid record form.');
@@ -361,7 +362,7 @@ export function buildRecord(
     capacity: Number(form.capacity),
     participants: Number(form.participants),
     attendees: Number(form.attendees),
-    updatedBy: 'Sarah Mitchell',
+    updatedBy: actor,
     updatedAt: at
   });
 }
@@ -397,7 +398,8 @@ export function archiveRecords(
   records: PortalRecords,
   module: RecordModule,
   ids: string[],
-  at: string
+  at: string,
+  actor: string
 ): void {
   for (const record of records[module]) {
     if (ids.includes(record.id))
@@ -406,7 +408,7 @@ export function archiveRecords(
         decodeRecord(module, {
           ...record,
           status: 'Archived',
-          updatedBy: 'Sarah Mitchell',
+          updatedBy: actor,
           updatedAt: at
         })
       );
@@ -421,7 +423,8 @@ export type RecordChanges = {
 export function changeRecord(
   record: PortalRecord,
   changes: RecordChanges,
-  at: string
+  at: string,
+  actor: string
 ): PortalRecord {
   if (changes.programId !== undefined && record.kind !== 'Members')
     throw new Error('Only members can be assigned to programs.');
@@ -430,7 +433,7 @@ export function changeRecord(
   return decodeRecord(record.kind, {
     ...record,
     ...changes,
-    updatedBy: 'Sarah Mitchell',
+    updatedBy: actor,
     updatedAt: at
   });
 }
