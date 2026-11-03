@@ -1619,3 +1619,10 @@ dialog.command {
   background: var(--cii-bg-card);
   color: var(--cii-text-primary);
 }
+.live-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}

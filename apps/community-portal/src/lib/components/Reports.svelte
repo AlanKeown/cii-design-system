@@ -3,12 +3,12 @@
   import { Button, StatusChip, Alert } from '@cii/svelte';
   import {
     recordModules,
-    type PortalRecord,
     type Module,
     type RecordModule,
     type Role
   } from '../model.ts';
   import { date, money, today } from '../format.ts';
+  import type { ReportRow } from '../backend/types.ts';
   import { backendError } from '../backend/types.ts';
   let {
     allowed,
@@ -22,8 +22,8 @@
       module: RecordModule,
       from: string,
       to: string
-    ) => Promise<PortalRecord[]>;
-    onDownload: (records: PortalRecord[], name: string) => void;
+    ) => Promise<ReportRow[]>;
+    onDownload: (records: ReportRow[], name: string) => void;
   } = $props();
   let reportModule = $state<RecordModule>('Members');
   let reportFrom = $state(today().slice(0, 7) + '-01');
@@ -31,7 +31,7 @@
   const invalidRange = $derived(
     !!reportFrom && !!reportTo && reportFrom > reportTo
   );
-  let reportRows = $state<PortalRecord[]>([]);
+  let reportRows = $state<ReportRow[]>([]);
   let loading = $state(true);
   let reportError = $state('');
   let requestVersion = 0;
@@ -143,7 +143,7 @@
     >{#if reportModule === 'Donations'}<span
         >{money(
           reportRows.reduce(
-            (s, r) => s + (r.kind === 'Donations' ? r.amount : 0),
+            (s, r) => s + (r.kind === 'Donations' ? (r.amount ?? 0) : 0),
             0
           )
         )}<small>total contributions</small></span
@@ -160,9 +160,9 @@
         ></thead
       ><tbody
         >{#each reportRows as r (r.id)}<tr
-            ><td>{r.name}</td><td><StatusChip>{r.status}</StatusChip></td><td
-              >{date(r.date)}</td
-            ></tr
+            ><td>{r.name ?? 'De-identified record'}</td><td
+              ><StatusChip>{r.status}</StatusChip></td
+            ><td>{date(r.date)}</td></tr
           >{:else}<tr
             ><td colspan="3" class="empty">No records match this date range.</td
             ></tr

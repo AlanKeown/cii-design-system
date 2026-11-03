@@ -18,6 +18,7 @@
   import { today } from '../format.ts';
 
   let {
+    allowDrafts = true,
     module,
     editing,
     members,
@@ -26,6 +27,7 @@
     onNotify,
     returnFocus
   }: {
+    allowDrafts?: boolean;
     module: RecordModule;
     editing: PortalRecord | null;
     members: MemberRecord[];
@@ -295,11 +297,13 @@
       </div>
     </fieldset>
     <div class="form-footer">
-      <button type="button" disabled={pending} onclick={restoreDraft}
-        >Restore draft</button
-      ><button type="button" disabled={pending} onclick={draft}
-        >Save draft</button
-      ><Button
+      {#if allowDrafts}<button
+          type="button"
+          disabled={pending}
+          onclick={restoreDraft}>Restore draft</button
+        ><button type="button" disabled={pending} onclick={draft}
+          >Save draft</button
+        >{/if}<Button
         class="primary"
         type="submit"
         disabled={pending}

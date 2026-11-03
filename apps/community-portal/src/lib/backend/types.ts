@@ -23,6 +23,7 @@ export interface Workspace {
   savedViews: SavedView[];
   audit: AuditEntry[];
   permissions: Record<Role, Module[]>;
+  users?: import('./database.types.ts').Database['public']['Functions']['list_org_users']['Returns'];
 }
 
 export interface PortalBackend {
@@ -38,7 +39,7 @@ export interface PortalBackend {
     module: RecordModule,
     from: string,
     to: string
-  ): Promise<PortalRecord[]>;
+  ): Promise<ReportRow[]>;
   resetDemoData(): Promise<void>;
 }
 
@@ -71,3 +72,8 @@ export function backendError(error: unknown): BackendError {
     message: 'Changes could not be saved. Please try again.'
   };
 }
+
+export type ReportRow = Pick<
+  PortalRecord,
+  'id' | 'kind' | 'status' | 'date'
+> & { name?: string; amount?: number };

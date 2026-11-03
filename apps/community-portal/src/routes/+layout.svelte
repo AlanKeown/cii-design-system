@@ -13,15 +13,7 @@
       <Button type="submit">Sign out</Button>
     </form>
   </header>
-  {#if data.workspaceRoute}
-    <main class="auth-panel">
-      <h1>You’re signed in</h1>
-      <p>
-        Your account workspace will be available in Phase 4. No account records
-        are loaded or saved yet.
-      </p>
-    </main>
-  {:else}{@render children()}{/if}
+  {@render children()}
 {:else}
   {#if data.configured && data.authMode === 'local'}<header class="auth-header">
       Browser-only demo · changes stay on this device. <a href="/auth"

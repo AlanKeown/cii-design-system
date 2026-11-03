@@ -10,6 +10,7 @@
   } from '../model.ts';
   import { date, money, month, today } from '../format.ts';
   let {
+    displayName = 'Sarah Mitchell',
     records,
     allowed,
     role,
@@ -19,6 +20,7 @@
     onShowRecord,
     onQuickAdd
   }: {
+    displayName?: string;
     records: PortalRecords;
     allowed: Module[];
     role: Role;
@@ -40,7 +42,9 @@
 <div class="page-heading">
   <div>
     <p class="eyebrow">YOUR COMMUNITY, AT A GLANCE</p>
-    <h1>Good morning, Sarah <span class="wave">☀</span></h1>
+    <h1>
+      Good morning, {displayName.split(' ')[0]} <span class="wave">☀</span>
+    </h1>
     <p>Here’s what’s happening across your community.</p>
   </div>
   <div class="heading-actions">

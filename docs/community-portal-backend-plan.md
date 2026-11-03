@@ -960,12 +960,14 @@ The combined 66-request optimized CPU sample had p50/p95/p99 of 2.279/7.934/20.9
 
 ### Phase 4 — Live data
 
-- [ ] `+page.server.ts` workspace load and seeding; `src/lib/server/*`; `/api/**` endpoints; `live.ts`.
-- [ ] Owner role switching, invitations (`/invite/[token]`), organisation switcher, Reset demo data, Delete my account, Board Member reports.
-- [ ] Demo notice and `/privacy`.
-- [ ] Remaining `portal-live` data and API scenarios, and the permissions integration test.
+- [x] `+page.server.ts` workspace load and seeding; `src/lib/server/*`; `/api/**` endpoints; `live.ts`.
+- [x] Owner role switching, invitations (`/invite/[token]`), organisation switcher, Reset demo data, Delete my account, Board Member reports.
+- [x] Demo notice and `/privacy`.
+- [x] Remaining `portal-live` data and API scenarios, and the permissions integration test.
 
-**Done when:** every §8.3 scenario passes locally and in CI.
+**Implemented and locally verified 3 November 2026.** Account workspaces now load server-side and use the signed-in client for all reads, writes and RPCs. Atomic first-run bootstrap, account CRUD, optimistic conflicts, owner role changes, invitations, team management, organisation switching, de-identified reports, reset, deletion and privacy are implemented. The existing database CI job picks up the new migration and expanded live suite; remote CI remains pending. See `docs/community-portal-phase-4-implementation-plan.md` for evidence and the Phase 5 handoff.
+
+**Completion gate:** every §8.3 scenario passes locally and in CI.
 
 ### Phase 5 — Production
 

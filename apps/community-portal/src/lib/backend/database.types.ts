@@ -248,6 +248,11 @@ isOneToOne: false
             "accept_invitation":
 { Args: { "p_token": string }; Returns: string
                            },
+"bootstrap_demo_workspace":
+{ Args: { "p_payload": Json,"p_preferred_org"?: string }; Returns: {
+              "created": boolean,"org_id": string
+            }[]
+                           },
 "create_invitation":
 { Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["app_role"] }; Returns: string
                            },

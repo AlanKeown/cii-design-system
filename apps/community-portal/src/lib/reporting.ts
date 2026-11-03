@@ -1,4 +1,5 @@
-import { recordValue, type PortalRecord } from './model.ts';
+import type { ReportRow } from './backend/types.ts';
+import { type PortalRecord } from './model.ts';
 
 export function selectReportRows(
   records: PortalRecord[],
@@ -11,7 +12,7 @@ export function selectReportRows(
   );
 }
 
-export function downloadCsv(data: PortalRecord[], name: string) {
+export function downloadCsv(data: ReportRow[], name: string) {
   const keys = [
     ...new Set(
       data.flatMap((r) => Object.keys(r).filter((key) => key !== 'kind'))
@@ -25,7 +26,7 @@ export function downloadCsv(data: PortalRecord[], name: string) {
     '"';
   const csv = [
     keys.map(cell).join(','),
-    ...data.map((r) => keys.map((k) => cell(recordValue(r, k))).join(','))
+    ...data.map((r) => keys.map((k) => cell(Reflect.get(r, k))).join(','))
   ].join('\r\n');
   const url = URL.createObjectURL(
     new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })

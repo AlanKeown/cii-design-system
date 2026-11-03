@@ -74,6 +74,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     config &&
     event.locals.mode === 'signed-out' &&
     !authRoute &&
+    path !== '/privacy' &&
     event.route.id !== null
   ) {
     const location =
