@@ -27,6 +27,12 @@ jobs:
   database:
     runs-on: ubuntu-latest
     steps:
+      # These service ports overlap Linux's ephemeral range. Reserve them before
+      # checkout, npm and Docker downloads can claim one for an outbound connection.
+      - name: Reserve local Supabase ports
+        run: |
+          supabase_reserved_ports="$(sysctl -n net.ipv4.ip_local_reserved_ports)"
+          sudo sysctl -w "net.ipv4.ip_local_reserved_ports=${supabase_reserved_ports:+${supabase_reserved_ports},}54320-54329"
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
         with:
