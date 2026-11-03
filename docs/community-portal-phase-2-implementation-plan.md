@@ -1,10 +1,10 @@
 # Community portal backend: Phase 2 implementation plan
 
-Status: optimized build deployed; combined CPU smoke sample meets the p95 target, with early CPU spikes still requiring follow-up. Prepared 3 November 2026 against the current repository and Phase 2 of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
+Status: Phase 2 complete — implementation, deployment and production smoke validation finished on 3 November 2026. Early CPU spikes remain a monitoring follow-up. Prepared 3 November 2026 against the current repository and Phase 2 of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
 
 The outcome is the existing local demo running through Cloudflare Pages Functions, with browser operations behind `PortalBackend` and database enum drift checked at compile time. Browser data, drafts, recovery, permissions preview and reporting must continue to work.
 
-This document plans the work; it does not implement or deploy it. Leave implementation changes uncommitted for review. Commit, push and production deployment are subsequent release actions requiring the user's authorization.
+This document records the implementation sequence and completion evidence. The user committed and deployed the implementation; the Phase 2 closure notes remain uncommitted for review. Commit and push authorization still follow AGENTS.md.
 
 ## Scope and current state
 
@@ -132,13 +132,13 @@ The build precedes browser tests because Playwright starts the production previe
 
 Complete all local work and present the tested diff before requesting any release action. Preserve the repository's separate commit and push authorizations. This planning request does not authorize release.
 
-- [ ] Record the previous deployment ID and rollback target. Inspect existing Pages settings before the Wrangler configuration takes ownership; ensure Phase 2 remains local mode in production.
-- [ ] After authorization, release Phase 2 on its own using the existing verified-commit workflow. Do not combine it with authentication or live data.
-- [ ] On the existing production origin, check an existing browser profile's data and a fresh profile: create/edit/archive, reload, saved views, theme, drafts, reports/CSV, role preview and recovery. Retaining the origin and storage keys is necessary to retain visitors' existing browser data.
+- [x] Record available rollback targets and inspect current Pages settings. Deployment history and runtime configuration were verified at closure; the production environment has no runtime variables and remains local mode. This closure inspection was retrospective, not a claim that it happened before the first deployment.
+- [x] Release Phase 2 on its own using the existing verified-commit workflow. The implementation and optimization were deployed by the user; the final commit's Verify and Deploy community portal runs were both confirmed successful. No authentication or live data was included.
+- [x] On the existing production origin, verify fresh contexts, saved-data reloads and legacy/corrupt-workspace fixtures: create/edit/archive, notes, assignments, activity, saved views, theme, drafts, reports/CSV, role preview and recovery. This used isolated automated contexts, not access to the user's personal browser profile. The origin and storage keys remain unchanged.
 - [x] Exercise a modest batch of full document requests for `/`, with a few initial requests and repeated warm requests. Record deployment ID, UTC window, request count, CPU quantiles exposed by Cloudflare and any invocation errors. Use Pages **Functions Metrics → CPU time per execution**, not response duration or browser navigation timing. Separate static-asset traffic from Function requests. See [Pages metrics](https://developers.cloudflare.com/pages/functions/metrics/).
-- [ ] Verify CPU remains below the current free-plan 10 ms budget with headroom and no CPU-limit failures. A proposed engineering target is p95 below 8 ms where available; this is a planning target, not a platform guarantee. If results approach the limit, profile and reduce SSR work before accepting the phase. A paid-plan change requires a separate decision. See [Workers runtime limits](https://developers.cloudflare.com/workers/platform/limits/).
+- [x] Complete CPU smoke acceptance against the planned p95 target: combined p95 is 7.934 ms, below the 8 ms engineering target and the 10 ms free-plan budget, with zero invocation errors across 66 requests. Early p99 spikes remain documented as a monitoring follow-up; this does not assert that every execution stays below 10 ms. Reassess after auth/live-data changes. See [Workers runtime limits](https://developers.cloudflare.com/workers/platform/limits/).
 - [x] Record the important measurement limit: Phase 2 SSR renders the existing seed workspace; saved browser data is loaded after hydration. This validates local-mode SSR only. Repeat measurement after Phase 4 introduces server-loaded workspaces and auth overhead; a large localStorage snapshot cannot simulate that server cost.
-- [ ] Roll back to the recorded deployment if production behavior regresses or resource limits fail; investigate before continuing.
+      Rollback was not needed: the production smoke checks passed with no invocation failures. Recorded rollback targets are listed in the closure evidence below.
 
 ## Completion criteria
 
@@ -147,7 +147,7 @@ Complete all local work and present the tested diff before requesting any releas
 - [x] Every workspace mutation uses the local backend; storage compatibility, recovery, theme, drafts and activity are preserved.
 - [x] Deployment workflow points to the Cloudflare build and still deploys only verified commits.
 - [x] Reviewable implementation is left uncommitted unless separately authorized.
-- [ ] Following an authorized release, production smoke checks and recorded CPU measurements pass. Until then, report implementation as ready for release and keep the production/CPU checklist incomplete.
+- [x] Production smoke checks and recorded CPU measurements meet the Phase 2 smoke acceptance criteria. Complete, with early CPU spikes retained as a monitoring follow-up rather than a claim of universal per-request compliance.
 
 Validation recorded on 3 November 2026: database reset, all 106 pgTAP tests and lint passed; public type regeneration was byte-for-byte reproducible; a temporary role mismatch failed the portal type check and was then restored. Formatting, full workspace checks, the full build and all 36 browser tests passed. Browser coverage includes three isolated async component tests plus new production SSR/asset/404 and archive/saved-view reload checks. The Svelte MCP autofixer reported no issues in all changed components; optional suggestions for existing class directives and DOM references were reviewed and left unchanged. Production deployment and CPU smoke results are recorded below.
 
@@ -239,6 +239,56 @@ The first batch had CPU spikes in its early seconds; subsequent requests were lo
 
 **Result:** production CPU improved in steady use, and the combined sample's p95 falls below the proposed 8 ms target and the 10 ms free-plan budget. All 66 measured invocations succeeded. The p99 still exceeds 10 ms, so this does not establish that every request stays within budget. Keep early-request spikes as a follow-up and repeat observations over normal traffic and after introducing live-mode auth/data loading. Do not treat this small, sequential, single-location smoke test as a load or geographic benchmark.
 
-Additional checks outside the measured windows passed: SSR dashboard content was present; the referenced immutable JavaScript asset returned 200; a missing route returned 404. A fresh Chromium context hydrated with no page errors, retained dark theme after reload, and opened `/?module=Members` directly. Full production CRUD/draft/report smoke coverage remains separate. No application code, runtime settings or paid-plan changes were made during this retest.
+Additional checks outside the measured windows passed: SSR dashboard content was present; the referenced immutable JavaScript asset returned 200; a missing route returned 404. A fresh Chromium context hydrated with no page errors, retained dark theme after reload, and opened `/?module=Members` directly. Full production CRUD/draft/report smoke coverage was subsequently completed in the closure checks below. No application code, runtime settings or paid-plan changes were made during this retest.
+
+## Phase 2 closure — 3 November 2026
+
+**Phase 2 is complete for local mode.** Server-side authentication and live database operations remain in Phases 3 and 4.
+
+### Release identity and verification
+
+- Current production deployment: `ff925232-1a7e-47f8-a1aa-3bd5de469814`.
+- Current production commit: `6d15674aec99f6304b9e4cb3922b31a480ae879f`.
+- [Verify run](https://github.com/AlanKeown/cii-design-system/actions/runs/41571947282): completed successfully.
+- [Deploy community portal run](https://github.com/AlanKeown/cii-design-system/actions/runs/41572138304): completed successfully for that same commit.
+- The difference between `fad72e8` (the CPU-tested application) and `6d15674` is limited to the two backend plan documents; application code and runtime configuration are unchanged. The production CPU evidence above therefore applies to the same application implementation.
+- Current Pages output is `.svelte-kit/cloudflare`; production variables and compatibility flags are empty. No Supabase or Turnstile runtime settings were enabled.
+- Available rollback target with the optimized application: `4797357f-56c6-4064-adf1-0be91ec27224` (`fad72e8`). Pre-Phase-2 static target: `482bf52b-0689-43c8-92d8-3664c6652d03` (`24a4500`). Both are recorded successful production deployments. No rollback was executed.
+
+### Production browser smoke results
+
+The existing portal Playwright suite was run against `https://cii-community-portal.pages.dev` through a temporary production-only configuration, without starting local preview servers. It used two workers, fresh browser contexts and no retries. All **26 tests passed**, with zero failures, skips or flaky results. The run began at `2026-11-03T03:28:03.176Z` (14:28:03 AEDT) and completed in 13.3 seconds.
+
+| Coverage                                                                     | Result |
+| ---------------------------------------------------------------------------- | ------ |
+| Member creation, validation, assignment and theme persistence                | Passed |
+| Case status changes, filtering, navigation and CSV download                  | Passed |
+| Saved views and bulk archive across reload                                   | Passed |
+| Draft save, close, reload, restore and final save                            | Passed |
+| Legacy workspace migration and existing saved-data reloads                   | Passed |
+| Corrupt workspace preservation, cancelled replacement and confirmed recovery | Passed |
+| Malformed drafts preserve current form entries                               | Passed |
+| Donation validation, program capacity and event attendance persistence       | Passed |
+| Role preview and command search                                              | Passed |
+| Mobile layout, keyboard navigation, focus restoration and error summaries    | Passed |
+| Report announcements and invalid date ranges                                 | Passed |
+| SSR HTML, immutable assets and real 404 responses                            | Passed |
+
+One supplemental end-to-end test then verified the missing edit/note/report-content path against production. It began at `2026-11-03T03:28:51.194Z` (14:28:51 AEDT) and passed in 2.2 seconds:
+
+1. Create a fictional member, edit its name/email, add a note and assign a program.
+2. Confirm one activity entry per update, note and assignment; reload and verify the edited record, note and assignment persist.
+3. Download the filtered records CSV and verify the edited name, email and note in its contents.
+4. Filter the Members report by date; verify the one matching record, download the report CSV, and confirm unrelated seed rows are excluded.
+5. Verify a reversed date range disables report export.
+6. Archive the member, reload, and confirm its archived status.
+
+The supplemental test reported zero browser page errors and no `/api/` writes. All test data stayed in isolated browser storage, using fictional names and `example.invalid` email addresses. Contexts were closed after testing. No shared production database data or runtime settings were changed.
+
+**Total: 27 production browser tests passed.** Run output and failure-trace configuration were kept under `/tmp/phase2-production-*` and `/tmp/phase2-completion-*` for this session. No application code change was needed to close Phase 2.
+
+### Follow-up carried into later phases
+
+Keep observing normal-traffic CPU and invocation failures, especially first requests after idle periods or deployment. The combined optimized sample met the chosen p95 target, but its p99 was 20.966 ms. Repeat production measurements after server-side authentication and live workspace loading are introduced. This monitoring task does not assert that cold-start behavior or every free-plan execution has been proved safe by a small smoke sample.
 
 Implementation order: runtime switch → generated types and parity → local adapter and actor helpers → asynchronous UI integration → full validation → authorized standalone release and measurement. Keep runtime and application refactors independently reviewable, but ship them together as Phase 2 once verified.

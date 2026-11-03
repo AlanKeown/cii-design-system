@@ -942,9 +942,11 @@ Each phase ends with its checks green and its changes left uncommitted for revie
 - [x] Type-level parity test (§8.2).
 - [x] Deploy this to production on its own and measure CPU time for `/` (§10.4).
 
-Local implementation validated on 3 November 2026. Optimized commit `fad72e8` was verified deployed and retested with two batches totalling 66 successful requests and no invocation errors. Combined CPU p50/p95/p99 was 2.279/7.934/20.966 ms; the subsequent batch's p95 was 4.002 ms. The combined sample meets the proposed p95 headroom target, but early-request spikes still exceed 10 ms and need follow-up under normal traffic. The original 33-request baseline and both optimized batches were confirmed against the explicit Pages production script, resolving the earlier `__unknown__` label. Full production CRUD/draft/report smoke coverage remains separate from this CPU retest.
+**Completed 3 November 2026.** Implementation, full local validation and production release are complete. Production commit `6d15674` passed Verify and Deploy community portal; 27 browser smoke tests passed against the live portal, including CRUD, notes, assignments, saved views, drafts, report/CSV contents, storage recovery, role preview and accessibility. The current commit changes only documentation relative to CPU-tested application commit `fad72e8`.
 
-**Done when:** `npm run check` and `npm test` pass against `wrangler pages dev`, the live site behaves exactly as before, and CPU time is within the free limit.
+The combined 66-request optimized CPU sample had p50/p95/p99 of 2.279/7.934/20.966 ms and no invocation errors. It meets the proposed p95 headroom target; early-request spikes remain a monitoring follow-up, and CPU must be remeasured after auth/live-data changes. The sample does not establish that every execution stays under 10 ms. Detailed deployment IDs, rollback targets, workflow links and production smoke evidence are recorded in `docs/community-portal-phase-2-implementation-plan.md`.
+
+**Completion checks:** `npm run check` and `npm test` pass with the Wrangler preview; production smoke checks pass; the combined CPU sample meets the chosen p95 target. Early CPU spikes are retained as a monitoring follow-up.
 
 ### Phase 3 — Server-side auth
 
