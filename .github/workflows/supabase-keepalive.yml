@@ -1,0 +1,29 @@
+name: Supabase keep-alive
+on:
+  schedule:
+    # Mondays/Thursdays 20:23 UTC: the maximum interval is four days.
+    - cron: '23 20 * * 1,4'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+jobs:
+  heartbeat:
+    # Enable only after the first production migration/release succeeds.
+    if: github.event_name == 'workflow_dispatch' || vars.PORTAL_KEEPALIVE_ENABLED == 'true'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - name: Record a database heartbeat
+        env:
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: node --experimental-strip-types scripts/supabase-keepalive.ts

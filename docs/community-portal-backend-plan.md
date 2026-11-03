@@ -965,7 +965,7 @@ The combined 66-request optimized CPU sample had p50/p95/p99 of 2.279/7.934/20.9
 - [x] Demo notice and `/privacy`.
 - [x] Remaining `portal-live` data and API scenarios, and the permissions integration test.
 
-**Implemented and locally verified 3 November 2026.** Account workspaces now load server-side and use the signed-in client for all reads, writes and RPCs. Atomic first-run bootstrap, account CRUD, optimistic conflicts, owner role changes, invitations, team management, organisation switching, de-identified reports, reset, deletion and privacy are implemented. The existing database CI job picks up the new migration and expanded live suite; remote CI remains pending. See `docs/community-portal-phase-4-implementation-plan.md` for evidence and the Phase 5 handoff.
+**Implemented and locally verified 3 November 2026.** Account workspaces now load server-side and use the signed-in client for all reads, writes and RPCs. Atomic first-run bootstrap, account CRUD, optimistic conflicts, owner role changes, invitations, team management, organisation switching, de-identified reports, reset, deletion and privacy are implemented. Verify and Deploy community portal subsequently passed for hydration-fix commit `71631b3`; the application is deployed with production auth still disabled. See `docs/community-portal-phase-4-implementation-plan.md` for evidence and the Phase 5 handoff.
 
 **Completion gate:** every §8.3 scenario passes locally and in CI.
 
@@ -975,6 +975,8 @@ The combined 66-request optimized CPU sample had p50/p95/p99 of 2.279/7.934/20.9
 - [ ] Production variables in `wrangler.jsonc`; migration steps in `deploy-portal.yml` (§9.2).
 - [ ] `supabase-keepalive.yml` (§9.3); run it manually once and confirm `beat_at` changes.
 - [ ] Smoke test on `cii-community-portal.pages.dev`: sign in from two browsers, invite, switch roles, confirm that a direct REST call for another organisation's rows returns nothing, and confirm the session cookies are `httpOnly` and `Secure`.
+
+**Prepared 3 November 2026.** The managed Turnstile widget, main-only GitHub production environment, guarded migration/deploy path, keep-alive workflow, production configuration preflight and operator runbook are ready. Live auth remains disabled. The saved Supabase credentials cannot access the planned hosted project, and production migration credentials/public values are missing. No hosted migration or account-mode release has been performed. See `docs/community-portal-phase-5-implementation-plan.md` for completed preparation, inputs and pending acceptance checks.
 
 **Done when:** the live portal stores data across sessions, the smoke test passes, and the first scheduled keep-alive run succeeds.
 

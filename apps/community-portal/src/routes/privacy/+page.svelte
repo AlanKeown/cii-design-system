@@ -6,16 +6,28 @@
     real member, donor, health or case information.
   </p>
   <p>
-    Without an account, records and drafts stay in this browser. Clearing
-    browser storage removes them. Account workspaces store records in Supabase
-    and are served through Cloudflare. Account records and drafts are not copied
-    to browser storage.
+    Without an account, records and drafts stay in this browser until you clear
+    browser storage. Account workspaces store records with Supabase and are
+    served through Cloudflare. Account records and drafts are not copied to
+    browser storage.
   </p>
   <p>
-    Signing in uses your email address. Email providers process the recipient
-    address and sign-in email. Production email delivery is planned through
-    Resend in Tokyo, outside Australia; local development uses Mailpit without
-    outbound delivery.
+    Account sign-in uses your email address, display name and sign-in metadata.
+    Essential cookies keep you signed in and remember your selected
+    organisation. Cloudflare hosts the portal and provides Turnstile challenges
+    for sign-in.
+  </p>
+  <p>
+    When account sign-in is available on this site, production account records
+    are stored with Supabase in Sydney, Australia. Sign-in emails use Resend in
+    Tokyo, outside Australia. The email provider processes your recipient
+    address and sign-in email, including the code and confirmation link.
+  </p>
+  <p>
+    Supabase Auth, Cloudflare request/challenge logs and email delivery logs may
+    retain operational metadata under their own retention policies. If you
+    choose GitHub sign-in, authentication also uses GitHub and the account
+    information you share with it.
   </p>
   <p>
     Organisation members can access records according to their assigned role.
@@ -24,10 +36,10 @@
     address.
   </p>
   <p>
-    Demo organisations inactive for 30 days and accounts inactive for 90 days
-    are scheduled for deletion. Audit history is limited to the most recent 500
-    entries per organisation. Scheduling takes effect where the database
-    migrations are installed.
+    Account organisations inactive for 30 days and accounts inactive for 90 days
+    are scheduled for deletion. The portal shows the most recent 500 audit
+    entries per organisation. Browser-only records remain on your device until
+    you clear them.
   </p>
   <p>
     Reset demo data replaces your organisation’s records. Delete my account

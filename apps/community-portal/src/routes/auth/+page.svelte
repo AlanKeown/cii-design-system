@@ -21,8 +21,15 @@
 <main class="auth-panel">
   <h1>Sign in to Common Ground</h1>
   <p>
-    Account sign-in is available. Account workspaces arrive in Phase 4; the demo
-    stores changes only in this browser.
+    {#if data.configured}Sign in to save a demo workspace to your account, or
+      try the browser-only demo without an account.
+    {:else}Try the demo without an account. Changes are saved only in this
+      browser.{/if}
+  </p>
+  <p>
+    This is a public demo. Use fictional information only. Do not enter real
+    people’s names, contact details or case notes. Inactive demo organisations
+    are deleted after 30 days. <a href="/privacy">Privacy and retention</a>
   </p>
   {#if form?.error || data.callbackError}<div id="auth-error" tabindex="-1">
       <Alert tone="danger" role="alert"

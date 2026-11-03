@@ -1,0 +1,19 @@
+{
+  "site_url": "https://cii-community-portal.pages.dev",
+  "uri_allow_list": "https://cii-community-portal.pages.dev/auth/confirm,https://cii-community-portal.pages.dev/auth/callback,http://localhost:5187/auth/confirm,http://localhost:5187/auth/callback",
+  "external_email_enabled": true,
+  "mailer_autoconfirm": false,
+  "mailer_otp_exp": 600,
+  "mailer_otp_length": 6,
+  "security_captcha_enabled": true,
+  "security_captcha_provider": "turnstile",
+  "refresh_token_rotation_enabled": true,
+  "jwt_exp": 3600,
+  "rate_limit_email_sent": 30,
+  "smtp_host": "smtp.resend.com",
+  "smtp_port": "465",
+  "smtp_user": "resend",
+  "smtp_admin_email": "no-reply@auth.alankeown.id.au",
+  "smtp_sender_name": "Common Ground demo",
+  "smtp_max_frequency": 60
+}
