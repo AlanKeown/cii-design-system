@@ -1,6 +1,6 @@
 # Community portal backend: Phase 2 implementation plan
 
-Status: deployed; CPU acceptance remains open after the production smoke test. Prepared 3 November 2026 against the current repository and Phase 2 of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
+Status: optimized build deployed; combined CPU smoke sample meets the p95 target, with early CPU spikes still requiring follow-up. Prepared 3 November 2026 against the current repository and Phase 2 of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
 
 The outcome is the existing local demo running through Cloudflare Pages Functions, with browser operations behind `PortalBackend` and database enum drift checked at compile time. Browser data, drafts, recovery, permissions preview and reporting must continue to work.
 
@@ -212,6 +212,33 @@ node --cpu-prof --cpu-prof-dir=/tmp --experimental-strip-types scripts/profile-p
 
 Validation passed: formatting, full workspace checks, the complete build, unit tests and all 36 browser tests, including the Wrangler production preview. New formatting regressions check stable Australian date/currency/month output and Sydney midnight rollover in both summer and winter. The Svelte MCP autofixer reported no issues in the updated dashboard.
 
-The optimization remains uncommitted. The previously deployed commit and its production CPU results above are unchanged. A production retest of this optimized version remains pending the repository's explicit commit and separate push authorizations and the verified-commit deployment workflow. CPU acceptance stays open until that test is complete.
+The optimization was subsequently committed as `fad72e8` and deployed. Production retest results follow; the initial baseline above is retained for comparison.
+
+## Optimized production retest — 3 November 2026
+
+The canonical production deployment was confirmed before and after testing:
+
+- Deployment: `4797357f-56c6-4064-adf1-0be91ec27224`.
+- Commit: `fad72e8ca8129ecbeacfe49e161a135f12730f09`.
+- Target: `https://cii-community-portal.pages.dev/`.
+- Batch 1: 33 sequential GETs during `2026-11-03T02:18:49.779567Z`–`2026-11-03T02:18:57.616282Z` (13:18:49–13:18:57 AEDT).
+- Batch 2: 33 sequential GETs during `2026-11-03T02:21:14.101494Z`–`2026-11-03T02:21:21.460995Z` (13:21:14–13:21:21 AEDT).
+
+Every request returned HTTP 200. Cloudflare's Pages-specific analytics, filtered to script `pages-worker--22880205-production` and the individual request windows, reported:
+
+| Sample                       | Requests | Errors | Median CPU | p95 CPU   | p99 CPU   |
+| ---------------------------- | -------- | ------ | ---------- | --------- | --------- |
+| Original deployment baseline | 33       | 0      | 5.054 ms   | 11.100 ms | 12.903 ms |
+| Optimized batch 1            | 33       | 0      | 2.535 ms   | 20.151 ms | 20.966 ms |
+| Optimized batch 2            | 33       | 0      | 2.054 ms   | 4.002 ms  | 5.253 ms  |
+| Optimized combined sample    | 66       | 0      | 2.279 ms   | 7.934 ms  | 20.966 ms |
+
+The combined sample was queried directly using the union of the two time windows; it is not an average of batch percentiles. The original baseline was re-queried with the explicit script name and returned the same 33 requests and CPU quantiles, resolving the earlier `__unknown__` attribution limitation for these comparisons.
+
+The first batch had CPU spikes in its early seconds; subsequent requests were lower. This pattern is consistent with initialization or warm-up costs, but the analytics do not identify cold isolates or establish the cause. The second batch was added to check subsequent behavior, not to replace the first batch's result. Both samples are retained.
+
+**Result:** production CPU improved in steady use, and the combined sample's p95 falls below the proposed 8 ms target and the 10 ms free-plan budget. All 66 measured invocations succeeded. The p99 still exceeds 10 ms, so this does not establish that every request stays within budget. Keep early-request spikes as a follow-up and repeat observations over normal traffic and after introducing live-mode auth/data loading. Do not treat this small, sequential, single-location smoke test as a load or geographic benchmark.
+
+Additional checks outside the measured windows passed: SSR dashboard content was present; the referenced immutable JavaScript asset returned 200; a missing route returned 404. A fresh Chromium context hydrated with no page errors, retained dark theme after reload, and opened `/?module=Members` directly. Full production CRUD/draft/report smoke coverage remains separate. No application code, runtime settings or paid-plan changes were made during this retest.
 
 Implementation order: runtime switch → generated types and parity → local adapter and actor helpers → asynchronous UI integration → full validation → authorized standalone release and measurement. Keep runtime and application refactors independently reviewable, but ship them together as Phase 2 once verified.

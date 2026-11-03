@@ -942,7 +942,7 @@ Each phase ends with its checks green and its changes left uncommitted for revie
 - [x] Type-level parity test (§8.2).
 - [x] Deploy this to production on its own and measure CPU time for `/` (§10.4).
 
-Local implementation validated on 3 November 2026. Production commit `0ddad43` was verified deployed during the CPU smoke test. All 33 requests returned 200 with no invocation errors; CPU p50/p95/p99 was 5.054/11.100/12.903 ms. CPU acceptance remains open: p95 exceeds the free-plan budget and the proposed headroom target. The Pages analytics group matched the request window/count but was labelled `__unknown__`; formatter reuse has since reduced local warm-render p95 from 3.557 ms to 0.796 ms. Production retesting of the uncommitted optimization remains pending release authorization before accepting Phase 2.
+Local implementation validated on 3 November 2026. Optimized commit `fad72e8` was verified deployed and retested with two batches totalling 66 successful requests and no invocation errors. Combined CPU p50/p95/p99 was 2.279/7.934/20.966 ms; the subsequent batch's p95 was 4.002 ms. The combined sample meets the proposed p95 headroom target, but early-request spikes still exceed 10 ms and need follow-up under normal traffic. The original 33-request baseline and both optimized batches were confirmed against the explicit Pages production script, resolving the earlier `__unknown__` label. Full production CRUD/draft/report smoke coverage remains separate from this CPU retest.
 
 **Done when:** `npm run check` and `npm test` pass against `wrangler pages dev`, the live site behaves exactly as before, and CPU time is within the free limit.
 
