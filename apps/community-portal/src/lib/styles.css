@@ -1596,3 +1596,26 @@ dialog.command {
   outline: 3px solid var(--cii-focus-ring);
   outline-offset: 4px;
 }
+
+.auth-panel {
+  max-width: 36rem;
+  margin: 3rem auto;
+  padding: 2rem;
+  background: var(--cii-bg-card);
+  color: var(--cii-text-primary);
+  border-radius: 12px;
+}
+.auth-panel form {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.auth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  background: var(--cii-bg-card);
+  color: var(--cii-text-primary);
+}

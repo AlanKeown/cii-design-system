@@ -950,11 +950,13 @@ The combined 66-request optimized CPU sample had p50/p95/p99 of 2.279/7.934/20.9
 
 ### Phase 3 — Server-side auth
 
-- [ ] `@supabase/ssr` and `@supabase/supabase-js` dependencies; `hooks.server.ts`; `app.d.ts`; `/auth/**` routes; `+layout.server.ts`; safe redirects; header sign-out.
-- [ ] Turnstile widget on `/auth`; templates in `supabase/templates/`.
-- [ ] `portal-live` Playwright project with Mailpit, auth scenarios only (§8.3).
+- [x] `@supabase/ssr` and `@supabase/supabase-js` dependencies; `hooks.server.ts`; `app.d.ts`; `/auth/**` routes; `+layout.server.ts`; safe redirects; header sign-out.
+- [x] Turnstile widget on `/auth`; templates in `supabase/templates/`.
+- [x] `portal-live` Playwright project with Mailpit, auth scenarios only (§8.3).
 
-**Done when:** sign in by code and by link, GitHub (against a local or test OAuth app, if used), sign-out and the guard all pass locally and in CI, with `httpOnly` cookies and `no-store` checked.
+**Implemented and locally verified 3 November 2026.** The isolated Wrangler/Mailpit auth suite and existing regression suite pass. CI now includes the live-auth project in the database job; remote CI verification remains pending. GitHub is optional and hidden. Production auth remains Phase 5 work. Detailed evidence and prerequisites are in `docs/community-portal-phase-3-implementation-plan.md`.
+
+**Completion gate:** sign in by code and by link, GitHub (against a local or test OAuth app, if used), sign-out and the guard all pass locally and in CI, with `httpOnly` cookies and `no-store` checked.
 
 ### Phase 4 — Live data
 

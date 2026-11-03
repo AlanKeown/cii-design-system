@@ -166,6 +166,10 @@ additional_redirect_urls = [
   "http://localhost:5187/auth/callback",
   "http://localhost:4187/auth/callback",
   "http://localhost:4189/auth/callback",
+  "http://127.0.0.1:4189/auth/callback",
+  "http://localhost:5187/auth/confirm",
+  "http://localhost:4189/auth/confirm",
+  "http://127.0.0.1:4189/auth/confirm",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -248,6 +252,14 @@ otp_expiry = 600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+[auth.email.template.magic_link]
+subject = "Your Common Ground sign-in code"
+content_path = "./supabase/templates/magic-link.html"
+
+[auth.email.template.confirmation]
+subject = "Confirm your Common Ground sign-in"
+content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

@@ -41,5 +41,13 @@ jobs:
         run: |
           npm run db:types
           git diff --exit-code -- apps/community-portal/src/lib/backend/database.types.ts
+      - run: npm run build:packages && npm run build -w @cii/community-portal
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:portal-live
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: live-auth-test-results
+          path: test-results/
       - if: always()
         run: npm run db:stop
