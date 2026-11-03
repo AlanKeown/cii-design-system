@@ -317,6 +317,29 @@ test('browser CRUD saves to account without drafts or local record storage; dele
   context
 }) => {
   await signIn(page, request);
+  // A slow CI runner can paint SSR controls before Svelte attaches handlers.
+  // Hold the entry module to exercise that state deterministically.
+  let releaseEntry!: () => void;
+  const entryGate = new Promise<void>((resolve) => {
+    releaseEntry = resolve;
+  });
+  const entryPattern = '**/_app/immutable/entry/start*.js';
+  await page.route(entryPattern, async (route) => {
+    await entryGate;
+    await route.continue();
+  });
+  try {
+    await page.reload({ waitUntil: 'commit' });
+    await expect(page.locator('.app')).toHaveAttribute('data-ready', 'false');
+    await expect(
+      page.getByRole('button', { name: /Add member$/ })
+    ).toBeDisabled();
+  } finally {
+    releaseEntry();
+  }
+  await expect(page.locator('.app')).toHaveAttribute('data-ready', 'true');
+  await page.unroute(entryPattern);
+
   await page.getByRole('button', { name: /Add member$/ }).click();
   await expect(
     page.getByRole('button', { name: 'Save draft', exact: true })

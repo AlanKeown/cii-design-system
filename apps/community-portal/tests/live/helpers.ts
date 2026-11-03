@@ -53,5 +53,7 @@ export async function signIn(
   await page.getByLabel('Six-digit code').fill(message.code);
   await page.getByRole('button', { name: 'Verify code' }).click();
   await expect(page.getByText('Signed in as ' + message.email)).toBeVisible();
+  if (new URL(next, 'http://127.0.0.1:4189').pathname === '/')
+    await expect(page.locator('.app')).toHaveAttribute('data-ready', 'true');
   return message;
 }

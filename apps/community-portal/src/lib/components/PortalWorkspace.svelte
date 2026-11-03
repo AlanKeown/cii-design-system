@@ -79,7 +79,7 @@
   let modal = $state(false),
     toast = $state(''),
     storageError = $state(''),
-    ready = $state(untrack(() => data.mode === 'live'));
+    ready = $state(false);
   let storageAllowed = $state(false),
     recoveryNeeded = $state(false);
   let command = $state(false),
@@ -632,8 +632,10 @@
           <div class="heading-actions">
             <button onclick={() => download(filtered, module.toLowerCase())}
               >↓ Export CSV</button
-            >{#if canWrite}<Button class="primary" onclick={() => create()}
-                >+ Add {singular[module]}</Button
+            >{#if canWrite}<Button
+                class="primary"
+                disabled={!ready || actionPending}
+                onclick={() => create()}>+ Add {singular[module]}</Button
               >{/if}
           </div>
         </div>
