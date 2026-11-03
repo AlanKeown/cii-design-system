@@ -940,9 +940,9 @@ Each phase ends with its checks green and its changes left uncommitted for revie
 - [x] Switch to `adapter-cloudflare`; add `wrangler.jsonc` without production variables yet; change the preview script and Playwright `webServer`; remove root prerendering.
 - [x] `src/lib/backend/` with `types.ts`, `local.ts` and the generated types. Rework `+page.svelte` to use the interface; pass the actor name into `records.ts`.
 - [x] Type-level parity test (§8.2).
-- [ ] Deploy this to production on its own and measure CPU time for `/` (§10.4).
+- [x] Deploy this to production on its own and measure CPU time for `/` (§10.4).
 
-Local implementation validated on 3 November 2026. Production release and CPU measurements remain pending separate authorization.
+Local implementation validated on 3 November 2026. Production commit `0ddad43` was verified deployed during the CPU smoke test. All 33 requests returned 200 with no invocation errors; CPU p50/p95/p99 was 5.054/11.100/12.903 ms. CPU acceptance remains open: p95 exceeds the free-plan budget and the proposed headroom target. The Pages analytics group matched the request window/count but was labelled `__unknown__`; formatter reuse has since reduced local warm-render p95 from 3.557 ms to 0.796 ms. Production retesting of the uncommitted optimization remains pending release authorization before accepting Phase 2.
 
 **Done when:** `npm run check` and `npm test` pass against `wrangler pages dev`, the live site behaves exactly as before, and CPU time is within the free limit.
 

@@ -29,7 +29,8 @@
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
     "db:lint": "supabase db lint --level warning --fail-on warning",
-    "db:types": "node --experimental-strip-types scripts/generate-database-types.ts"
+    "db:types": "node --experimental-strip-types scripts/generate-database-types.ts",
+    "profile:portal:ssr": "node --experimental-strip-types scripts/profile-portal-ssr.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

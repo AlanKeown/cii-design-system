@@ -8,7 +8,7 @@
     RecordModule,
     AuditEntry
   } from '../model.ts';
-  import { date, money, today } from '../format.ts';
+  import { date, money, month, today } from '../format.ts';
   let {
     records,
     allowed,
@@ -183,11 +183,7 @@
               onShowRecord(r);
             }}
             ><span class="calendar-date"
-              ><small
-                >{new Date(r.date + 'T12:00:00').toLocaleDateString('en-AU', {
-                  month: 'short'
-                })}</small
-              >{r.date.slice(8)}</span
+              ><small>{month(r.date)}</small>{r.date.slice(8)}</span
             >
             <div>
               <strong>{r.name}</strong><small>{r.location}</small><span

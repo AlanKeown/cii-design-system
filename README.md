@@ -62,6 +62,8 @@ Run `npm run test:unit` for the storage, validation and record-operation tests w
 
 `npm run db:types` regenerates the checked-in public database types from the local Supabase database (Docker and `npm run db:start` are required). CI compares regeneration against the checked-in file, and the portal type check enforces enum parity. Generation preserves the previous file if the CLI fails. The portal still stores fictional data only in the browser: the local backend owns workspace operations and explicit saving; no Supabase runtime configuration is needed yet.
 
+After building the portal, `npm run profile:portal:ssr` measures CPU for its built server renders under Node; append `-- --instrument` to count locale-formatting work. This is a local comparison tool, not a measurement of Cloudflare CPU usage. Production CPU acceptance still requires a deployed smoke test.
+
 SveltePress's Pagefind search index is generated during the production build. Development mode intentionally displays a search-index notice.
 
 ## Use the library

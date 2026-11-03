@@ -1,6 +1,6 @@
 # Community portal backend: Phase 2 implementation plan
 
-Status: implemented locally; production release and CPU validation pending. Prepared 3 November 2026 against the current repository and Phase 2 of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
+Status: deployed; CPU acceptance remains open after the production smoke test. Prepared 3 November 2026 against the current repository and Phase 2 of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
 
 The outcome is the existing local demo running through Cloudflare Pages Functions, with browser operations behind `PortalBackend` and database enum drift checked at compile time. Browser data, drafts, recovery, permissions preview and reporting must continue to work.
 
@@ -135,9 +135,9 @@ Complete all local work and present the tested diff before requesting any releas
 - [ ] Record the previous deployment ID and rollback target. Inspect existing Pages settings before the Wrangler configuration takes ownership; ensure Phase 2 remains local mode in production.
 - [ ] After authorization, release Phase 2 on its own using the existing verified-commit workflow. Do not combine it with authentication or live data.
 - [ ] On the existing production origin, check an existing browser profile's data and a fresh profile: create/edit/archive, reload, saved views, theme, drafts, reports/CSV, role preview and recovery. Retaining the origin and storage keys is necessary to retain visitors' existing browser data.
-- [ ] Exercise a modest batch of full document requests for `/`, with a few initial requests and repeated warm requests. Record deployment ID, UTC window, request count, CPU quantiles exposed by Cloudflare and any invocation errors. Use Pages **Functions Metrics → CPU time per execution**, not response duration or browser navigation timing. Separate static-asset traffic from Function requests. See [Pages metrics](https://developers.cloudflare.com/pages/functions/metrics/).
+- [x] Exercise a modest batch of full document requests for `/`, with a few initial requests and repeated warm requests. Record deployment ID, UTC window, request count, CPU quantiles exposed by Cloudflare and any invocation errors. Use Pages **Functions Metrics → CPU time per execution**, not response duration or browser navigation timing. Separate static-asset traffic from Function requests. See [Pages metrics](https://developers.cloudflare.com/pages/functions/metrics/).
 - [ ] Verify CPU remains below the current free-plan 10 ms budget with headroom and no CPU-limit failures. A proposed engineering target is p95 below 8 ms where available; this is a planning target, not a platform guarantee. If results approach the limit, profile and reduce SSR work before accepting the phase. A paid-plan change requires a separate decision. See [Workers runtime limits](https://developers.cloudflare.com/workers/platform/limits/).
-- [ ] Record the important measurement limit: Phase 2 SSR renders the existing seed workspace; saved browser data is loaded after hydration. This validates local-mode SSR only. Repeat measurement after Phase 4 introduces server-loaded workspaces and auth overhead; a large localStorage snapshot cannot simulate that server cost.
+- [x] Record the important measurement limit: Phase 2 SSR renders the existing seed workspace; saved browser data is loaded after hydration. This validates local-mode SSR only. Repeat measurement after Phase 4 introduces server-loaded workspaces and auth overhead; a large localStorage snapshot cannot simulate that server cost.
 - [ ] Roll back to the recorded deployment if production behavior regresses or resource limits fail; investigate before continuing.
 
 ## Completion criteria
@@ -149,6 +149,69 @@ Complete all local work and present the tested diff before requesting any releas
 - [x] Reviewable implementation is left uncommitted unless separately authorized.
 - [ ] Following an authorized release, production smoke checks and recorded CPU measurements pass. Until then, report implementation as ready for release and keep the production/CPU checklist incomplete.
 
-Validation recorded on 3 November 2026: database reset, all 106 pgTAP tests and lint passed; public type regeneration was byte-for-byte reproducible; a temporary role mismatch failed the portal type check and was then restored. Formatting, full workspace checks, the full build and all 36 browser tests passed. Browser coverage includes three isolated async component tests plus new production SSR/asset/404 and archive/saved-view reload checks. The Svelte MCP autofixer reported no issues in all changed components; optional suggestions for existing class directives and DOM references were reviewed and left unchanged. Production has not been deployed or measured.
+Validation recorded on 3 November 2026: database reset, all 106 pgTAP tests and lint passed; public type regeneration was byte-for-byte reproducible; a temporary role mismatch failed the portal type check and was then restored. Formatting, full workspace checks, the full build and all 36 browser tests passed. Browser coverage includes three isolated async component tests plus new production SSR/asset/404 and archive/saved-view reload checks. The Svelte MCP autofixer reported no issues in all changed components; optional suggestions for existing class directives and DOM references were reviewed and left unchanged. Production deployment and CPU smoke results are recorded below.
+
+## Production CPU smoke test — 3 November 2026
+
+The existing production deployment was inspected through the Cloudflare API; no deployment or runtime configuration was changed during this test.
+
+- Deployment: `4ca5cc00-e909-4204-878a-efe724e0596c`, production branch `main`.
+- Commit: `0ddad43fa9faa9e1bd2c58564149460e34b9d73c`.
+- Target: `https://cii-community-portal.pages.dev/`.
+- Request window: `2026-11-02T23:47:37.761800Z`–`2026-11-02T23:47:45.373457Z` (3 November, 10:47:37–10:47:45 AEDT).
+- Requests: 33 sequential document GETs, comprising three initial requests and 30 subsequent requests. All returned HTTP 200. These labels do not establish which requests used a cold isolate.
+- Additional smoke checks: SSR HTML contains the seeded dashboard, an immutable JavaScript asset returns 200, and a nonexistent route returns 404. These additional requests are outside the CPU measurement window.
+
+Cloudflare GraphQL `pagesFunctionsInvocationsAdaptiveGroups`, filtered to `2026-11-02T23:47:37Z`–`2026-11-02T23:47:46Z`, returned:
+
+| Measurement       | Result    |
+| ----------------- | --------- |
+| Requests          | 33        |
+| Invocation errors | 0         |
+| Invocation status | `success` |
+| Median CPU        | 5.054 ms  |
+| p95 CPU           | 11.100 ms |
+| p99 CPU           | 12.903 ms |
+
+The GraphQL schema identifies CPU quantiles as microseconds; the values above are converted to milliseconds. The query was repeated and returned the same values. The canonical deployment was unchanged when checked again after the measurement.
+
+**Result: availability passed; CPU acceptance remains open.** The observed p95 exceeds both the proposed 8 ms engineering target and the 10 ms free-plan CPU budget. There were no CPU-limit invocation failures in this sample. Occasional over-budget executions can succeed because the runtime allows some flexibility; successful responses alone do not establish adequate headroom. Profile and reduce SSR work, then repeat the production measurement before accepting Phase 2. No paid-plan change, rollback or code optimization was performed as part of this test. See [Cloudflare CPU limits](https://developers.cloudflare.com/workers/platform/limits/).
+
+Attribution limit: the Pages analytics dataset exposes this traffic under `scriptName: "__unknown__"`, with no project or deployment dimension in its exposed schema. The account-level result matches all 33 test requests in the narrow window, but it is not an independently project-filtered sample. The general Workers dataset returned no results; the reported CPU values come from the Pages-specific dataset. This is a small smoke sample, not a load benchmark or proof of future live-mode performance. Full browser-profile production checks remain separate from this CPU-only test.
+
+## SSR profiling and optimization — 3 November 2026
+
+The production server was profiled locally before and after the optimization using Node `v24.17.0`, process CPU accounting and V8 CPU profiles. The harness imports the built Cloudflare server entry, renders real `/` responses and verifies the dashboard is present in the HTML. It uses one initial render, 20 warm-up requests and 100 measured sequential renders, without network waits.
+
+Instrumentation of the baseline measured 1,700 `Date.toLocaleDateString` calls, 500 `Intl.DateTimeFormat` constructions and 200 `Intl.NumberFormat` constructions across 100 warm renders. The dashboard repeatedly formats today's Sydney date, dates, currency and event months. The optimization lazily reuses four locale formatters, containing no user or workspace data, and routes event-month formatting through the shared helper. The optimized warm sample performed none of those constructor or `toLocaleDateString` operations. Values continue to be formatted on each call; the current day itself is not cached.
+
+Uninstrumented local results:
+
+| Measurement                               | Before    | Optimized |
+| ----------------------------------------- | --------- | --------- |
+| Warm median CPU per render                | 1.221 ms  | 0.312 ms  |
+| Warm p95 CPU per render                   | 3.557 ms  | 0.796 ms  |
+| Warm p99 CPU per render                   | 4.625 ms  | 1.136 ms  |
+| First render, including lazy page loading | 41.123 ms | 39.733 ms |
+
+Warm p95 improved by about 78%. The first-render figures include Node module initialization and show no comparable startup improvement. These local Node results compare the code paths; they do not replace Cloudflare CPU measurements or establish compliance with its free-plan limit. SSR and the full dashboard content remain enabled.
+
+Reproduce after building the portal:
+
+```sh
+npm run build --workspace @cii/community-portal
+npm run profile:portal:ssr
+npm run profile:portal:ssr -- --instrument
+```
+
+For a V8 CPU profile:
+
+```sh
+node --cpu-prof --cpu-prof-dir=/tmp --experimental-strip-types scripts/profile-portal-ssr.ts --instrument
+```
+
+Validation passed: formatting, full workspace checks, the complete build, unit tests and all 36 browser tests, including the Wrangler production preview. New formatting regressions check stable Australian date/currency/month output and Sydney midnight rollover in both summer and winter. The Svelte MCP autofixer reported no issues in the updated dashboard.
+
+The optimization remains uncommitted. The previously deployed commit and its production CPU results above are unchanged. A production retest of this optimized version remains pending the repository's explicit commit and separate push authorizations and the verified-commit deployment workflow. CPU acceptance stays open until that test is complete.
 
 Implementation order: runtime switch → generated types and parity → local adapter and actor helpers → asynchronous UI integration → full validation → authorized standalone release and measurement. Keep runtime and application refactors independently reviewable, but ship them together as Phase 2 once verified.
