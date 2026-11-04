@@ -39,6 +39,7 @@ export interface SourceProvider {
 }
 
 export interface ProbeContext {
+  signal?: AbortSignal;
   crsRegistry: CrsRegistry;
   sources: Registry<SourceProvider>;
   displayCrs: string;

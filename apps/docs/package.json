@@ -17,18 +17,19 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
+    "@cii/maps": "0.1.0",
     "@cii/svelte": "0.2.0",
     "@cii/tokens": "0.2.0"
   },
   "devDependencies": {
-    "svelte": "^5.57.2",
+    "@sveltejs/adapter-static": "^4.0.0",
     "@sveltejs/kit": "^3.1.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
-    "vite": "^8.3.5",
-    "typescript": "~6.0.3",
-    "svelte-check": "^4.7.7",
-    "@sveltejs/adapter-static": "^4.0.0",
+    "@sveltepress/theme-default": "^8.11.0",
     "@sveltepress/vite": "^1.10.0",
-    "@sveltepress/theme-default": "^8.11.0"
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.7",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5"
   }
 }

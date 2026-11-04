@@ -29,6 +29,7 @@ const sidebar = [
     title: 'Components',
     items: [
       { title: 'Overview', to: '/components/' },
+      { title: 'Map', to: '/components/map/' },
       { title: 'App shell', to: '/components/app-shell/' },
       { title: 'Button', to: '/components/button/' },
       { title: 'Icon button', to: '/components/icon-button/' },

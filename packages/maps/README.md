@@ -1,6 +1,46 @@
 # @cii/maps
 
-Initial Phase 0 foundations for the [mapping development plan](../../docs/svelte-mapping-components-development-plan.md). This private workspace package uses proj4 as a runtime peer and does not yet render maps.
+Foundations and the first read-only rendering slice for the [mapping development plan](../../docs/svelte-mapping-components-development-plan.md). This private workspace package now renders inline and fetched GeoJSON with Leaflet 1.9.4 through an SSR-safe Svelte component.
+
+```svelte
+<script lang="ts">
+  import '@cii/tokens/tokens.css';
+  import { MapContainer } from '@cii/maps/svelte';
+  import type { MapConfig } from '@cii/maps';
+
+  const config: MapConfig = {
+    engine: 'leaflet',
+    view: {
+      center: { crs: 'OGC:CRS84', coordinates: [151.21, -33.87] },
+      zoom: 14
+    },
+    layers: [
+      {
+        id: 'sites',
+        attribution: 'Application data',
+        source: {
+          provider: 'geojson',
+          url: '/sites.geojson',
+          crs: {
+            code: 'OGC:CRS84',
+            provenance: { kind: 'declared', by: 'application' }
+          }
+        }
+      }
+    ]
+  };
+</script>
+
+<MapContainer {config} label="Community sites" />
+```
+
+The component includes Leaflet CSS, first-party zoom controls, keyboard navigation, resize observation, mandatory text attribution, typed errors and datum warnings. Provide a text alternative for map content. `view` is bindable; `onready`, `onviewchange` and `onerror` expose lifecycle events. `getMapContext()` supplies descendants with the engine and layer manager. The initial `runtime` prop accepts `createLeafletRuntime({ fetch })` for app-owned requests and registries. Keep credentials out of serialised config.
+
+`@cii/maps/leaflet` exports the adapter as its default export; it imports Leaflet only during mounting. It supports native EPSG:3857, EPSG:4326 and OGC:CRS84 display, with explicit resolution required when no tile matrix is registered. Features retain original source coordinates, normalise declared source axis order once, and transform into the display's geographic base for Leaflet. Cross-datum display is reported without claiming survey accuracy. Native same-zoom pans round the centre to CSS pixels; `getView()` reports the resulting centre. Web Mercator polar features outside Leaflet's latitude range fail instead of being clipped.
+
+Config updates reconcile existing layers and preserve the map and user view for visual-only changes. Superseded requests and unmounts cancel pending work. Engine/display changes require remounting in this slice. Base paths, circle points and CII colour tokens are supported; raster basemaps, custom projected displays, labels, icons, rules, capture and other controls remain pending and fail explicitly. GeoJSON reads are limited to 5 MiB, 10,000 features and 100,000 positions; hit testing currently scans the bounded feature set without a spatial index. See the [working documentation example](../../apps/docs/src/routes/components/map/+page.md).
+
+Install Leaflet (`>=1.9.4 <2`) and Svelte 5 for the rendering entry points; they are optional peers for core-only consumers. Run `npx playwright test --project maps` for real Chromium adapter, update, cancellation, interaction, theming and teardown checks.
 
 Implemented:
 
@@ -39,7 +79,7 @@ if (!result.ok) throw result.error;
 console.log(result.value.crs, result.value.provenance);
 ```
 
-Providers supply the probe result; actual file readers and service metadata parsers are still to be built. Metadata confirmation requires `fromMetadata: true`. `prefer-native` is the default policy; `prefer-display` selects the display CRS when offered. If the preferred code is absent, the first advertised candidate is used. Providers must preserve advertised ordering and actual delivered axis order. Unknown CRS codes always fail.
+Providers supply the probe result; inline and GeoJSON readers now exist, while other file readers and service metadata parsers remain pending. Metadata confirmation requires `fromMetadata: true`. `prefer-native` is the default policy; `prefer-display` selects the display CRS when offered. If the preferred code is absent, the first advertised candidate is used. Providers must preserve advertised ordering and actual delivered axis order. Unknown CRS codes always fail.
 
 Mismatch acknowledgement is a runtime option recorded in the confirmed provenance. WKT-only hints block unless a supplied `hintMatches` comparator confirms them or the mismatch is explicitly acknowledged. No WKT equivalence or datum transformation is inferred from projection strings.
 
@@ -115,10 +155,10 @@ Engine and layer lifecycle:
 - `setVisible()`, `setOpacity()`, `setOrder()` and `setStyle()` patch the current handle. `update(next)` diffs the spec; a new immutable data reference or spatial metadata change triggers preparation, followed by `setData()` for feature handles that support it, or replacement otherwise. Property updates made while loading apply to the eventual handle. `reload()` retries or refreshes the current source. Read the current `ready` promise after a reload/update/reattach. Source identity changes throw `LAYER_IDENTITY_CHANGED`; use `layerIdentityKey()` to drive remove/re-create in a component.
 - `get(id)` and `list()` expose registrations. Specs are metadata snapshots; source data remains provider-owned and must be treated as immutable. `remove()` is idempotent. Removing, replacing, detaching or destroying releases handles and prepared resources. Late results from renderers that ignore cancellation are disposed and cannot resurrect removed layers. Failed preparations leave an existing rendered handle in place with status `error`, allowing explicit retry.
 - `assertCanSwitchDisplayCrs(next, { stagedTargets })` is a read-only preflight that names incompatible registered layers and retained staged-edit targets in `DISPLAY_CRS_SWITCH_BLOCKED`. It does not switch the engine or transform view/capture state. A future map-state coordinator will perform the Phase 1 switch/rebuild transaction after preflight.
-- `detach()` preserves registrations/settings for another mounted engine; `destroy()` permanently removes them. The manager never owns engine destruction. A component/coordinator must detach its manager and destroy its engine during unmount. Per-frame UI batching and reactive Svelte bindings will be added with `MapContainer`.
+- `detach()` preserves registrations/settings for another mounted engine; `destroy()` permanently removes them. The manager never owns engine destruction. `MapContainer` owns both lifecycles, reactive config reconciliation and resize observation. Further per-frame UI batching remains pending.
 
 For adapter tests, mount `FakeMapEngine` with an inert `{ clientWidth, clientHeight }` object, then use `checkEngineConformance()` with an engine-ready layer. The harness uses a disposable mounted instance and destroys it. The fake supports view conversion, resize, layer patches, event delivery, nested suspension, sketch lifecycle and cleanup. `userSetView()`, `dispatchPointer()`, `dispatchKey()` and `setHitResults()` provide deterministic interaction fixtures. Hit fixtures filter visibility/layers/tolerance; they do not calculate spatial intersections. Rotation is explicitly unsupported. Reconfiguration uses numeric view fixtures, optionally returns `rebuild-required`, and requires managed layers to be detached before an in-place CRS change. The fake has no rendering or datum maths and cannot establish real-engine projection, browser gesture, capture or precision parity.
 
-Still pending in Phase 0: extension schema merging, remaining typed subsystem registries, real-engine version CI, and spikes S1–S8. Vetted client grid integration, installed-grid comparisons and per-target-server PostGIS audits remain outstanding. Phase 1 adds production adapters, source renderers and Svelte components. No engine subpath is exported before its adapter exists.
+Still pending in Phase 0: extension schema merging, remaining typed subsystem registries, real-engine version CI, and spikes S1–S8. Vetted client grid integration, installed-grid comparisons and per-target-server PostGIS audits remain outstanding. The first Leaflet/Svelte feature slice starts Phase 1; the remaining adapters, sources, controls and display-CRS switch orchestration remain pending.
 
 Runtime peer: proj4 (`>=2.20.9 <3`, tested at 2.20.9; MIT), whose current runtime dependencies mgrs and wkt-parser are also MIT. Build tooling uses Ajv (MIT) for JSON Schema validation code generation and json-schema-to-typescript (MIT) for configuration types. CRS definitions come from PROJ's EPSG dataset; see [PROJ licensing](https://proj.org/en/stable/about.html#license).

@@ -9,6 +9,7 @@ The catalogue covers the product specification and the additional primitives fou
 
 | Component | Purpose | Implementation |
 | --- | --- | --- |
+| [Map](/components/map/) | Display declared-CRS features with Leaflet. | Shared first slice (`@cii/maps/svelte`) |
 | [App shell](/components/app-shell/) | Structure the top bar, sidebar and main content. | Application guidance |
 | [Button](/components/button/) | Trigger actions with consistent emphasis. | Shared |
 | [Icon button](/components/icon-button/) | Trigger compact, explicitly named actions. | Application guidance |

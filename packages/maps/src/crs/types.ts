@@ -14,6 +14,7 @@ export interface CrsHint {
   wkt?: string;
   from:
     | 'prj'
+    | 'geojson_crs'
     | 'gpkg_spatial_ref_sys'
     | 'spatialite_spatial_ref_sys'
     | 'flatgeobuf_header'

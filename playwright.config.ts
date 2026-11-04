@@ -9,6 +9,11 @@ export default defineConfig({
   use: { headless: true, trace: 'retain-on-failure' },
   projects: [
     {
+      name: 'maps',
+      testDir: './packages/maps/tests/browser',
+      use: { baseURL: 'http://127.0.0.1:4185' }
+    },
+    {
       name: 'portal-live',
       testDir: './apps/community-portal/tests/live',
       workers: 1,
@@ -56,6 +61,10 @@ export default defineConfig({
           }
         ]
       : [
+          {
+            command: 'npm run test:browser:serve -w @cii/maps',
+            wait: { stdout: /Local:/ }
+          },
           {
             command: 'npm run test:components:serve -w @cii/community-portal',
             wait: { stdout: /Local:/ }

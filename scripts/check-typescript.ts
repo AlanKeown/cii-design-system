@@ -25,6 +25,7 @@ const requiredConfigs = new Set([
   'apps/community-portal/tsconfig.json',
   'packages/svelte/tsconfig.json',
   'packages/maps/tsconfig.json',
+  'packages/maps/tsconfig.svelte.json',
   'packages/maps-server/tsconfig.json'
 ]);
 

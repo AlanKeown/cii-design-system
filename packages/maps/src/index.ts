@@ -11,6 +11,7 @@ export * from './engine/registry.ts';
 export * from './layers/types.ts';
 export * from './layers/compatibility.ts';
 export * from './layers/manager.ts';
+export * from './sources/geojson.ts';
 export type {
   MapConfig,
   SourceConfig,

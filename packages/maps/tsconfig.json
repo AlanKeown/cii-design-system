@@ -4,6 +4,7 @@
     "strict": true,
     "allowJs": false,
     "resolveJsonModule": true,
+    "types": ["node", "svelte"],
     "lib": ["ES2023", "DOM"]
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
