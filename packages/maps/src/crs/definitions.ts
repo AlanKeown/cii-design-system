@@ -10,6 +10,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:4326',
+    datum: {
+      id: 'EPSG:6326',
+      name: 'World Geodetic System 1984 ensemble',
+      kind: 'ensemble'
+    },
     areaOfUse: [-180, -85.06, 180, 85.06],
     tileMatrix: {
       origin: [-20037508.342789244, 20037508.342789244],
@@ -32,6 +37,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'degrees',
     projected: false,
     geographicBase: 'EPSG:4326',
+    datum: {
+      id: 'EPSG:6326',
+      name: 'World Geodetic System 1984 ensemble',
+      kind: 'ensemble'
+    },
     areaOfUse: [-180, -90, 180, 90]
   },
   {
@@ -41,6 +51,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'degrees',
     projected: false,
     geographicBase: 'OGC:CRS84',
+    datum: {
+      id: 'EPSG:6326',
+      name: 'World Geodetic System 1984 ensemble',
+      kind: 'ensemble'
+    },
     areaOfUse: [-180, -90, 180, 90]
   },
   {
@@ -50,6 +65,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'degrees',
     projected: false,
     geographicBase: 'EPSG:7844',
+    datum: {
+      id: 'EPSG:1168',
+      name: 'Geocentric Datum of Australia 2020',
+      kind: 'static'
+    },
     areaOfUse: [93.41, -60.55, 173.34, -8.47]
   },
   {
@@ -60,6 +80,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:7844',
+    datum: {
+      id: 'EPSG:1168',
+      name: 'Geocentric Datum of Australia 2020',
+      kind: 'static'
+    },
     areaOfUse: [140.99, -37.53, 153.69, -28.15]
   },
   {
@@ -69,6 +94,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'degrees',
     projected: false,
     geographicBase: 'EPSG:4283',
+    datum: {
+      id: 'EPSG:6283',
+      name: 'Geocentric Datum of Australia 1994',
+      kind: 'static'
+    },
     areaOfUse: [93.41, -60.55, 173.34, -8.47]
   },
   {
@@ -78,6 +108,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:7844',
+    datum: {
+      id: 'EPSG:1168',
+      name: 'Geocentric Datum of Australia 2020',
+      kind: 'static'
+    },
     areaOfUse: [138, -48.19, 144.01, -9.08]
   },
   {
@@ -87,6 +122,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:7844',
+    datum: {
+      id: 'EPSG:1168',
+      name: 'Geocentric Datum of Australia 2020',
+      kind: 'static'
+    },
     areaOfUse: [144, -50.89, 150.01, -9.23]
   },
   {
@@ -96,6 +136,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:7844',
+    datum: {
+      id: 'EPSG:1168',
+      name: 'Geocentric Datum of Australia 2020',
+      kind: 'static'
+    },
     areaOfUse: [150, -58.96, 156, -13.87]
   },
   {
@@ -105,6 +150,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:7844',
+    datum: {
+      id: 'EPSG:1168',
+      name: 'Geocentric Datum of Australia 2020',
+      kind: 'static'
+    },
     areaOfUse: [156, -60.56, 162.01, -14.08]
   },
   {
@@ -114,6 +164,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:7844',
+    datum: {
+      id: 'EPSG:1168',
+      name: 'Geocentric Datum of Australia 2020',
+      kind: 'static'
+    },
     areaOfUse: [162, -59.39, 168, -25.94]
   },
   {
@@ -123,6 +178,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:7844',
+    datum: {
+      id: 'EPSG:1168',
+      name: 'Geocentric Datum of Australia 2020',
+      kind: 'static'
+    },
     areaOfUse: [168, -32.48, 173.35, -25.61]
   },
   {
@@ -132,6 +192,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:4283',
+    datum: {
+      id: 'EPSG:6283',
+      name: 'Geocentric Datum of Australia 1994',
+      kind: 'static'
+    },
     areaOfUse: [138, -48.19, 144.01, -9.08]
   },
   {
@@ -141,6 +206,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:4283',
+    datum: {
+      id: 'EPSG:6283',
+      name: 'Geocentric Datum of Australia 1994',
+      kind: 'static'
+    },
     areaOfUse: [144, -50.89, 150.01, -9.23]
   },
   {
@@ -150,6 +220,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:4283',
+    datum: {
+      id: 'EPSG:6283',
+      name: 'Geocentric Datum of Australia 1994',
+      kind: 'static'
+    },
     areaOfUse: [150, -58.96, 156, -13.87]
   },
   {
@@ -159,6 +234,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:4283',
+    datum: {
+      id: 'EPSG:6283',
+      name: 'Geocentric Datum of Australia 1994',
+      kind: 'static'
+    },
     areaOfUse: [156, -60.56, 162.01, -14.08]
   },
   {
@@ -168,6 +248,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:4283',
+    datum: {
+      id: 'EPSG:6283',
+      name: 'Geocentric Datum of Australia 1994',
+      kind: 'static'
+    },
     areaOfUse: [162, -59.39, 168, -25.94]
   },
   {
@@ -177,6 +262,11 @@ export const definitions: readonly CrsDef[] = [
     units: 'metres',
     projected: true,
     geographicBase: 'EPSG:4283',
+    datum: {
+      id: 'EPSG:6283',
+      name: 'Geocentric Datum of Australia 1994',
+      kind: 'static'
+    },
     areaOfUse: [168, -32.48, 173.35, -25.61]
   }
 ];

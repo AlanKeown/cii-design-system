@@ -61,9 +61,18 @@ export interface CrsDef {
   units: 'metres' | 'degrees';
   projected: boolean;
   geographicBase: CrsCode;
+  /** Geodetic identity, not an ellipsoid name. Missing metadata means unknown datum. */
+  datum?: GeodeticDatum;
   /** Geographic area of use in longitude/latitude, not a projected tile extent. */
   areaOfUse: Extent;
   tileMatrix?: TileMatrix;
+}
+
+export interface GeodeticDatum {
+  id: string;
+  name: string;
+  kind: 'static' | 'dynamic' | 'ensemble';
+  referenceEpoch?: number;
 }
 
 export interface CrsDefinitionProvider {

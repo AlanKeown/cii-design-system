@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFileSync } from 'node:fs';
-import type { CrsDef } from '../src/crs/types.ts';
+import type { CrsDef, GeodeticDatum } from '../src/crs/types.ts';
 
 // PROJ is an authoring tool only. Consumers and CI use the checked-in output.
 const codes = [
@@ -17,6 +17,58 @@ const codes = [
 ];
 const run = promisify(execFile);
 const definitions: CrsDef[] = [];
+interface DatumJson {
+  name: string;
+  type?: string;
+  frame_reference_epoch?: number;
+  id?: { authority: string; code: number };
+}
+interface GeographicJson {
+  id: { authority: string; code: number };
+  datum?: DatumJson;
+  datum_ensemble?: DatumJson;
+}
+const datums = new Map<string, GeodeticDatum>();
+async function resolveDatum(
+  geographic: GeographicJson
+): Promise<GeodeticDatum> {
+  const embedded = geographic.datum ?? geographic.datum_ensemble;
+  if (!embedded) throw new Error('Missing geodetic datum in PROJ output.');
+  const kind = geographic.datum_ensemble
+    ? 'ensemble'
+    : embedded.type === 'DynamicGeodeticReferenceFrame'
+      ? 'dynamic'
+      : 'static';
+  const key = `${kind}:${embedded.name}`;
+  const cached = datums.get(key);
+  if (cached) return cached;
+  const datum = embedded.id
+    ? embedded
+    : (JSON.parse(
+        (
+          await run('projinfo', [
+            '-k',
+            kind === 'ensemble' ? 'ensemble' : 'datum',
+            embedded.name,
+            '-o',
+            'PROJJSON',
+            '-q'
+          ])
+        ).stdout
+      ) as DatumJson);
+  if (!datum.id)
+    throw new Error(`Missing datum authority for ${embedded.name}.`);
+  const result: GeodeticDatum = {
+    id: `${datum.id.authority}:${datum.id.code}`,
+    name: datum.name,
+    kind,
+    ...(datum.frame_reference_epoch !== undefined
+      ? { referenceEpoch: datum.frame_reference_epoch }
+      : {})
+  };
+  datums.set(key, result);
+  return result;
+}
 for (const code of codes) {
   const info = JSON.parse(
     (await run('projinfo', [code, '-o', 'PROJJSON', '-q'])).stdout
@@ -29,8 +81,8 @@ for (const code of codes) {
       east_longitude: number;
       north_latitude: number;
     };
-    base_crs?: { id: { authority: string; code: number } };
-  };
+    base_crs?: GeographicJson;
+  } & GeographicJson;
   const bbox = info.bbox;
   definitions.push({
     code,
@@ -41,6 +93,7 @@ for (const code of codes) {
     geographicBase: info.base_crs
       ? `${info.base_crs.id.authority}:${info.base_crs.id.code}`
       : code,
+    datum: await resolveDatum(info.base_crs ?? info),
     areaOfUse: [
       bbox.west_longitude,
       bbox.south_latitude,

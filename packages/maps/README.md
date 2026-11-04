@@ -1,11 +1,12 @@
 # @cii/maps
 
-Initial Phase 0 foundations for the [mapping development plan](../../docs/svelte-mapping-components-development-plan.md). This private workspace package has no runtime dependencies and does not yet render maps.
+Initial Phase 0 foundations for the [mapping development plan](../../docs/svelte-mapping-components-development-plan.md). This private workspace package uses proj4 as a runtime peer and does not yet render maps.
 
 Implemented:
 
 - Ordered, instance-scoped extension registries with duplicate protection and registration cleanup.
 - CRS definition providers with core and Australian packs registered through the public API. Australia is enabled by default and can be disabled explicitly.
+- A registry-backed horizontal display transform service for coordinates, geometries and feature batches, with explicit datum and epoch reporting.
 - `resolveSourceCrs()` with declared versus metadata provenance, explicit hint mismatch acknowledgement, source axis order, and organisation policy for database declarations.
 - Canonical resolution and logarithmic zoom conversion, with resolution precedence. A CRS without a tile matrix requires explicit resolution. Out-of-table zooms extrapolate using the nearest interval.
 - The full `IMapEngine` contract: capabilities, mount/reconfigure/destroy, canonical view, typed events, layer handles, pointer/keyboard subscriptions, nested navigation suspension, sketch overlays, hit testing and the native escape hatch.
@@ -42,7 +43,35 @@ Providers supply the probe result; actual file readers and service metadata pars
 
 Mismatch acknowledgement is a runtime option recorded in the confirmed provenance. WKT-only hints block unless a supplied `hintMatches` comparator confirms them or the mismatch is explicitly acknowledged. No WKT equivalence or datum transformation is inferred from projection strings.
 
-The definition file is generated with local PROJ `projinfo` using `npm run generate:crs -w @cii/maps`, then formatted with Prettier. PROJ is not needed for normal builds or tests. Definitions include the geographic area of use, not a projected tile extent. Only Web Mercator has a bundled tile matrix; custom grids must supply their own. GDA94 zone 59 is EPSG:6738, correcting the plan's original EPSG:28359 entry. No coordinate transformation or survey accuracy guarantee is implemented yet.
+The definition file is generated with local PROJ `projinfo` using `npm run generate:crs -w @cii/maps`, then formatted with Prettier. PROJ is not needed for normal builds or tests. Definitions include the geographic area of use and geodetic datum identity, not a projected tile extent. Only Web Mercator has a bundled tile matrix; custom grids must supply their own. GDA94 zone 59 is EPSG:6738, correcting the plan's original EPSG:28359 entry.
+
+Display transforms:
+
+```ts
+import { createCrsRegistry, createTransformService } from '@cii/maps';
+
+const transforms = createTransformService(createCrsRegistry());
+const transform = await transforms.prepare({
+  source: 'EPSG:7844',
+  target: 'EPSG:7856',
+  datumPolicy: 'require-same-datum'
+});
+
+const projected = transform.coordinate([151.21, -33.87]);
+console.log(projected, transform.accuracy);
+```
+
+`prepare()` resolves explicit source and target codes through the supplied registry and compiles a reusable proj4 converter. There is no default CRS, global `proj4.defs()` registration, online lookup or fallback to proj4's built-in aliases. Prepared converters retain definition snapshots; a subsequent registry update applies to subsequently prepared converters. Definitions must contain horizontal PROJ strings; `CrsRef.wkt` does not override the registry.
+
+Renderers can use `await transforms.forDisplay(source.crs, context.displayCrs.code)` with a `ConfirmedCrs`, then call `transform.features(batch)`. The lower-level `prepare()` also supports display-to-readout and display-to-geographic-base conversions where no input-source confirmation is involved. Both APIs consume and return **core x/y coordinates**. Providers must call `toCoreCoord()` when normalising delivered y/x data; the transform never applies that source-boundary swap a second time or enforces a definition's native latitude-first axis order.
+
+`coordinate()` transforms a two-number pair; `position()` preserves any additional finite ordinates unchanged. `geometry()` covers every simple-feature geometry type and collections, and `features()` handles null geometries and preserves feature IDs. They copy coordinate arrays and geometry rather than overwriting source vertices. Attribute objects remain shared and read-only. Geometry helpers are coordinate walkers, not topology validators. There is no vertical or time-dependent transformation: XY calculations use proj4's 2D operation, and Z/M values are not fed into a 3D Helmert calculation. Invalid coordinates, geographic latitude, singular/non-finite results and malformed geometry fail with typed `MapError`s.
+
+Every prepared transform exposes a serialisable `accuracy` snapshot: display tier, `authoritative: false`, horizontal-only dimensions, source/target datum metadata and optional epochs, datum relationship, operation category and warning codes. `horizontalAccuracyMetres` is always `null`: no input survey accuracy or globally valid operation accuracy is inferred from projection definitions or a successful round trip. Missing datum metadata gives `DATUM_UNKNOWN`; differing datum IDs give `DATUM_DIFFERENCE`; ensembles give `DATUM_ENSEMBLE`. Supplied coordinate epochs and dynamic datums give `EPOCH_NOT_APPLIED`. Datum identity comes from PROJ metadata, so matching GRS80 ellipsoids do not make GDA94 and GDA2020 the same datum. The bundled projection strings do not encode the GDA94/GDA2020 correction. WGS84 ensemble/web mapping limitations are described by [NSW Spatial Services](https://www.nsw.gov.au/environment-land-and-water/surveying/geodesy-and-geocentric-datum-of-australia/gda2020).
+
+The default `datumPolicy: 'allow-display'` permits display output while reporting these limitations. `require-same-datum` refuses different or unknown datum identities; it does not certify survey accuracy, resolve an ensemble to one realisation, or apply epochs. An organisation can route precision-dependent work to its authoritative PostGIS pipeline. Named horizontal/vertical grids (including optional names followed by a null fallback) currently fail with `TRANSFORM_GRID_UNSUPPORTED`, rather than silently depending on global grid registration or omitting a correction. Only explicit null grids, as used by Web Mercator, are supported until vetted grid integration is added. Stored and snapped source vertices must remain in their original CRS for the server-side write path.
+
+The projection tests use 15 checked-in same-datum fixtures generated by local PROJ `cs2cs`, with a 1 mm tolerance in projected metres and reverse checks in degrees. Rebuild them with `npm run generate:transform-fixtures -w @cii/maps` after an intentional definition/oracle change. They cover Web Mercator, NSW Lambert and every bundled GDA94/GDA2020 MGA zone. These establish local projection agreement, not a PostGIS pipeline comparison or datum-accuracy certification. PostGIS/grid validation remains spike S7.
 
 Build with `npm run build -w @cii/maps`; check with `npm run check -w @cii/maps`; test with `npm run test:unit -w @cii/maps`. The core imports without browser globals or engine dependencies. Node source consumers can enable the `development` condition; standard imports use the built JavaScript and declarations.
 
@@ -84,6 +113,6 @@ Engine and layer lifecycle:
 
 For adapter tests, mount `FakeMapEngine` with an inert `{ clientWidth, clientHeight }` object, then use `checkEngineConformance()` with an engine-ready layer. The harness uses a disposable mounted instance and destroys it. The fake supports view conversion, resize, layer patches, event delivery, nested suspension, sketch lifecycle and cleanup. `userSetView()`, `dispatchPointer()`, `dispatchKey()` and `setHitResults()` provide deterministic interaction fixtures. Hit fixtures filter visibility/layers/tolerance; they do not calculate spatial intersections. Rotation is explicitly unsupported. Reconfiguration uses numeric view fixtures, optionally returns `rebuild-required`, and requires managed layers to be detached before an in-place CRS change. The fake has no rendering or datum maths and cannot establish real-engine projection, browser gesture, capture or precision parity.
 
-Still pending in Phase 0: extension schema merging, remaining typed subsystem registries, CRS transformation policies, real-engine version CI, and spikes S1–S8. Phase 1 adds production adapters, source renderers and Svelte components. No engine subpath is exported before its adapter exists.
+Still pending in Phase 0: extension schema merging, remaining typed subsystem registries, real-engine version CI, and spikes S1–S8. Vetted client grid integration and authoritative PostGIS comparisons remain outstanding. Phase 1 adds production adapters, source renderers and Svelte components. No engine subpath is exported before its adapter exists.
 
-No third-party runtime libraries have been added. Build tooling uses Ajv (MIT) for JSON Schema validation code generation and json-schema-to-typescript (MIT) for configuration types. CRS definitions come from PROJ's EPSG dataset; see [PROJ licensing](https://proj.org/en/stable/about.html#license).
+Runtime peer: proj4 (`>=2.20.9 <3`, tested at 2.20.9; MIT), whose current runtime dependencies mgrs and wkt-parser are also MIT. Build tooling uses Ajv (MIT) for JSON Schema validation code generation and json-schema-to-typescript (MIT) for configuration types. CRS definitions come from PROJ's EPSG dataset; see [PROJ licensing](https://proj.org/en/stable/about.html#license).

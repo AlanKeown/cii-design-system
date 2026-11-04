@@ -1,0 +1,111 @@
+{
+  "oracle": "PROJ cs2cs: Rel. 9.7.1, December 1st, 2025",
+  "scope": "Projection-only same-datum fixtures, x/y order; not PostGIS pipeline or datum-accuracy certification.",
+  "fixtures": [
+    {
+      "source": "OGC:CRS84",
+      "target": "EPSG:3857",
+      "input": [151.21, -33.87],
+      "expected": [16832620.202850897, -4011359.531052426],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:7844",
+      "target": "EPSG:8058",
+      "input": [151.21, -33.87],
+      "expected": [9689078.906195613, 4423455.77781939],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:7844",
+      "target": "EPSG:7856",
+      "input": [151.21, -33.87],
+      "expected": [334435.70614098536, 6250816.397908207],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:7844",
+      "target": "EPSG:7854",
+      "input": [141, -32],
+      "expected": [500000.0000000024, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:7844",
+      "target": "EPSG:7855",
+      "input": [147, -32],
+      "expected": [500000.0000000024, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:7844",
+      "target": "EPSG:7856",
+      "input": [153, -32],
+      "expected": [500000, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:7844",
+      "target": "EPSG:7857",
+      "input": [159, -32],
+      "expected": [500000.0000000024, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:7844",
+      "target": "EPSG:7858",
+      "input": [165, -32],
+      "expected": [499999.9999999976, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:7844",
+      "target": "EPSG:7859",
+      "input": [171, -32],
+      "expected": [500000, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:4283",
+      "target": "EPSG:28354",
+      "input": [141, -32],
+      "expected": [500000.0000000024, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:4283",
+      "target": "EPSG:28355",
+      "input": [147, -32],
+      "expected": [500000.0000000024, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:4283",
+      "target": "EPSG:28356",
+      "input": [153, -32],
+      "expected": [500000, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:4283",
+      "target": "EPSG:28357",
+      "input": [159, -32],
+      "expected": [500000.0000000024, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:4283",
+      "target": "EPSG:28358",
+      "input": [165, -32],
+      "expected": [499999.9999999976, 6459564.306816945],
+      "tolerance": 0.001
+    },
+    {
+      "source": "EPSG:4283",
+      "target": "EPSG:6738",
+      "input": [171, -32],
+      "expected": [500000, 6459564.306816945],
+      "tolerance": 0.001
+    }
+  ]
+}
