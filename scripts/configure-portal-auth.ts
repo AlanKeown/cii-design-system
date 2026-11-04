@@ -33,11 +33,14 @@ const project = (await fetchJson(
   headers
 )) as Record<string, unknown>;
 if (
-  project.name !== 'cii-community-portal' ||
+  ref !== 'kykbgwewulzceunbbsfa' ||
+  project.name !== 'cii-design-system' ||
   project.region !== 'ap-southeast-2'
 )
-  throw new Error('Refusing to configure a different project or region.');
-const endpoint = `https://api.supabase.com/v1/projects/${ref}/auth/config`;
+  throw new Error(
+    `Refusing to configure a different project or region. Expected reference "kykbgwewulzceunbbsfa", name "cii-design-system" in "ap-southeast-2"; received reference ${JSON.stringify(ref)}, name ${JSON.stringify(project.name)} in ${JSON.stringify(project.region)}. No Auth settings were changed.`
+  );
+const endpoint = `https://api.supabase.com/v1/projects/${ref}/config/auth`;
 const current = (await fetchJson(endpoint, headers)) as Record<string, unknown>;
 if (!process.env.RESEND_SMTP_KEY && !current.smtp_pass)
   throw new Error(

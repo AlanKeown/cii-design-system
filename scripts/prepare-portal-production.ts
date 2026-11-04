@@ -21,15 +21,16 @@ const project = (await fetchJson(
   management
 )) as Record<string, unknown>;
 if (
-  project.name !== 'cii-community-portal' ||
+  ref !== 'kykbgwewulzceunbbsfa' ||
+  project.name !== 'cii-design-system' ||
   project.region !== 'ap-southeast-2' ||
   project.status !== 'ACTIVE_HEALTHY'
 )
   throw new Error(
-    'Production project must be the healthy cii-community-portal project in Sydney.'
+    `Production project must be the healthy cii-design-system project in Sydney. Expected reference "kykbgwewulzceunbbsfa", name "cii-design-system", region "ap-southeast-2", status "ACTIVE_HEALTHY"; received reference ${JSON.stringify(ref)}, name ${JSON.stringify(project.name)}, region ${JSON.stringify(project.region)}, status ${JSON.stringify(project.status)}.`
   );
 const auth = (await fetchJson(
-  `https://api.supabase.com/v1/projects/${ref}/auth/config`,
+  `https://api.supabase.com/v1/projects/${ref}/config/auth`,
   management
 )) as Record<string, unknown>;
 validateAuthReadiness(auth, bindings.PUBLIC_AUTH_GITHUB_ENABLED === 'true');

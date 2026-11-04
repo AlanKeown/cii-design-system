@@ -1,12 +1,12 @@
 # Community portal backend: Phase 5 production release
 
-Status: Release code prepared and locally validated on 3 November 2026. **Production account mode is not enabled.** Hosted Supabase access and release credentials are still required. Changes in this phase remain uncommitted.
+Status: Release code prepared and locally validated on 3 November 2026, committed as `eda7e10` (Phase 5 started). **Production account mode is not enabled.** On 4 November, Supabase MCP access was verified, both GitHub production secret names were confirmed present, and the public deployment variables were populated. Secret validity and hosted Auth readiness remain unverified.
 
 ## Confirmed release baseline
 
 The deployed application is commit `71631b3f2d6d542ec6ffc3065b84c58a6b474b94` (the hydration fix). [Verify succeeded](https://github.com/AlanKeown/cii-design-system/actions/runs/41591570273) and [Deploy community portal succeeded](https://github.com/AlanKeown/cii-design-system/actions/runs/41591851206). Cloudflare reports production deployment `7cca62f0-d083-47d8-b826-ea0e8838f942`, with no auth bindings. The public root, auth and privacy pages returned HTTP 200 during the baseline check; the portal is still the browser-only demo.
 
-The planned Supabase project is `kykbgwewulzceunbbsfa`, named `cii-community-portal` in Sydney. The saved local Supabase token lists only a different project, “Big Map Project”, and receives HTTP 404 for the planned project's Auth configuration. This does not establish whether the planned project was removed or is owned by another account. Supabase connection/access is pending; no hosted migrations or Auth changes have been applied in this phase.
+The production Supabase project is `kykbgwewulzceunbbsfa`, confirmed as `cii-design-system` in Sydney (`ap-southeast-2`) on 4 November 2026. The saved local Supabase token lists only a different project, “Big Map Project”, and receives HTTP 404 for the planned project's Auth configuration. This does not establish whether the planned project was removed or is owned by another account. The new Supabase MCP connection successfully accessed the intended project on 4 November 2026. Its public schema and migration history are empty. Public Auth checks confirmed email enabled, email confirmation required and an ES256 key published. SMTP, CAPTCHA, active signing-key selection and full Auth configuration still need verification; no hosted migrations or Auth changes have been applied in this phase.
 
 ## Completed preparation
 
@@ -27,7 +27,7 @@ GitHub repository variables:
 | `PORTAL_AUTH_ENABLED`      | `false`; set `true` only when hosted prerequisites are ready and the release code has passed Verify. `false` keeps the existing local-demo deployment path. |
 | `PORTAL_KEEPALIVE_ENABLED` | `false`; enable the schedule after the first successful production heartbeat. Manual dispatch is available independently.                                   |
 
-GitHub **production environment** secrets (both currently missing):
+GitHub **production environment** secrets (both names confirmed present on 4 November 2026; values cannot be read back from GitHub and have not yet been exercised by the release):
 
 | Secret                  | Purpose                                                                                                             |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -40,11 +40,11 @@ GitHub **production environment** public variables:
 
 | Variable                          | Value                                                                                    |
 | --------------------------------- | ---------------------------------------------------------------------------------------- |
-| `SUPABASE_PROJECT_REF`            | Confirm the project reference before setting this. Planned: `kykbgwewulzceunbbsfa`.      |
-| `PUBLIC_SUPABASE_URL`             | Must be `https://<SUPABASE_PROJECT_REF>.supabase.co`.                                    |
-| `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | The hosted project's `sb_publishable_…` key; not an anon/service-role JWT or secret key. |
+| `SUPABASE_PROJECT_REF`            | Set to verified project reference `kykbgwewulzceunbbsfa`.      |
+| `PUBLIC_SUPABASE_URL`             | Set to `https://kykbgwewulzceunbbsfa.supabase.co`.                                    |
+| `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Set to the hosted project's active `sb_publishable_…` key, retrieved through MCP. |
 | `PUBLIC_TURNSTILE_SITE_KEY`       | Already set to `0x4AAAAAAFxoxhMwZgmLhc4U`.                                               |
-| `PUBLIC_AUTH_GITHUB_ENABLED`      | Keep `false`/unset until a separate OAuth test app and real PKCE round trip have passed. |
+| `PUBLIC_AUTH_GITHUB_ENABLED`      | Set to `false`; enable only after a separate OAuth test app and real PKCE round trip pass. |
 
 Existing Cloudflare deployment credentials remain repository secrets. Supabase secret/service-role keys, the Resend sending key and Turnstile secret never become portal runtime bindings.
 
