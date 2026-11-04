@@ -38,12 +38,12 @@ Enter secrets through GitHub's production environment settings or `gh secret set
 
 GitHub **production environment** public variables:
 
-| Variable                          | Value                                                                                    |
-| --------------------------------- | ---------------------------------------------------------------------------------------- |
-| `SUPABASE_PROJECT_REF`            | Set to verified project reference `kykbgwewulzceunbbsfa`.      |
-| `PUBLIC_SUPABASE_URL`             | Set to `https://kykbgwewulzceunbbsfa.supabase.co`.                                    |
-| `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Set to the hosted project's active `sb_publishable_…` key, retrieved through MCP. |
-| `PUBLIC_TURNSTILE_SITE_KEY`       | Already set to `0x4AAAAAAFxoxhMwZgmLhc4U`.                                               |
+| Variable                          | Value                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| `SUPABASE_PROJECT_REF`            | Set to verified project reference `kykbgwewulzceunbbsfa`.                                  |
+| `PUBLIC_SUPABASE_URL`             | Set to `https://kykbgwewulzceunbbsfa.supabase.co`.                                         |
+| `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Set to the hosted project's active `sb_publishable_…` key, retrieved through MCP.          |
+| `PUBLIC_TURNSTILE_SITE_KEY`       | Already set to `0x4AAAAAAFxoxhMwZgmLhc4U`.                                                 |
 | `PUBLIC_AUTH_GITHUB_ENABLED`      | Set to `false`; enable only after a separate OAuth test app and real PKCE round trip pass. |
 
 Existing Cloudflare deployment credentials remain repository secrets. Supabase secret/service-role keys, the Resend sending key and Turnstile secret never become portal runtime bindings.
