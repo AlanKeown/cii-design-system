@@ -1,0 +1,26 @@
+{
+  "name": "@cii/maps-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json",
+    "test:unit": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@cii/maps": "0.1.0"
+  }
+}

@@ -23,7 +23,9 @@ const requiredConfigs = new Set([
   'tsconfig.json',
   'apps/docs/tsconfig.json',
   'apps/community-portal/tsconfig.json',
-  'packages/svelte/tsconfig.json'
+  'packages/svelte/tsconfig.json',
+  'packages/maps/tsconfig.json',
+  'packages/maps-server/tsconfig.json'
 ]);
 
 export function isAuthoredFile(filename: string): boolean {

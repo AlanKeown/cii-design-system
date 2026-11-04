@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "npm run dev --workspace @cii/docs",
     "dev:portal": "npm run dev --workspace @cii/community-portal",
-    "build:packages": "npm run build --workspace @cii/tokens && npm run build --workspace @cii/svelte",
+    "build:packages": "npm run build --workspace @cii/tokens && npm run build --workspace @cii/svelte && npm run build --workspace @cii/maps && npm run build --workspace @cii/maps-server",
     "build": "npm run build:packages && npm run build --workspace @cii/docs && npm run build --workspace @cii/community-portal",
     "check": "npm run check:typescript && npm run check:tooling && npm run build:packages && npm run check --workspaces --if-present",
     "test": "npm run test:unit && playwright test --project portal --project portal-components --project docs",

@@ -16,6 +16,16 @@
 - The library is **headed for production use**. Leaflet is therefore targeted at **1.9.4 (stable)**. Leaflet 2.0 is tested continuously in CI and adopted only once it reaches a release candidate and passes the switch criteria (§6.3).
 - The library is part of the **CII design system**. It is published under `@cii/*`, uses `@cii/svelte` components and `--cii-*` tokens, and follows `data-cii-theme` (§15.5).
 
+## Implementation progress — 4 November 2026
+
+Phase 0 has started with a first foundation slice in `@cii/maps` and `@cii/maps-server` (see `packages/maps/README.md` and `packages/maps-server/README.md` in the repository). Both are private npm workspaces integrated into the existing build, type checks and Node test runner.
+
+- Implemented the ordered extension registry, CRS provider registry, generated core/Australian definitions, source CRS confirmation and provenance, source-boundary axis swapping, resolution/zoom helpers, a view-only fake engine and reusable view conformance checks.
+- Added a server metadata helper that distinguishes a database SRID from its CRS authority and requires a declaration for SRID 0.
+- Corrected the GDA94 zone 59 identifier to **EPSG:6738** after generation with PROJ rejected EPSG:28359. The zone 59 identifier is also listed in [Esri's projected coordinate system catalogue](https://doc.arcgis.com/es/allsource/1.0/visualization/pdf/projected_coordinate_systems.pdf).
+
+Phase 0 is **not complete**. Remaining work includes the canonical JSON Schema/generated types, remaining typed registries, full engine contract and fake, layer-manager confirmation enforcement, CRS transformation policies, Leaflet version CI, and spikes S1–S8. No rendering component or production engine adapter exists yet. Decisions D1–D6 remain open; the database declaration override implements the draft's proposed policy without closing D1.
+
 ## Status of the earlier specification
 
 This plan **supersedes** [mapping-components-spec.md](./mapping-components-spec.md) (v0.1). Where the two documents disagree, this plan wins. These parts of the earlier spec remain in force, and have been folded into this plan:
@@ -300,7 +310,7 @@ There are two source types, one before CRS resolution and one after:
 The registry resolves a `CrsCode` to a proj4 definition plus metadata: units, extent, geographic base, and whether the CRS is projected. Definition providers are themselves registered (R4), and are queried in order:
 
 1. **Bundled set.** Core always ships EPSG:3857, EPSG:4326 and OGC:CRS84. Regional definitions ship as separate, optional **CRS packs**, registered like any other definition provider, so an organisation loads only the pack for its jurisdiction. Each definition string is generated from PROJ during the build and checked in, not typed by hand.
-   - The Australian pack covers EPSG:7844 (GDA2020 geographic), EPSG:7854–7859 (GDA2020 MGA zones 54–59), EPSG:8058 (GDA2020 NSW Lambert), EPSG:4283 (GDA94) and EPSG:28354–28359 (GDA94 MGA zones).
+   - The Australian pack covers EPSG:7844 (GDA2020 geographic), EPSG:7854–7859 (GDA2020 MGA zones 54–59), EPSG:8058 (GDA2020 NSW Lambert), EPSG:4283 (GDA94), EPSG:28354–28358 (GDA94 MGA zones 54–58) and EPSG:6738 (GDA94 MGA zone 59).
    - **The Australian pack is the first-class target (decision D8, §17.3).** It is installed by default, and the datum guidance (§5.6), fixtures and spikes are written for it. Other packs, such as a UK pack with EPSG:27700, can be added later as extensions.
 2. **PostGIS `spatial_ref_sys`.** A server endpoint returns `proj4text` and `srtext` for a given SRID. This makes the database the organisation's CRS authority, and it covers custom SRIDs.
 3. **Optional online lookup**, for example a spatialreference.org or MapTiler lookup. This is **disabled by default**, so an application never depends on a third-party site at runtime.
