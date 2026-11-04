@@ -97,6 +97,7 @@ export interface MapSnapshot {
   engine: IMapEngine | null;
   view: ViewState | null;
   layers: readonly MapLayerInfo[];
+  layerErrors: readonly { id: string; error: MapError }[];
   attributions: readonly string[];
   showZoom: boolean;
 }
@@ -109,6 +110,7 @@ interface RecordEntry {
 export interface MapControllerCallbacks {
   onstate?: (snapshot: MapSnapshot) => void;
   onready?: (engine: IMapEngine) => void;
+  onlayererror?: (error: MapError) => void;
   onviewchange?: (view: ViewState, source: 'api' | 'user') => void;
 }
 
@@ -125,6 +127,7 @@ export class MapController {
   #generation = 0;
   #tail: Promise<void> = Promise.resolve();
   #records = new Map<string, RecordEntry>();
+  #layerErrors = new Map<string, MapError>();
   #config?: ResolvedMapConfig;
   #ready = false;
   #notified = false;
@@ -154,6 +157,7 @@ export class MapController {
         visible: entry.spec.visible ?? true,
         count: (entry.spec.source.data as FeatureBatch).features.length
       })),
+      layerErrors: [...this.#layerErrors].map(([id, error]) => ({ id, error })),
       attributions: [
         ...new Set(
           [...this.#records.values()]
@@ -233,47 +237,6 @@ export class MapController {
         resolution: resolveViewResolution(config.view, definition.tileMatrix),
         rotation: config.view.rotation ?? 0
       };
-      const desired: Omit<RecordEntry, 'managed'>[] = [];
-      for (const item of config.layers) {
-        const style: PortableStyle | undefined = item.style
-          ? { ...item.style }
-          : undefined;
-        assertLeafletStyle(style);
-        const key = JSON.stringify(item.source);
-        const existing = this.#records.get(item.id);
-        let source = existing?.key === key ? existing.spec.source : undefined;
-        if (!source) {
-          const provider = this.#runtime.sources.require(item.source.provider);
-          const confirmed = await resolveSourceCrs(item.source, {
-            sources: this.#runtime.sources,
-            crsRegistry: this.#runtime.crs,
-            displayCrs: definition.code,
-            signal: preparing.signal,
-            acknowledgeHintMismatch: this.#runtime.acknowledgeHintMismatch
-          });
-          if (!confirmed.ok) throw confirmed.error;
-          source = await provider.open(item.source, confirmed.value, {
-            signal: preparing.signal
-          });
-        }
-        const accuracy = (
-          await this.#runtime.transforms.forDisplay(source.crs, definition.code)
-        ).accuracy;
-        desired.push({
-          key,
-          spec: {
-            id: item.id,
-            source,
-            visible: item.visible,
-            opacity: item.opacity,
-            order: item.order,
-            style,
-            attribution: item.attribution
-          },
-          accuracy
-        });
-      }
-      if (!current()) return;
       const commit = this.#tail.then(async () => {
         if (!current()) return;
         if (!this.#engine) {
@@ -293,36 +256,23 @@ export class MapController {
             this.#callbacks.onviewchange?.(event.view, event.source);
           });
         }
-        const next = new Map<string, RecordEntry>();
-        for (const entry of desired) {
-          const old = this.#records.get(entry.spec.id);
-          let managed: ManagedLayer;
-          if (
-            old &&
-            layerIdentityKey(old.spec) === layerIdentityKey(entry.spec)
-          ) {
-            managed = old.managed;
-            managed.update(entry.spec);
-          } else {
-            old?.managed.remove();
-            managed = this.layers.add(entry.spec);
+        // Drop removed/replaced sources before starting independent layer loads.
+        for (const [id, entry] of this.#records) {
+          const item = config.layers.find((layer) => layer.id === id);
+          if (!item || entry.key !== JSON.stringify(item.source)) {
+            entry.managed.remove();
+            this.#records.delete(id);
           }
-          next.set(entry.spec.id, { ...entry, managed });
         }
-        for (const [id, entry] of this.#records)
-          if (!next.has(id)) entry.managed.remove();
+        this.#layerErrors.clear();
         const move =
           !this.#config ||
           JSON.stringify(config.view) !== JSON.stringify(this.#config.view);
-        this.#records = next;
         this.#config = config;
         if (!this.layers.attached)
           await this.layers.attach(this.#engine!, definition, {
             allowExperimental: config.display.allowExperimental
           });
-        await Promise.all(
-          [...next.values()].map((entry) => entry.managed.ready)
-        );
         if (!current()) return;
         if (move) this.#engine!.setView(view);
         this.#ready = true;
@@ -334,6 +284,79 @@ export class MapController {
       });
       this.#tail = commit.catch(() => {});
       await commit;
+      if (!current()) return;
+      // Source I/O is outside the mount queue: a stalled source cannot block a
+      // sibling layer, readiness, or a newer configuration.
+      await Promise.all(
+        config.layers.map(async (item) => {
+          try {
+            const style: PortableStyle | undefined = item.style
+              ? { ...item.style }
+              : undefined;
+            assertLeafletStyle(style);
+            const key = JSON.stringify(item.source);
+            const existing = this.#records.get(item.id);
+            let source =
+              existing?.key === key ? existing.spec.source : undefined;
+            if (!source) {
+              const provider = this.#runtime.sources.require(
+                item.source.provider
+              );
+              const confirmed = await resolveSourceCrs(item.source, {
+                sources: this.#runtime.sources,
+                crsRegistry: this.#runtime.crs,
+                displayCrs: definition.code,
+                signal: preparing.signal,
+                acknowledgeHintMismatch: this.#runtime.acknowledgeHintMismatch
+              });
+              if (!confirmed.ok) throw confirmed.error;
+              source = await provider.open(item.source, confirmed.value, {
+                signal: preparing.signal
+              });
+            }
+            const accuracy = (
+              await this.#runtime.transforms.forDisplay(
+                source.crs,
+                definition.code
+              )
+            ).accuracy;
+            if (!current()) return;
+            const spec: LayerSpec = {
+              id: item.id,
+              source,
+              visible: item.visible,
+              opacity: item.opacity,
+              order: item.order,
+              style,
+              attribution: item.attribution
+            };
+            const old = this.#records.get(item.id);
+            let managed: ManagedLayer;
+            if (old && layerIdentityKey(old.spec) === layerIdentityKey(spec)) {
+              managed = old.managed;
+              managed.update(spec);
+              if (managed.status === 'error') managed.reload();
+            } else {
+              old?.managed.remove();
+              managed = this.layers.add(spec);
+            }
+            this.#records.set(item.id, { key, spec, accuracy, managed });
+            await managed.ready;
+            if (current()) this.#emit();
+          } catch (cause) {
+            if (!current()) return;
+            const error =
+              cause instanceof MapError
+                ? new MapError(cause.code, { ...cause.details, id: item.id })
+                : new MapError('LAYER_LOAD_FAILED', { id: item.id });
+            this.#records.get(item.id)?.managed.remove();
+            this.#records.delete(item.id);
+            this.#layerErrors.set(item.id, error);
+            this.#emit();
+            this.#callbacks.onlayererror?.(error);
+          }
+        })
+      );
     } catch (error) {
       if (!current()) return;
       if (error instanceof MapError) throw error;

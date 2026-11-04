@@ -78,6 +78,7 @@
         snapshot = next;
       },
       onready: (engine) => onready?.(engine),
+      onlayererror: (error) => onerror?.(error),
       onviewchange: (next, source) => {
         if (source === 'user') view = next;
         onviewchange?.(next, source);
@@ -163,6 +164,17 @@
         ? `: ${error.details.reason}`
         : ''}</Alert
     >{/if}
+  {#each snapshot?.layerErrors ?? [] as failure (failure.id)}
+    <Alert
+      tone="danger"
+      role="alert"
+      title={`Layer ${failure.id} could not be loaded`}
+    >
+      {failure.error.code}{typeof failure.error.details.reason === 'string'
+        ? `: ${failure.error.details.reason}`
+        : ''}
+    </Alert>
+  {/each}
   {#if datumDiffers}<Alert tone="warning" title="Display accuracy"
       >Some layers use a different or unknown datum. Display positions do not
       establish precise alignment; original source coordinates are retained.</Alert

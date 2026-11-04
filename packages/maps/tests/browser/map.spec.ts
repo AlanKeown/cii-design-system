@@ -224,3 +224,101 @@ test('untrusted properties and attribution remain text; narrow reduced-motion ma
     .toBeGreaterThan(600);
   await expect(page.getByLabel('Ready count')).toHaveText('1');
 });
+
+for (const failure of ['http', 'malformed']) {
+  test(`a ${failure} source and a renderer failure leave the inline layer and map usable`, async ({
+    page
+  }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.route('**/sites.geojson', (route) =>
+      failure === 'http'
+        ? route.fulfill({ status: 503, body: 'Unavailable' })
+        : route.fulfill({ json: { bad: 'data' } })
+    );
+    await page.goto('/?mixed-layers');
+    await expect(page.getByLabel('Ready count')).toHaveText('1');
+    await expect(page.getByRole('alert')).toHaveCount(2);
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Layer remote' })
+    ).toContainText(
+      failure === 'http' ? 'SOURCE_LOAD_FAILED' : 'SOURCE_INVALID'
+    );
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Layer polar' })
+    ).toContainText('LAYER_INCOMPATIBLE');
+    await expect(page.getByLabel('Error count')).toHaveText('2');
+    await expect
+      .poll(() => page.evaluate(() => window.mapHarness!.hit()))
+      .toEqual(['site']);
+    await expect(
+      page.getByRole('button', { name: 'Zoom in', exact: true })
+    ).toBeEnabled();
+    const canvas = page.getByRole('application');
+    await expect(canvas).toHaveAttribute('tabindex', '0');
+    await expect(canvas).toHaveAttribute('aria-busy', 'false');
+    const before = await page.evaluate(() => window.mapHarness!.view());
+    await canvas.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect
+      .poll(
+        async () =>
+          (await page.evaluate(() => window.mapHarness!.view())).center[0]
+      )
+      .toBeGreaterThan(before.center[0]);
+    await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+    await expect
+      .poll(
+        async () =>
+          (await page.evaluate(() => window.mapHarness!.view())).resolution
+      )
+      .toBeLessThan(before.resolution);
+    await expect(page.getByLabel('Ready count')).toHaveText('1');
+    expect(errors).toEqual([]);
+  });
+}
+
+test('readiness and valid layers do not wait for a stalled source, including after a config update', async ({
+  page
+}) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requests = 0;
+  await page.route('**/sites.geojson', async (route) => {
+    requests++;
+    await gate;
+    await route.fulfill({ status: 503, body: 'Unavailable' }).catch(() => {});
+  });
+  try {
+    await page.goto('/?mixed-layers');
+    await expect.poll(() => requests).toBe(1);
+    await expect(page.getByLabel('Ready count')).toHaveText('1');
+    await expect
+      .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+      .toMatchObject({ count: 1, radius: 6 });
+    await expect(
+      page.getByRole('button', { name: 'Zoom in', exact: true })
+    ).toBeEnabled();
+    await expect(page.getByRole('application')).toHaveAttribute(
+      'tabindex',
+      '0'
+    );
+    await page.getByRole('button', { name: 'Toggle size' }).click();
+    await expect.poll(() => requests).toBe(2);
+    await expect
+      .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+      .toMatchObject({ count: 1, radius: 12 });
+    release();
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Layer remote' })
+    ).toHaveCount(1);
+    // One renderer error per config, plus the current remote error. The stale
+    // remote request must neither report a failure nor replace current state.
+    await expect(page.getByLabel('Error count')).toHaveText('3');
+    await expect(page.getByLabel('Ready count')).toHaveText('1');
+  } finally {
+    release();
+  }
+});

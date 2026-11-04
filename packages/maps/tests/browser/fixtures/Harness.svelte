@@ -47,6 +47,37 @@
       ...(displayCrs === 'EPSG:3857' ? { zoom: 14 } : { resolution: 0.0001 })
     },
     layers: [
+      ...(params.has('mixed-layers')
+        ? [
+            {
+              id: 'remote',
+              attribution: 'Remote fixture',
+              source: {
+                provider: 'geojson',
+                url: '/sites.geojson',
+                crs: {
+                  code: 'OGC:CRS84',
+                  provenance: { kind: 'declared' as const, by: 'test' }
+                }
+              }
+            },
+            {
+              id: 'polar',
+              source: {
+                provider: 'inline',
+                crs: {
+                  code: 'OGC:CRS84',
+                  provenance: { kind: 'declared' as const, by: 'test' }
+                },
+                data: {
+                  type: 'Feature',
+                  properties: {},
+                  geometry: { type: 'Point', coordinates: [0, 89] }
+                }
+              }
+            }
+          ]
+        : []),
       {
         id: 'sites',
         visible,
