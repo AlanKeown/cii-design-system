@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "allowJs": false,
+    "resolveJsonModule": true,
     "lib": ["ES2023", "DOM"]
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]

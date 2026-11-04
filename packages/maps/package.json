@@ -18,12 +18,26 @@
       "types": "./dist/testing.d.ts",
       "development": "./src/testing.ts",
       "default": "./dist/testing.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "development": "./src/config/index.ts",
+      "default": "./dist/config/index.js"
+    },
+    "./config/schema.json": {
+      "development": "./src/config/map.schema.json",
+      "default": "./dist/config/map.schema.json"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "check": "tsc -p tsconfig.json",
-    "test:unit": "node --experimental-strip-types --test tests/*.test.ts",
-    "generate:crs": "node --experimental-strip-types scripts/generate-crs.ts"
+    "build": "node --experimental-strip-types scripts/generate-config.ts --check --build && tsc -p tsconfig.build.json",
+    "check": "node --experimental-strip-types scripts/generate-config.ts --check && tsc -p tsconfig.json",
+    "test:unit": "node --experimental-strip-types scripts/generate-config.ts --check && node --experimental-strip-types --test tests/*.test.ts",
+    "generate:crs": "node --experimental-strip-types scripts/generate-crs.ts",
+    "generate:config": "node --experimental-strip-types scripts/generate-config.ts"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "json-schema-to-typescript": "^16.0.0"
   }
 }

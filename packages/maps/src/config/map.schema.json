@@ -1,0 +1,611 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cii.design/schemas/map-config.json",
+  "title": "MapConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["engine", "view", "layers"],
+  "properties": {
+    "engine": {
+      "$ref": "#/definitions/NonEmptyString"
+    },
+    "label": {
+      "$ref": "#/definitions/NonEmptyString"
+    },
+    "description": {
+      "type": "string"
+    },
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "crs": "EPSG:3857",
+        "allowExperimental": false
+      },
+      "properties": {
+        "crs": {
+          "type": "string",
+          "pattern": "\\S",
+          "default": "EPSG:3857"
+        },
+        "allowExperimental": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "view": {
+      "$ref": "#/definitions/ViewConfig"
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/LayerConfig"
+      }
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ControlConfig"
+      }
+    },
+    "capture": {
+      "$ref": "#/definitions/CaptureConfig"
+    }
+  },
+  "definitions": {
+    "NonEmptyString": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "Coord": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "additionalItems": false
+    },
+    "DeclaredCrs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "provenance"],
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "axisOrder": {
+          "enum": ["xy", "yx"],
+          "type": "string"
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "by"],
+          "properties": {
+            "kind": {
+              "const": "declared"
+            },
+            "by": {
+              "$ref": "#/definitions/NonEmptyString"
+            }
+          }
+        }
+      }
+    },
+    "MetadataCrs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromMetadata"],
+      "properties": {
+        "fromMetadata": {
+          "const": true
+        },
+        "policy": {
+          "enum": ["prefer-display", "prefer-native"],
+          "type": "string"
+        }
+      }
+    },
+    "ViewConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["center"],
+      "anyOf": [
+        {
+          "required": ["resolution"],
+          "properties": {
+            "resolution": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        {
+          "required": ["zoom"],
+          "properties": {
+            "zoom": {
+              "type": "number"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "center": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["crs", "coordinates"],
+          "properties": {
+            "crs": {
+              "$ref": "#/definitions/NonEmptyString"
+            },
+            "coordinates": {
+              "$ref": "#/definitions/Coord"
+            }
+          }
+        },
+        "resolution": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "zoom": {
+          "type": "number"
+        },
+        "rotation": {
+          "type": "number"
+        },
+        "minZoom": {
+          "type": "number"
+        },
+        "maxZoom": {
+          "type": "number"
+        },
+        "minResolution": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxResolution": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "SourceConfig": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/TileSourceConfig"
+        },
+        {
+          "$ref": "#/definitions/ServiceSourceConfig"
+        },
+        {
+          "$ref": "#/definitions/FileSourceConfig"
+        },
+        {
+          "$ref": "#/definitions/InlineSourceConfig"
+        },
+        {
+          "$ref": "#/definitions/PostgisSourceConfig"
+        }
+      ]
+    },
+    "TileSourceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "url", "crs"],
+      "properties": {
+        "provider": {
+          "enum": ["xyz", "tms", "tilejson", "mvt", "pmtiles"],
+          "type": "string"
+        },
+        "url": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "crs": {
+          "$ref": "#/definitions/DeclaredCrs"
+        }
+      }
+    },
+    "ServiceSourceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "url", "crs"],
+      "properties": {
+        "provider": {
+          "enum": ["wms", "wmts", "wfs", "oapif", "arcgis-rest"],
+          "type": "string"
+        },
+        "url": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "crs": {
+          "$ref": "#/definitions/MetadataCrs"
+        },
+        "layers": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "layer": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "version": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "matrixSet": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "collection": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "typeName": {
+          "$ref": "#/definitions/NonEmptyString"
+        }
+      }
+    },
+    "FileSourceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "url", "crs"],
+      "properties": {
+        "provider": {
+          "enum": [
+            "geojson",
+            "gpkg",
+            "spatialite",
+            "shapefile",
+            "kml",
+            "gpx",
+            "csv",
+            "flatgeobuf",
+            "cog"
+          ],
+          "type": "string"
+        },
+        "url": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "table": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "crs": {
+          "$ref": "#/definitions/DeclaredCrs"
+        }
+      }
+    },
+    "InlineSourceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "data", "crs"],
+      "properties": {
+        "provider": {
+          "const": "inline"
+        },
+        "data": {
+          "type": "object"
+        },
+        "crs": {
+          "$ref": "#/definitions/DeclaredCrs"
+        }
+      }
+    },
+    "TargetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "table"],
+      "properties": {
+        "schema": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "table": {
+          "$ref": "#/definitions/NonEmptyString"
+        }
+      }
+    },
+    "PostgisSourceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "target", "crs"],
+      "properties": {
+        "provider": {
+          "const": "postgis"
+        },
+        "target": {
+          "$ref": "#/definitions/TargetRef"
+        },
+        "crs": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/DeclaredCrs"
+            },
+            {
+              "$ref": "#/definitions/MetadataCrs"
+            }
+          ]
+        }
+      }
+    },
+    "BaseStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stroke": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["color", "width"],
+          "properties": {
+            "color": {
+              "$ref": "#/definitions/NonEmptyString"
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "dash": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "fill": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["color"],
+          "properties": {
+            "color": {
+              "$ref": "#/definitions/NonEmptyString"
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "point": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["shape", "size"],
+              "properties": {
+                "shape": {
+                  "enum": ["circle", "square", "triangle"],
+                  "type": "string"
+                },
+                "size": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["icon", "size"],
+              "properties": {
+                "icon": {
+                  "$ref": "#/definitions/NonEmptyString"
+                },
+                "size": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          ]
+        },
+        "label": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "size", "color"],
+          "properties": {
+            "field": {
+              "$ref": "#/definitions/NonEmptyString"
+            },
+            "size": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "color": {
+              "$ref": "#/definitions/NonEmptyString"
+            },
+            "halo": {
+              "$ref": "#/definitions/NonEmptyString"
+            }
+          }
+        },
+        "legendLabel": {
+          "$ref": "#/definitions/NonEmptyString"
+        }
+      }
+    },
+    "LayerConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source"],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "source": {
+          "$ref": "#/definitions/SourceConfig"
+        },
+        "attribution": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "order": {
+          "type": "integer"
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "style": {
+          "$ref": "#/definitions/BaseStyle"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "type": "object",
+                "required": ["url"]
+              }
+            }
+          },
+          "then": {
+            "required": ["attribution"]
+          }
+        },
+        {
+          "if": {
+            "required": ["editable"],
+            "properties": {
+              "editable": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "const": "postgis"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ControlConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "enum": [
+            "zoom",
+            "home",
+            "rotate",
+            "scale",
+            "attribution",
+            "coords",
+            "layer-list",
+            "legend",
+            "feature-list",
+            "basemap-picker",
+            "display-crs",
+            "identify",
+            "geolocate",
+            "draw",
+            "edit",
+            "snap",
+            "coordinate-input",
+            "vertex-list",
+            "capture-status",
+            "commit",
+            "measure",
+            "import"
+          ],
+          "type": "string"
+        },
+        "position": {
+          "enum": ["top-left", "top-right", "bottom-left", "bottom-right"],
+          "type": "string"
+        },
+        "readoutCrs": {
+          "$ref": "#/definitions/NonEmptyString"
+        }
+      }
+    },
+    "CaptureConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "persistence", "modes"],
+      "properties": {
+        "target": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "persistence": {
+          "$ref": "#/definitions/NonEmptyString"
+        },
+        "modes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "point",
+              "linestring",
+              "polygon",
+              "rectangle",
+              "select",
+              "modify",
+              "move",
+              "delete",
+              "split",
+              "merge",
+              "reshape",
+              "trace",
+              "circle"
+            ],
+            "type": "string"
+          }
+        },
+        "snap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["layers", "tolerancePx"],
+          "properties": {
+            "layers": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "\\S"
+              }
+            },
+            "tolerancePx": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "validity": {
+          "enum": ["reject", "make-valid"],
+          "type": "string"
+        },
+        "allowNonConformantPersistence": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

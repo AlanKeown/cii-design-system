@@ -10,13 +10,13 @@ import type {
   CrsRef
 } from './types.ts';
 
-export interface SourceConfig {
+/** Low-level probe input, also usable by providers outside the built-in config schema. */
+export interface SourceInput {
   provider: string;
   crs?: CrsDeclaration;
-  [option: string]: unknown;
 }
 
-export interface SourceSpec extends Omit<SourceConfig, 'crs'> {
+export interface SourceSpec extends Omit<SourceInput, 'crs'> {
   provider: string;
   crs: ConfirmedCrs;
 }
@@ -35,7 +35,7 @@ export type ProbeResult =
 export interface SourceProvider {
   /** File/inline/tile conventions must use declared, never metadata. */
   crsMode: 'declared' | 'service-metadata' | 'database-metadata';
-  probe(source: SourceConfig, context: ProbeContext): Promise<ProbeResult>;
+  probe(source: SourceInput, context: ProbeContext): Promise<ProbeResult>;
 }
 
 export interface ProbeContext {
@@ -51,8 +51,8 @@ export interface ProbeContext {
 }
 
 /** Probe first, then confirm. Provider/network exceptions remain source errors. */
-export async function resolveSourceCrs(
-  source: SourceConfig,
+export async function resolveSourceCrs<T extends SourceInput>(
+  source: T,
   ctx: ProbeContext
 ): Promise<Result<ConfirmedCrs>> {
   try {

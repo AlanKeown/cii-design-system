@@ -1,4 +1,6 @@
 export type MapErrorCode =
+  | 'CONFIG_INVALID'
+  | 'ATTRIBUTION_REQUIRED'
   | 'REGISTRY_DUPLICATE'
   | 'REGISTRY_NOT_FOUND'
   | 'CRS_NOT_FOUND'

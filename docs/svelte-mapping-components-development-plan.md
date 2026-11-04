@@ -22,9 +22,10 @@ Phase 0 has started with a first foundation slice in `@cii/maps` and `@cii/maps-
 
 - Implemented the ordered extension registry, CRS provider registry, generated core/Australian definitions, source CRS confirmation and provenance, source-boundary axis swapping, resolution/zoom helpers, a view-only fake engine and reusable view conformance checks.
 - Added a server metadata helper that distinguishes a database SRID from its CRS authority and requires a declaration for SRID 0.
+- Added a canonical draft-07 JSON Schema with generated `MapConfig`/`SourceConfig` types, standalone validation at `@cii/maps/config`, safe display defaults, attribution enforcement and layer/capture reference validation. Generated types are checked for drift. The §12.5 example is validated by the test suite; its URL-backed GeoPackage layer now includes attribution. Validation covers config structure and references; provider-specific options, file contents, full style rules and extension schema merging are still pending.
 - Corrected the GDA94 zone 59 identifier to **EPSG:6738** after generation with PROJ rejected EPSG:28359. The zone 59 identifier is also listed in [Esri's projected coordinate system catalogue](https://doc.arcgis.com/es/allsource/1.0/visualization/pdf/projected_coordinate_systems.pdf).
 
-Phase 0 is **not complete**. Remaining work includes the canonical JSON Schema/generated types, remaining typed registries, full engine contract and fake, layer-manager confirmation enforcement, CRS transformation policies, Leaflet version CI, and spikes S1–S8. No rendering component or production engine adapter exists yet. Decisions D1–D6 remain open; the database declaration override implements the draft's proposed policy without closing D1.
+Phase 0 is **not complete**. Remaining work includes extension schema merging, remaining typed registries, full engine contract and fake, layer-manager confirmation enforcement, CRS transformation policies, Leaflet version CI, and spikes S1–S8. No rendering component or production engine adapter exists yet. Decisions D1–D6 remain open; the database declaration override implements the draft's proposed policy without closing D1.
 
 ## Status of the earlier specification
 
@@ -1460,6 +1461,7 @@ The convenience components `XyzLayer`, `WmsLayer`, `WmtsLayer`, `FeatureLayer`, 
     },
     {
       "id": "survey",
+      "attribution": "© Example Survey",
       "source": {
         "provider": "gpkg",
         "url": "/data/survey.gpkg",
@@ -1721,6 +1723,7 @@ Every phase also requires `npm run check`, `npm run test:unit` and `npm test` to
 | F9  | Engine CSS (`leaflet.css`, `maplibre-gl.css`, `ol.css`)       | Required for the engines' internal rendering                                                                           | **Accept.** It is imported by the adapter, and controls do not depend on it.                                                                                                                   |
 | F10 | **MapLibre custom CRS** (`addProjection`)                     | The only route to a non-Mercator display in MapLibre                                                                   | **Accept behind a flag.** The API is experimental and may change in a minor release.                                                                                                           |
 | F11 | **Client-side transform before posting** (adapter C fallback) | Some OAPIF servers may not accept `Content-Crs` on POST                                                                | **Flagged weakness.** The adapter then reports `authoritativeTransform: false`, so it is non-conformant and editing needs an explicit opt-in (R5.6). Prefer adapters A or B for accurate work. |
+| F12 | Ajv and json-schema-to-typescript (MIT; build tooling)        | Generate standalone JSON Schema validation and TypeScript config types from the canonical schema                       | **Accept.** Neither provides controls. Ajv is not imported at runtime; generated validation requires no dynamic code evaluation.                                                               |
 
 ### 17.2 Risks
 

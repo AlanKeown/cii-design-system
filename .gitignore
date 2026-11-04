@@ -1,4 +1,5 @@
 node_modules/
+/packages/maps/src/config/compiled-validator.js
 .svelte-kit/
 dist/
 build/
