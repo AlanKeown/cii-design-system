@@ -35,7 +35,9 @@
     "test:unit": "node --experimental-strip-types scripts/generate-config.ts --check && node --experimental-strip-types --test tests/*.test.ts",
     "generate:crs": "node --experimental-strip-types scripts/generate-crs.ts",
     "generate:config": "node --experimental-strip-types scripts/generate-config.ts",
-    "generate:transform-fixtures": "node --experimental-strip-types scripts/generate-transform-fixtures.ts"
+    "generate:transform-fixtures": "node --experimental-strip-types scripts/generate-transform-fixtures.ts",
+    "generate:accuracy-fixtures": "node --experimental-strip-types scripts/postgis-accuracy.ts --write",
+    "test:accuracy": "node --experimental-strip-types scripts/postgis-accuracy.ts --check"
   },
   "devDependencies": {
     "ajv": "^8.20.0",

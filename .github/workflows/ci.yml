@@ -3,6 +3,18 @@ on:
   push:
   pull_request:
 jobs:
+  maps-accuracy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Verify mapping accuracy against disposable pinned PostGIS
+        run: npm run test:accuracy --workspace @cii/maps
   verify:
     runs-on: ubuntu-latest
     steps:
