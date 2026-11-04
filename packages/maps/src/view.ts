@@ -9,7 +9,7 @@ export interface ViewState {
   extent: Extent;
 }
 
-/** First part of the adapter contract; rendering/interaction is added with real engines. */
+/** Canonical view subset shared by the full IMapEngine contract and view-only tests. */
 export interface EngineView {
   getView(): ViewState;
   setView(view: Partial<ViewState>): void;

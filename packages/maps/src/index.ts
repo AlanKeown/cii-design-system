@@ -4,6 +4,11 @@ export * from './crs/types.ts';
 export * from './crs/registry.ts';
 export * from './crs/resolve.ts';
 export * from './view.ts';
+export * from './engine/types.ts';
+export * from './engine/registry.ts';
+export * from './layers/types.ts';
+export * from './layers/compatibility.ts';
+export * from './layers/manager.ts';
 export type {
   MapConfig,
   SourceConfig,

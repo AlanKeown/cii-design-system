@@ -18,14 +18,15 @@
 
 ## Implementation progress — 4 November 2026
 
-Phase 0 has started with a first foundation slice in `@cii/maps` and `@cii/maps-server` (see `packages/maps/README.md` and `packages/maps-server/README.md` in the repository). Both are private npm workspaces integrated into the existing build, type checks and Node test runner.
+Phase 0 is under way in `@cii/maps` and `@cii/maps-server` (see `packages/maps/README.md` and `packages/maps-server/README.md` in the repository). Both are private npm workspaces integrated into the existing build, type checks and Node test runner.
 
 - Implemented the ordered extension registry, CRS provider registry, generated core/Australian definitions, source CRS confirmation and provenance, source-boundary axis swapping, resolution/zoom helpers, a view-only fake engine and reusable view conformance checks.
 - Added a server metadata helper that distinguishes a database SRID from its CRS authority and requires a declaration for SRID 0.
 - Added a canonical draft-07 JSON Schema with generated `MapConfig`/`SourceConfig` types, standalone validation at `@cii/maps/config`, safe display defaults, attribution enforcement and layer/capture reference validation. Generated types are checked for drift. The §12.5 example is validated by the test suite; its URL-backed GeoPackage layer now includes attribution. Validation covers config structure and references; provider-specific options, file contents, full style rules and extension schema merging are still pending.
+- Implemented the full §6 `IMapEngine` contract and supporting engine/layer/interaction/style types, a lazy instance-scoped engine registry, a complete contract fake and adapter lifecycle tests. Added the layer manager with public renderer registration, runtime `ConfirmedCrs` enforcement, grid/service/engine/style compatibility checks, ordered queued attachment, surgical updates, reload, cancellation and deterministic resource cleanup. Display-CRS switch preflight checks registered layers and retained staged-edit targets without mutating state. Real coordinate transformation, rendering and switch/rebuild orchestration remain work for the production adapters and map-state coordinator.
 - Corrected the GDA94 zone 59 identifier to **EPSG:6738** after generation with PROJ rejected EPSG:28359. The zone 59 identifier is also listed in [Esri's projected coordinate system catalogue](https://doc.arcgis.com/es/allsource/1.0/visualization/pdf/projected_coordinate_systems.pdf).
 
-Phase 0 is **not complete**. Remaining work includes extension schema merging, remaining typed registries, full engine contract and fake, layer-manager confirmation enforcement, CRS transformation policies, Leaflet version CI, and spikes S1–S8. No rendering component or production engine adapter exists yet. Decisions D1–D6 remain open; the database declaration override implements the draft's proposed policy without closing D1.
+Phase 0 is **not complete**. Remaining work includes extension schema merging, remaining typed subsystem registries, CRS transformation policies, Leaflet version CI, and spikes S1–S8. No rendering component or production engine adapter exists yet. Decisions D1–D6 remain open; the database declaration override implements the draft's proposed policy without closing D1.
 
 ## Status of the earlier specification
 
