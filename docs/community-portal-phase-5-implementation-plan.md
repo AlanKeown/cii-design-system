@@ -1,12 +1,18 @@
 # Community portal backend: Phase 5 production release
 
-Status: Release code prepared and locally validated on 3 November 2026, committed as `eda7e10` (Phase 5 started). **Production account mode is not enabled.** On 4 November, Supabase MCP access was verified, both GitHub production secret names were confirmed present, and the public deployment variables were populated. Secret validity and hosted Auth readiness remain unverified.
+Status: **Production account mode is deployed. Phase 5 acceptance is still incomplete.** On 4 November 2026, the [gated release](https://github.com/AlanKeown/cii-design-system/actions/runs/41748947131) passed Auth preflight, linked Supabase, applied all six migrations, deployed account mode and passed signed-out HTTP checks for verified commit `cf7d46980406fbcca0c7fd23a3b1cce9d4f2f4ba`. The first manual heartbeat succeeded and its timestamp was confirmed in the database. Both release flags are now `true`. Real browser/email/account acceptance, first scheduled heartbeat and authenticated CPU measurements remain pending.
 
 ## Confirmed release baseline
 
-The deployed application is commit `71631b3f2d6d542ec6ffc3065b84c58a6b474b94` (the hydration fix). [Verify succeeded](https://github.com/AlanKeown/cii-design-system/actions/runs/41591570273) and [Deploy community portal succeeded](https://github.com/AlanKeown/cii-design-system/actions/runs/41591851206). Cloudflare reports production deployment `7cca62f0-d083-47d8-b826-ea0e8838f942`, with no auth bindings. The public root, auth and privacy pages returned HTTP 200 during the baseline check; the portal is still the browser-only demo.
+The deployed application is commit `cf7d46980406fbcca0c7fd23a3b1cce9d4f2f4ba`. [Verify succeeded](https://github.com/AlanKeown/cii-design-system/actions/runs/41744109555), and [Deploy community portal succeeded](https://github.com/AlanKeown/cii-design-system/actions/runs/41748947131). Cloudflare returned deployment URL https://02586484.cii-community-portal.pages.dev. The production alias is https://cii-community-portal.pages.dev. Signed-out root redirects to Auth; API requests return non-cacheable JSON 401. The sign-in/Turnstile page, privacy page, missing-asset 404 and absence of token fields in sign-in HTML passed both CI and an independent local HTTP smoke.
 
-The production Supabase project is `kykbgwewulzceunbbsfa`, confirmed as `cii-design-system` in Sydney (`ap-southeast-2`) on 4 November 2026. The saved local Supabase token lists only a different project, “Big Map Project”, and receives HTTP 404 for the planned project's Auth configuration. This does not establish whether the planned project was removed or is owned by another account. The new Supabase MCP connection successfully accessed the intended project on 4 November 2026. Its public schema and migration history are empty. Public Auth checks confirmed email enabled, email confirmation required and an ES256 key published. SMTP, CAPTCHA, active signing-key selection and full Auth configuration still need verification; no hosted migrations or Auth changes have been applied in this phase.
+The production Supabase project is `kykbgwewulzceunbbsfa`, named `cii-design-system`, in Sydney (`ap-southeast-2`). The operator configured hosted Auth successfully; release preflight verified the configured SMTP, CAPTCHA, OTP, templates and redirects, plus published asymmetric JWKS. All six repository migrations are recorded in the hosted database. Active signing-key selection and real issued tokens still require the browser account smoke.
+
+The CLI token needs **API Key Secrets (Read)** in addition to **API Keys (Read)**. Earlier retries passed Auth preflight but failed on the CLI's `api-keys?reveal=true` call. After this permission was added, all four read-only diagnostics returned HTTP 200 and the release succeeded. See [Supabase CLI token permissions](https://supabase.com/docs/guides/platform/personal-access-tokens#use-a-token-with-the-supabase-cli).
+
+The [manual keep-alive](https://github.com/AlanKeown/cii-design-system/actions/runs/41749123888) returned `2026-11-04T00:45:06.322339+00:00`, matching `private.heartbeat.beat_at`. Its twice-weekly schedule is enabled; the first scheduled run is pending.
+
+Post-migration security advisories reported the intentionally policy-free, RPC-accessed invitations table and the explicitly granted security-definer RPCs, including the anonymous heartbeat. These match the repository's access design; real two-account authorization acceptance remains required. References: [RLS without policies](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy), [anonymous definer functions](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable), [authenticated definer functions](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
 
 ## Completed preparation
 
@@ -22,17 +28,17 @@ The production Supabase project is `kykbgwewulzceunbbsfa`, confirmed as `cii-des
 
 GitHub repository variables:
 
-| Variable                   | Current value / purpose                                                                                                                                     |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PORTAL_AUTH_ENABLED`      | `false`; set `true` only when hosted prerequisites are ready and the release code has passed Verify. `false` keeps the existing local-demo deployment path. |
-| `PORTAL_KEEPALIVE_ENABLED` | `false`; enable the schedule after the first successful production heartbeat. Manual dispatch is available independently.                                   |
+| Variable                   | Current value / purpose                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `PORTAL_AUTH_ENABLED`      | `true`; enabled for the verified account-mode release. `false` selects the local-demo deployment path on a future release. |
+| `PORTAL_KEEPALIVE_ENABLED` | `true`; manual heartbeat and its database write verified. First scheduled run pending.                                     |
 
 GitHub **production environment** secrets (both names confirmed present on 4 November 2026; values cannot be read back from GitHub and have not yet been exercised by the release):
 
-| Secret                  | Purpose                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `SUPABASE_ACCESS_TOKEN` | Project-owner access for release preflight and linking. The existing local token cannot access the planned project. |
-| `SUPABASE_DB_PASSWORD`  | Database migration connection only.                                                                                 |
+| Secret                  | Purpose                                                                                                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN` | Project-scoped token for release preflight and linking. Linking requires Project Settings, API Keys and API Key Secrets with Read access; preflight also needs Auth Config Read. |
+| `SUPABASE_DB_PASSWORD`  | Database migration connection only.                                                                                                                                              |
 
 Enter secrets through GitHub's production environment settings or `gh secret set NAME --repo AlanKeown/cii-design-system --env production`, which reads the value interactively. Do not paste them into chat or commit them.
 
@@ -77,15 +83,16 @@ Existing Cloudflare deployment credentials remain repository secrets. Supabase s
 
 ## Production acceptance still pending
 
-- [ ] Hosted Supabase access, public key and migration credentials verified.
-- [ ] Hosted migrations applied through the verified release workflow.
+- [x] Hosted Supabase access, public key and migration credentials verified by the successful release.
+- [x] Hosted migrations applied through the verified release workflow.
 - [ ] Managed Turnstile challenge verified on the actual production origin, with the matching secret in Supabase. Do not replace it with test keys to make a production test pass.
 - [ ] Real email delivery, code sign-in and cross-browser confirmation-link sign-in work; link-preview GET does not consume the link. Test expired/reused links and rate-limit recovery.
 - [ ] Two fictional test accounts in separate browser contexts: records survive reload/sign-out/sign-in; invitation acceptance and role/organisation switching work; wrong-recipient invitation is refused.
 - [ ] Check API write denial and a direct REST read/write attempt for the other organisation using the current user's own token. Board reports/CSV have no names, contact details, notes or relationship identifiers.
 - [ ] Production cookies are HTTP-only, Secure and SameSite=Lax; refreshed/action/data responses remain private/no-store; no account token or account records enter browser-readable storage.
 - [ ] Reset and account deletion work for the disposable test accounts, with owner-cascade behavior understood before confirmation.
-- [ ] Manual and first scheduled heartbeat succeed. Check the database write, not only that Actions dispatched successfully.
+- [x] Manual heartbeat succeeded; its returned timestamp matches the database write.
+- [ ] First scheduled heartbeat succeeds and its database write is checked.
 - [ ] Repeat the comparable Cloudflare CPU sample with signed-in workspace, signed-out and refresh requests, and inspect Pages CPU metrics. Record the deployment ID, request mix, p50/p95/p99 and errors. Local Node timings and anonymous redirect-only timings do not establish authenticated Worker headroom.
 
 Keep the prior production deployment available as a rollback target. Pages rollback does not undo database migrations. If a release is rolled back to browser-only mode, record that account workspaces are temporarily unavailable rather than implying account edits are saved locally.
@@ -96,4 +103,4 @@ On 3 November 2026, repository checks and the complete build passed; **54 unit t
 
 Sources used for release behavior: [Cloudflare Pages environment overrides](https://developers.cloudflare.com/pages/functions/wrangler-configuration/), [Supabase Auth configuration API](https://supabase.com/docs/reference/api/v1-get-auth-service-config), [CAPTCHA configuration](https://supabase.com/docs/guides/auth/auth-captcha), and [database migration deployment](https://supabase.com/docs/guides/deployment/database-migrations).
 
-Phase 5 remains incomplete until the pending production acceptance checks are recorded. No production account-mode deployment, hosted migration, production email, account smoke or heartbeat has been performed during this preparation.
+Phase 5 remains incomplete until the pending production acceptance checks are recorded. Production account mode, hosted migrations, HTTP smoke and manual heartbeat are verified. Real production email delivery, account smoke, first scheduled heartbeat and authenticated CPU measurements are pending.
