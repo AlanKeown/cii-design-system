@@ -251,8 +251,9 @@ disabled; this describes that reference image, not every deployment or every
 grid filename. Only explicit fixtures claim an exact pipeline; default
 `ST_Transform` operation selection is not introspected. These checks establish
 numerical agreement at the sampled points, not a survey-accuracy certification.
-Spike S7 still requires installed-grid comparisons and per-target-server
-pipeline/grid audits.
+Phase 0 S7 now includes installed-grid comparisons, a hosted Supabase audit and
+a schema-aware local development reference audit. Additional deployments need
+their own pipeline/grid audit when selected.
 
 Build with `npm run build -w @cii/maps`; check with
 `npm run check -w @cii/maps`; test with `npm run test:unit -w @cii/maps`. The
@@ -385,15 +386,15 @@ Reconfiguration uses numeric view fixtures, optionally returns
 in-place CRS change. The fake has no rendering or datum maths and cannot
 establish real-engine projection, browser gesture, capture or precision parity.
 
-Phase 0 follow-up now includes the shared `createRegistries()` collection,
-strict extension schema composition at `@cii/maps/config/extensions`, Leaflet
-version workflow definitions and reproducible engine/storage/server spikes. See
-[the evidence and remaining exit work](../../docs/mapping-phase-0-spike-report.md).
-D1–D6 and the initial GeoPackage routing policy are approved; target-server
-audits, report acceptance and remote CI results remain outstanding. Production
-client grid integration is still disabled. Spike-only MapLibre/OpenLayers
-bridges, capture and custom Leaflet CRS construction do not expand the
-production adapter's capabilities.
+Phase 0 is complete for the initial Supabase and disposable local-reference
+scope. Shared registries, strict extension schema composition, CI and the S1–S8
+feasibility findings are recorded in
+[the Phase 0 evidence and closeout](../../docs/mapping-phase-0-spike-report.md).
+Measured Supabase pipeline/grid limitations are enforced by the server
+capability preflight; production named browser grids remain disabled. Spike-only
+MapLibre/OpenLayers bridges, capture and custom Leaflet CRS construction do not
+expand the production adapter's capabilities. Phase 1 continues with raster
+basemaps, layer controls and the remaining display work.
 
 `createRegistries({ australia, fetch })` exposes engines, CRS providers, data
 sources, renderers, controls, capture modes, validators, persistence adapters,

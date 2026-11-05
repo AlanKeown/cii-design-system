@@ -10,6 +10,7 @@ export async function withPostgis<T>(
   work: (query: (sql: string) => Promise<string>, port?: number) => Promise<T>,
   options: {
     publishLoopback?: boolean;
+    postgisSchema?: string;
     grids?: readonly { path: string; name: string }[];
   } = {}
 ): Promise<T> {
@@ -58,6 +59,7 @@ export async function withPostgis<T>(
         `${name}:/usr/share/proj/${grid.name}`
       ]);
     }
+    let database = 'postgres';
     const query = (sql: string) =>
       new Promise<string>((resolve, reject) => {
         const child = execFile(
@@ -73,7 +75,7 @@ export async function withPostgis<T>(
             '-U',
             'postgres',
             '-d',
-            'postgres',
+            database,
             '-Atq',
             '-v',
             'ON_ERROR_STOP=1'
@@ -88,7 +90,19 @@ export async function withPostgis<T>(
         child.stdin?.on('error', () => {});
         child.stdin?.end(sql);
       });
-    await query('CREATE EXTENSION IF NOT EXISTS postgis;');
+    const schema = options.postgisSchema ?? 'public';
+    if (!schema || schema.includes('\0'))
+      throw new Error('Invalid PostGIS schema.');
+    if (schema !== 'public') {
+      // The image initialises postgres with PostGIS in public. Use a fresh database
+      // to test extension placement without relocating an existing extension.
+      await query('CREATE DATABASE cii_maps_audit TEMPLATE template0;');
+      database = 'cii_maps_audit';
+    }
+    const quotedSchema = `"${schema.replaceAll('"', '""')}"`;
+    await query(
+      `CREATE SCHEMA IF NOT EXISTS ${quotedSchema}; CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA ${quotedSchema};`
+    );
     const port = options.publishLoopback
       ? Number(
           (await run('docker', ['port', name, '5432/tcp'])).stdout

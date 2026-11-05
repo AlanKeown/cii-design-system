@@ -19,7 +19,12 @@ export default defineConfig({
     ]
   },
   plugins: [svelte({ configFile: false })],
-  optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },
+  optimizeDeps: {
+    // Workers are loaded after the page: prebundle sql.js before measurements
+    // start so discovering its CommonJS entry cannot trigger a page reload.
+    include: ['sql.js'],
+    exclude: ['@sqlite.org/sqlite-wasm']
+  },
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

@@ -1,12 +1,12 @@
 # Svelte Unified Mapping Components — Development Plan
 
-|                   |                                                                             |
-| ----------------- | --------------------------------------------------------------------------- |
-| **Status**        | Draft for review — v0.3 (review findings from `sources/compare.md` applied) |
-| **Date**          | 1 November 2026                                                             |
-| **Engines**       | Leaflet, MapLibre GL JS, OpenLayers                                         |
-| **Framework**     | Svelte 5 (runes) / SvelteKit                                                |
-| **Spatial store** | PostGIS (authoritative output)                                              |
+|                   |                                              |
+| ----------------- | -------------------------------------------- |
+| **Status**        | Phase 0 complete; Phase 1 in progress — v0.4 |
+| **Date**          | 5 November 2026                              |
+| **Engines**       | Leaflet, MapLibre GL JS, OpenLayers          |
+| **Framework**     | Svelte 5 (runes) / SvelteKit                 |
+| **Spatial store** | PostGIS (authoritative output)               |
 
 ## Decisions already taken for this plan
 
@@ -25,7 +25,9 @@
   `@cii/*`, uses `@cii/svelte` components and `--cii-*` tokens, and follows
   `data-cii-theme` (§15.5).
 
-## Implementation progress — 4 November 2026
+## Foundation baseline — 4 November 2026
+
+This historical baseline precedes the Phase 0 closeout below.
 
 Phase 0 is under way in `@cii/maps` and `@cii/maps-server` (see
 `packages/maps/README.md` and `packages/maps-server/README.md` in the
@@ -105,11 +107,17 @@ processing above that unless the application explicitly configures a larger OPFS
 limit and OPFS is available. `routeGeoPackageFile()` implements reader
 selection.
 
-Phase 0 is **not complete**: audits of the intended self-hosted/Supabase
-environments, report acceptance and remote CI results remain outstanding.
-Installed-grid comparisons are now available, but production client grid
-integration is still disabled. The initial Phase 1 slice does not complete its
-wider adapter/source/control scope.
+Phase 0 is **complete for the initial deployment scope**, closed on 5 November
+2026 after reviewing S1–S8, recording D1–D6 and verifying the foundation checks.
+Supabase is the initial hosted target. The digest-pinned disposable PostGIS
+instance is the self-hosted development reference; certification of another
+self-hosted deployment is deferred until one is selected. The measured Supabase
+pipeline/grid limitations are accepted as capability limits, with typed refusal
+of unavailable operations. See §16.3 for the closeout and Phase 1 handoff.
+
+Production client grid integration, other adapters/controls and capture or
+persistence implementations are later delivery work. Phase 0 completion does not
+expand the first Leaflet slice's documented production capabilities.
 
 ### Hosted Supabase audit — 5 November 2026
 
@@ -126,8 +134,9 @@ those errors.
 The full measured result is retained in
 `packages/maps/tests/fixtures/supabase-target-audit.json`. No hosted schema/data
 changes were made. A specific self-hosted deployment has not been designated;
-the disposable PostGIS oracle remains the local development reference. The S7
-accuracy/pipeline limitations remain open for the intended deployment scope.
+the disposable PostGIS oracle remains the local development reference. S7 is
+closed with the measured limits recorded; workflows needing those operations
+must fail capability preflight rather than silently use an automatic transform.
 
 ## Status of the earlier specification
 
@@ -2248,13 +2257,13 @@ Durations are not estimated here. They should be sized after the Phase 0 spikes,
 because the spikes settle the largest unknowns (custom-CRS display and capture
 parity).
 
-| Phase                            | Scope                                                                                                                                                                                                                                                                                                                                           | Exit criteria                                                                                                                                                                                                                                                  |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **0 — Foundations and spikes**   | Map packages added to the existing npm workspaces; CI (including the Leaflet version matrix, §6.3); JSON Schema; registries; CRS service with the core definitions and the Australian CRS pack (D8); `resolveSourceCrs()`; view contract (§6.4); fake engine; conformance harness. Spikes S1–S8 (below).                                        | Spike reports accepted. Decisions D1–D6 (§17.3) made.                                                                                                                                                                                                          |
-| **1 — Display on three engines** | `MapContainer` (with the §12.2 lifecycle rules); `Layer` for `raster-tiles` and `features`; XYZ, WMS and WMTS providers; GeoJSON file provider; `<CrsConfirm>`; zoom, scale, attribution, coordinate readout and layer list controls; display CRS switching (with the R2.4 pre-check); theming (§15.5)                                          | R1 and R2 conformance passes on all three engines, including an MGA display on OL and Leaflet. §15.4 items 1–3, 5 and 6 pass.                                                                                                                                  |
-| **2 — Data sources**             | WFS, OAPIF, ArcGIS REST, Shapefile, **KML, GPX, CSV (XY and WKT)**, GeoPackage (browser), PostGIS read (features and MVT), server ingest (SpatiaLite, large files, with the §15.6 upload controls), legend, feature list, identify, geolocate, basemap picker, display CRS selector, import control                                             | R5.3 passes. Every row of §5.4 has a fixture test. §15.4 items 4, 7 and 8 pass. Security tests for untrusted content and uploads pass.                                                                                                                         |
-| **3 — Capture and persistence**  | Capture engine (point, linestring, polygon, rectangle, select, modify, move, delete), crosshair mode, coordinate input, vertex list, capture status, snapping with source-coordinate retention (§5.6), validators, attribute form, edit buffer, undo/redo, drafts (§9.6), navigation guard, persistence adapters A and B, commit panel, measure | R3 and R5.1–R5.6 pass on adapters A and B, including per-op results, idempotent retry and mixed-CRS change sets. Capture parity tests pass on all three engines. §15.4 items 9–11 pass, including the keyboard-only capture and vertex-list editing scenarios. |
-| **4 — Interop and extension**    | Adapter C (OAPIF Part 4, restricted), optional WFS-T adapter D, split/merge/trace/circle modes, FlatGeobuf, PMTiles, COG (OL only), geocoder, clustering, extension SDK documentation, MapLibre custom CRS once no longer experimental                                                                                                          | R4 is shown by at least two extensions built outside the monorepo. Adapter C reports its capabilities correctly and is refused without `allowNonConformantPersistence`.                                                                                        |
+| Phase                                     | Scope                                                                                                                                                                                                                                                                                                                                           | Exit criteria                                                                                                                                                                                                                                                  |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **0 — Foundations and spikes (complete)** | Map packages added to the existing npm workspaces; CI (including the Leaflet version matrix, §6.3); JSON Schema; registries; CRS service with the core definitions and the Australian CRS pack (D8); `resolveSourceCrs()`; view contract (§6.4); fake engine; conformance harness. Spikes S1–S8 (below).                                        | Spike reports accepted. Decisions D1–D6 (§17.3) made.                                                                                                                                                                                                          |
+| **1 — Display on three engines**          | `MapContainer` (with the §12.2 lifecycle rules); `Layer` for `raster-tiles` and `features`; XYZ, WMS and WMTS providers; GeoJSON file provider; `<CrsConfirm>`; zoom, scale, attribution, coordinate readout and layer list controls; display CRS switching (with the R2.4 pre-check); theming (§15.5)                                          | R1 and R2 conformance passes on all three engines, including an MGA display on OL and Leaflet. §15.4 items 1–3, 5 and 6 pass.                                                                                                                                  |
+| **2 — Data sources**                      | WFS, OAPIF, ArcGIS REST, Shapefile, **KML, GPX, CSV (XY and WKT)**, GeoPackage (browser), PostGIS read (features and MVT), server ingest (SpatiaLite, large files, with the §15.6 upload controls), legend, feature list, identify, geolocate, basemap picker, display CRS selector, import control                                             | R5.3 passes. Every row of §5.4 has a fixture test. §15.4 items 4, 7 and 8 pass. Security tests for untrusted content and uploads pass.                                                                                                                         |
+| **3 — Capture and persistence**           | Capture engine (point, linestring, polygon, rectangle, select, modify, move, delete), crosshair mode, coordinate input, vertex list, capture status, snapping with source-coordinate retention (§5.6), validators, attribute form, edit buffer, undo/redo, drafts (§9.6), navigation guard, persistence adapters A and B, commit panel, measure | R3 and R5.1–R5.6 pass on adapters A and B, including per-op results, idempotent retry and mixed-CRS change sets. Capture parity tests pass on all three engines. §15.4 items 9–11 pass, including the keyboard-only capture and vertex-list editing scenarios. |
+| **4 — Interop and extension**             | Adapter C (OAPIF Part 4, restricted), optional WFS-T adapter D, split/merge/trace/circle modes, FlatGeobuf, PMTiles, COG (OL only), geocoder, clustering, extension SDK documentation, MapLibre custom CRS once no longer experimental                                                                                                          | R4 is shown by at least two extensions built outside the monorepo. Adapter C reports its capabilities correctly and is refused without `allowNonConformantPersistence`.                                                                                        |
 
 Every phase also requires `npm run check`, `npm run test:unit` and `npm test` to
 pass, and docs pages for its new components to be published.
@@ -2291,6 +2300,38 @@ switch criteria are met. This could fall in any phase, or after 1.0.
 | S6  | OAPIF Part 4 against pygeoapi + PostGIS behind an auth proxy                                                                      | `Content-Crs` on POST and ETag behaviour are confirmed or ruled out                                                                                     |
 | S7  | PostGIS/PROJ transformation pipelines on the target servers (self-hosted and Supabase): are the GDA94↔GDA2020 grids installed?    | Pipeline documented per environment; proj4js differences quantified                                                                                     |
 | S8  | Server-side vertex rebuilding from `vertexSources` (§10.3) in PL/pgSQL (adapter B) and in the adapter A helpers                   | Snapped vertices match the source feature's stored vertices exactly after commit; cost per op measured for a 1 000-vertex polygon                       |
+
+---
+
+### 16.3 Phase 0 closeout — 5 November 2026
+
+The foundation registries, CRS service, schema composition, fake engine,
+conformance harness and version CI are implemented. D1–D6 and the 16 MiB
+GeoPackage routing default are recorded. S1–S8 are accepted as feasibility
+reports within their stated fixtures and boundaries, including negative
+findings; they do not certify the wider production phases.
+
+**Deployment scope.** Supabase project `kykbgwewulzceunbbsfa` is the initial
+hosted target. The pinned disposable PostGIS oracle is the local/self-hosted
+development reference. Per-deployment self-hosted certification is deferred
+until another target is named. Supabase's unsupported exact pipelines and failed
+named-grid operations are capability limits. Precision workflows must request
+the required operation and pass `assertTargetTransformation()`; automatic
+transform availability cannot satisfy a pipeline/grid requirement. Production
+named browser grids remain disabled.
+
+**Verification.** The committed foundation baseline `dfb5e6af286e` passed the
+GitHub Verify workflow (including PostGIS accuracy and live database tests) and
+the stable Leaflet gate. Its pinned Leaflet 2 diagnostic failed as expected and
+the weekly development job was not scheduled by that push. The closeout changes
+add a schema-aware read-only audit regression to CI and are locally validated;
+they remain uncommitted, so remote CI has not run on that final diff. See
+`docs/mapping-phase-0-spike-report.md` for evidence and limits.
+
+**Phase 1 handoff.** Next implement XYZ raster basemaps and first-party layer
+controls, then continue WMS/WMTS, CRS confirmation UI, display switching and the
+other production adapters. Preserve the capability refusals, source-CRS
+confirmation, attribution and accuracy reporting established in Phase 0.
 
 ---
 
@@ -2470,3 +2511,4 @@ should be re-checked during Phase 0 alongside spikes S1–S7._
 | 0.1     | 1 Nov 2026 | First draft                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 0.2     | 1 Nov 2026 | Added the Leaflet version policy for production (§6.3) and decision D7. Updated the decisions summary, §3, §13 baseline, §14 test matrix, §16 roadmap and spike S2, and the §17 risk register.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 0.3     | 1 Nov 2026 | Applied the review in `sources/compare.md`. Marked the earlier spec as superseded and listed what carries forward. Added R5.6 (conformant persistence) and made adapter C a restricted adapter. Replaced `CommitResult` with per-op results, retry rules and idempotency. Moved `geometryCrs` onto each op and added the display-CRS switch pre-check. Added snapping precision rules and `vertexSources` (spike S8). Split `CrsDeclaration` (config) from `ConfirmedCrs` (resolved). Rewrote the `MapContainer` and `Layer` lifecycles. Added the view contract (§6.4) and style rule precedence (§7.4). Restored accessibility, theming, security and attribution requirements (§15.4–15.6) and drafts (§9.6). Added the scope table (§16.1), allocated KML/GPX/CSV and COG to phases, kept npm workspaces and the Node test runner, renamed packages to `@cii/*`, and recorded decisions D8 (Australia as the first-class jurisdiction), D9 (two packages to start) and D10 (scope as in §16.1). |
+| 0.4     | 5 Nov 2026 | Closed Phase 0 for the initial Supabase/local-reference scope; accepted S1–S8 with measured limits; recorded the schema-aware read-only audit, capability gates, CI evidence and Phase 1 handoff.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |

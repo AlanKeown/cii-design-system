@@ -51,3 +51,5 @@ export function probeGeometryColumn(
     ]
   };
 }
+
+export * from './target-audit.ts';

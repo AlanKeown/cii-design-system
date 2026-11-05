@@ -62,7 +62,8 @@
     "spike:vertices": "node --experimental-strip-types scripts/spike-vertices.ts",
     "spike:oapif": "node --experimental-strip-types scripts/spike-oapif.ts",
     "spike:grids": "node --experimental-strip-types scripts/spike-grids.ts",
-    "audit:target": "node --experimental-strip-types scripts/audit-target-postgis.ts"
+    "audit:target": "node --experimental-strip-types scripts/audit-target-postgis.ts",
+    "spike:audit": "node --experimental-strip-types scripts/spike-target-audit.ts"
   },
   "devDependencies": {
     "@cii/svelte": "0.2.0",
