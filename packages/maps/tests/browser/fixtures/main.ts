@@ -6,6 +6,10 @@ declare global {
   interface Window {
     mapHarness?: {
       view(): ViewState;
+      viewEvents(): { view: ViewState; source: 'api' | 'user' }[];
+      clearViewEvents(): void;
+      setView(view: Partial<ViewState>): void;
+      setBoundView(view: ViewState): void;
       stats(): Promise<{ count: number; radius: number; color: string }>;
       hit(): (string | number | undefined)[];
       contract(): Promise<string[]>;

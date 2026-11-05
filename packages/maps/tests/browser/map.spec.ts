@@ -322,3 +322,106 @@ test('readiness and valid layers do not wait for a stalled source, including aft
     release();
   }
 });
+
+for (const display of ['EPSG:3857', 'OGC:CRS84']) {
+  for (const action of ['zoom click', 'drag', 'arrow key', '+']) {
+    test(`${display} ${action} reports one user view change without an API echo`, async ({
+      page
+    }) => {
+      await page.goto(`/?display=${encodeURIComponent(display)}`);
+      await expect(page.getByLabel('Ready count')).toHaveText('1');
+      // Let the initial API view notification finish before observing navigation.
+      await expect
+        .poll(() => page.evaluate(() => window.mapHarness!.viewEvents().length))
+        .toBe(1);
+      await page.evaluate(() => window.mapHarness!.clearViewEvents());
+      const canvas = page.getByRole('application');
+      if (action === 'zoom click') {
+        await page
+          .getByRole('button', { name: 'Zoom in', exact: true })
+          .click();
+      } else if (action === 'drag') {
+        const box = (await canvas.boundingBox())!;
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(
+          box.x + box.width / 2 + 100,
+          box.y + box.height / 2 + 30,
+          { steps: 10 }
+        );
+        // Avoid inertia so a drag has a single, deterministic end event.
+        await page.waitForTimeout(100);
+        await page.mouse.up();
+      } else {
+        await canvas.focus();
+        await page.keyboard.press(action === '+' ? '+' : 'ArrowRight');
+      }
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            window.mapHarness!.viewEvents().map((event) => event.source)
+          )
+        )
+        .toEqual(['user']);
+      // An echo is scheduled by the binding effect and delivered on a later frame.
+      await page.waitForTimeout(150);
+      const events = await page.evaluate(() => window.mapHarness!.viewEvents());
+      expect(events.map((event) => event.source)).toEqual(['user']);
+      expect(events[0].view).toEqual(
+        await page.evaluate(() => window.mapHarness!.view())
+      );
+      await expect(page.getByLabel('Bound center')).toHaveText(
+        String(events[0].view.center[0])
+      );
+    });
+  }
+}
+
+test('controlled and engine API view changes report once; equivalent bound views are suppressed', async ({
+  page
+}) => {
+  await page.goto('/');
+  await expect(page.getByLabel('Ready count')).toHaveText('1');
+  await expect
+    .poll(() => page.evaluate(() => window.mapHarness!.viewEvents().length))
+    .toBe(1);
+  await page.evaluate(() => window.mapHarness!.clearViewEvents());
+  await page
+    .getByRole('button', { name: 'Set controlled view', exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.mapHarness!.viewEvents().map((event) => event.source)
+      )
+    )
+    .toEqual(['api']);
+  await page.waitForTimeout(150);
+  expect(
+    await page.evaluate(() =>
+      window.mapHarness!.viewEvents().map((event) => event.source)
+    )
+  ).toEqual(['api']);
+  await page.evaluate(() => {
+    window.mapHarness!.clearViewEvents();
+    window.mapHarness!.setBoundView(window.mapHarness!.view());
+  });
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => window.mapHarness!.viewEvents())).toEqual(
+    []
+  );
+  await page.evaluate(() => window.mapHarness!.setView({ zoom: 9 }));
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.mapHarness!.viewEvents().map((event) => event.source)
+      )
+    )
+    .toEqual(['api']);
+  await page.waitForTimeout(150);
+  expect(
+    await page.evaluate(() =>
+      window.mapHarness!.viewEvents().map((event) => event.source)
+    )
+  ).toEqual(['api']);
+});

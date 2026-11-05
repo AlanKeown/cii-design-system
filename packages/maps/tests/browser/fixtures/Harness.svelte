@@ -7,6 +7,7 @@
   import { checkEngineConformance } from '../../../src/testing.ts';
   import type { IMapEngine, MapConfig, ViewState } from '../../../src/index.ts';
   import type { Map as LeafletMap } from 'leaflet';
+  const viewEvents: { view: ViewState; source: 'api' | 'user' }[] = [];
   let mounted = $state(true);
   let visible = $state(true);
   let large = $state(false);
@@ -124,6 +125,16 @@
   onMount(() => {
     window.mapHarness = {
       view: () => engine!.getView(),
+      viewEvents: () => structuredClone(viewEvents),
+      clearViewEvents: () => {
+        viewEvents.length = 0;
+      },
+      setView: (view: Partial<ViewState>) => {
+        engine!.setView(view);
+      },
+      setBoundView: (view: ViewState) => {
+        controlledView = view;
+      },
       stats: async () => {
         const L = await import('leaflet');
         let count = 0;
@@ -207,6 +218,7 @@
       bind:view={controlledView}
       label="Fixture"
       onready={ready}
+      onviewchange={(view, source) => viewEvents.push({ view, source })}
       onerror={() => errorCount++}
     />{/if}
 </div>

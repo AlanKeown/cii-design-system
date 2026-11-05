@@ -369,6 +369,7 @@ export class MapController {
   setView(view: Partial<ViewState>): void {
     if (!this.#engine) return;
     const current = this.#engine.getView();
+    // Bound engine views include zoom; resolution remains authoritative when both are present.
     if (
       (!view.center ||
         view.center.every(
@@ -376,7 +377,9 @@ export class MapController {
         )) &&
       (view.resolution === undefined ||
         Math.abs(view.resolution - current.resolution) < 1e-9) &&
-      view.zoom === undefined &&
+      (view.resolution !== undefined ||
+        view.zoom === undefined ||
+        view.zoom === current.zoom) &&
       (view.rotation === undefined || view.rotation === current.rotation)
     )
       return;
@@ -385,9 +388,10 @@ export class MapController {
   zoom(delta: number): void {
     if (!this.#engine) return;
     const view = this.#engine.getView();
-    this.#engine.setView({ resolution: view.resolution * 2 ** -delta });
-    this.#emit();
-    this.#callbacks.onviewchange?.(this.#engine.getView(), 'user');
+    this.#engine.setView(
+      { resolution: view.resolution * 2 ** -delta },
+      { source: 'user' }
+    );
   }
   resize(): void {
     this.#engine?.resize();

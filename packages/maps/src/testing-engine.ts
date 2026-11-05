@@ -213,9 +213,15 @@ export class FakeMapEngine implements IMapEngine {
   getView(): ViewState {
     return this.#mounted().getView();
   }
-  setView(view: Partial<ViewState>, _options?: { animate?: boolean }): void {
+  setView(
+    view: Partial<ViewState>,
+    options?: { animate?: boolean; source?: 'api' | 'user' }
+  ): void {
     this.#mounted().setView(view);
-    this.#emit('viewchange', { view: this.getView(), source: 'api' });
+    this.#emit('viewchange', {
+      view: this.getView(),
+      source: options?.source ?? 'api'
+    });
   }
   /** Simulates an engine navigation event without a DOM event. */
   userSetView(view: Partial<ViewState>): void {

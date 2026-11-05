@@ -148,7 +148,11 @@ export interface IMapEngine extends EngineView {
   }): Promise<'done' | 'rebuild-required'>;
   destroy(): void;
   resize(): void;
-  setView(view: Partial<ViewState>, options?: { animate?: boolean }): void;
+  /** Defaults to an API event; external map controls may identify user navigation. */
+  setView(
+    view: Partial<ViewState>,
+    options?: { animate?: boolean; source?: 'api' | 'user' }
+  ): void;
   fitExtent(
     extent: Extent,
     options?: { padding?: number; maxZoom?: number }

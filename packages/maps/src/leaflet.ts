@@ -315,7 +315,10 @@ export default class LeafletEngine implements IMapEngine {
       extent: [lower[0], lower[1], upper[0], upper[1]]
     };
   }
-  setView(view: Partial<ViewState>, options?: { animate?: boolean }): void {
+  setView(
+    view: Partial<ViewState>,
+    options?: { animate?: boolean; source?: 'api' | 'user' }
+  ): void {
     if (view.rotation !== undefined && view.rotation !== 0)
       throw new MapError('VIEW_INVALID', {
         reason: 'Rotation is unsupported.'
@@ -325,7 +328,7 @@ export default class LeafletEngine implements IMapEngine {
       view.resolution !== undefined || view.zoom !== undefined
         ? resolveViewResolution(view, this.#definition?.tileMatrix)
         : current.resolution;
-    this.#source = 'api';
+    this.#source = options?.source ?? 'api';
     this.#applyView(
       view.center ?? current.center,
       resolution,
