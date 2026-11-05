@@ -2,9 +2,11 @@
 
 Phase 0 remains open. D1–D6 are approved. The extension foundations and CI
 workflow definitions are implemented. S1–S6 and S8 have reproducible local
-experiments with the limitations below. S7 has installed-grid comparisons but
-still needs the intended self-hosted and hosted Supabase environments. The
-reports below record the measured feasibility results and their limits.
+experiments with the limitations below. S7 has installed-grid comparisons and a
+hosted Supabase transform audit. PostGIS is enabled on the connected hosted
+project; function and named-grid limitations remain as measured below. A
+separate self-hosted deployment has not been designated. The reports record the
+measured feasibility results and their limits.
 
 ## Foundations
 
@@ -37,16 +39,16 @@ reports below record the measured feasibility results and their limits.
 
 ## Spike results
 
-| Spike | Local result                                                            | Evidence and boundary                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ----- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S1    | Pass for the synthetic MGA fixture                                      | MapLibre 6.15.0 renders MGA tiles, an MGA `{bbox}` WMS response, and worker-projected sketch points/polygon outlines within one pixel at map zoom 17/source zoom 18. This is not an external WMS interoperability test.                                                                                                                                                                                                     |
-| S2    | Stable feasibility passes; migration differences recorded               | Leaflet 1.9.4 uses a first-party projected CRS factory. At zooms 12, 15.5 and 18 the Sydney oracle/feature residual is zero at the recorded precision, and round-trip error is below 1 mm. The spherical ground scale is within 0.5% of the local MGA grid. The alpha and beta fail through different CRS API changes. Production custom-CRS capability remains disabled.                                                   |
-| S3    | Non-Mercator vector tile rendering supported in the tested cases        | OpenLayers 10.11.0 renders synthetic MGA56 MVT in MGA56 and reprojects it into MGA55. Canvas pixels at the expected location are checked. Map-level hit testing returns zero hits despite visible points in this harness; picking support is not established. Production compatibility rules remain conservative.                                                                                                           |
-| S4    | Worker/OPFS measurements complete; routing policy approved              | Both readers open synthetic GeoPackages through 128 MiB in Chromium. Official SQLite streaming OPFS bounds measured WASM heap and input chunks. Full geometry decoding, peak memory, mobile limits and other browsers are unmeasured.                                                                                                                                                                                       |
-| S5    | Pass for the retained-vertex polygon fixture                            | Real Leaflet, MapLibre and OpenLayers surfaces produce exactly equal change sets for a polygon snapped to canonical source vertices, with mouse/double-click and touch/Enter completion. Navigation zoom remains unchanged. Leaflet uses its production interaction surface; the other two use spike-only native surface bridges. Freehand numerical equality, pen input and production capture adapters are not certified. |
-| S6    | `Content-Crs` and ETag concurrency ruled out for the tested combination | pygeoapi 0.23.3 + PostgreSQL provider + disposable PostGIS behind a local HTTP auth proxy: unauthenticated POST is 401; native POST is 201; a CRS84 POST is 201 but stores `[151.21,-33.87]` with SRID 7856; GET has no ETag; stale `If-Match` PUT is 204 and overwrites the row.                                                                                                                                           |
-| S7    | Local installed-grid comparisons pass; deployment audits outstanding    | Two checksum-pinned Australian grids match explicit PostGIS/PROJ pipelines at Sydney, Melbourne, Canberra and Darwin within 1e-9 degrees. This neither audits target servers nor enables grids in the production browser transform service.                                                                                                                                                                                 |
-| S8    | XY Polygon reconstruction prototype passes                              | A 1,000-vertex polygon produces identical SQL and batched adapter-A results. All 667 stored/snapped vertices equal their authoritative target coordinates exactly; stale stored-row versions fail. SQL and adapter-A wall times were approximately 185 ms and 110 ms, including Docker/psql startup and JSON transport.                                                                                                     |
+| Spike | Local result                                                                   | Evidence and boundary                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1    | Pass for the synthetic MGA fixture                                             | MapLibre 6.15.0 renders MGA tiles, an MGA `{bbox}` WMS response, and worker-projected sketch points/polygon outlines within one pixel at map zoom 17/source zoom 18. This is not an external WMS interoperability test.                                                                                                                                                                                                     |
+| S2    | Stable feasibility passes; migration differences recorded                      | Leaflet 1.9.4 uses a first-party projected CRS factory. At zooms 12, 15.5 and 18 the Sydney oracle/feature residual is zero at the recorded precision, and round-trip error is below 1 mm. The spherical ground scale is within 0.5% of the local MGA grid. The alpha and beta fail through different CRS API changes. Production custom-CRS capability remains disabled.                                                   |
+| S3    | Non-Mercator vector tile rendering supported in the tested cases               | OpenLayers 10.11.0 renders synthetic MGA56 MVT in MGA56 and reprojects it into MGA55. Canvas pixels at the expected location are checked. Map-level hit testing returns zero hits despite visible points in this harness; picking support is not established. Production compatibility rules remain conservative.                                                                                                           |
+| S4    | Worker/OPFS measurements complete; routing policy approved                     | Both readers open synthetic GeoPackages through 128 MiB in Chromium. Official SQLite streaming OPFS bounds measured WASM heap and input chunks. Full geometry decoding, peak memory, mobile limits and other browsers are unmeasured.                                                                                                                                                                                       |
+| S5    | Pass for the retained-vertex polygon fixture                                   | Real Leaflet, MapLibre and OpenLayers surfaces produce exactly equal change sets for a polygon snapped to canonical source vertices, with mouse/double-click and touch/Enter completion. Navigation zoom remains unchanged. Leaflet uses its production interaction surface; the other two use spike-only native surface bridges. Freehand numerical equality, pen input and production capture adapters are not certified. |
+| S6    | `Content-Crs` and ETag concurrency ruled out for the tested combination        | pygeoapi 0.23.3 + PostgreSQL provider + disposable PostGIS behind a local HTTP auth proxy: unauthenticated POST is 401; native POST is 201; a CRS84 POST is 201 but stores `[151.21,-33.87]` with SRID 7856; GET has no ETag; stale `If-Match` PUT is 204 and overwrites the row.                                                                                                                                           |
+| S7    | Local grid comparison and hosted audit measured; deployment limitations remain | Installed-grid CLI comparisons pass at eight samples. Hosted Supabase runs 38/40 comparisons (all 32 same-datum cases pass), lacks ST_TransformPipeline, and fails both explicit named-grid operations. The separate self-hosted deployment is undesignated; production browser grids remain disabled.                                                                                                                      |
+| S8    | XY Polygon reconstruction prototype passes                                     | A 1,000-vertex polygon produces identical SQL and batched adapter-A results. All 667 stored/snapped vertices equal their authoritative target coordinates exactly; stale stored-row versions fail. SQL and adapter-A wall times were approximately 185 ms and 110 ms, including Docker/psql startup and JSON transport.                                                                                                     |
 
 Machine-readable measurements:
 
@@ -54,12 +56,48 @@ Machine-readable measurements:
 - [pygeoapi transaction probe](../packages/maps/tests/fixtures/oapif-probe.json)
 - [Installed-grid comparisons](../packages/maps/tests/fixtures/grid-comparison.json)
 - [Vertex reconstruction](../packages/maps/tests/fixtures/vertex-benchmark.json)
+- [Hosted Supabase target audit](../packages/maps/tests/fixtures/supabase-target-audit.json)
 
 The CLI server experiments use a digest-pinned disposable PostGIS 3.5.2 / PROJ
 7.2.1 image. S8 and installed-grid comparisons have networking disabled and no
 host ports. S6 publishes only a random loopback database port and uses synthetic
 data behind a loopback HTTP proxy. The runners remove only their own containers.
 Existing application databases are not modified.
+
+## Hosted Supabase deployment check — 5 November 2026
+
+The read-only MCP connection to `kykbgwewulzceunbbsfa` reports PostgreSQL 17.11,
+PostGIS 3.3.7 in the `extensions` schema and PROJ 9.7.1.
+`transaction_read_only = on`. All 17 tested database SRIDs declare matching EPSG
+authorities. Queries qualify spatial functions with `extensions` because the
+connection's default search path contains only the user schema and `public`.
+
+Of the 40 planned browser/server comparisons, 38 ran: all 32 same-datum
+projection/inverse cases passed their existing tolerances, with a maximum
+projected residual of approximately 5.3e-9 metres and maximum geographic
+residual of 3.8e-13 degrees. Six automatic datum comparisons were characterised;
+the largest browser/server difference was approximately 1.55 projected metres.
+Those datum differences are measurements, not projection-test failures or claims
+of ground/survey accuracy. Automatic operation selection was not introspected.
+
+Two explicit-pipeline cases are unsupported because `ST_TransformPipeline` is
+not installed on this deployment. Their exact operations were not replaced with
+automatic transformations.
+
+To probe named grids without that function, separate tests used the available
+`ST_Transform(geometry, from_proj, to_proj)` overload with explicit geographic
+GRS80 definitions. Both Australian named-grid operations failed at Sydney with
+SQLSTATE `XX000`, PROJ error 4098, "No inverse operation". The
+otherwise-matching `+nadgrids=null` control succeeded. This shows that the two
+explicit named-grid operations are not usable through the tested path; it does
+not establish whether the files are physically installed. The pipeline and grid
+limitations must remain visible in persistence/accuracy capability reporting.
+
+The full inputs, server outputs, browser residuals, versions, CRS authorities
+and grid definitions are retained in the hosted target JSON report. No
+application rows were read and no hosted schema/data changes were made. A
+separate self-hosted deployment is still undesignated; the disposable PostGIS
+oracle remains the local development reference.
 
 ## Findings that affect implementation
 
@@ -145,9 +183,12 @@ report.
 
 ## Remaining exit work
 
-1. Identify and audit both intended self-hosted and hosted Supabase targets.
-2. Finish the S7 deployment report and resolve any additional conformance cases
-   exposed by those environments.
+1. Identify/audit a specific self-hosted deployment if one is intended, or
+   explicitly retain the disposable oracle as the development reference and
+   defer deployment-specific self-hosted certification.
+2. Resolve or explicitly accept the hosted Supabase pipeline/named-grid
+   limitations for the intended accuracy requirements. The measurements do not
+   certify survey workflows.
 3. Obtain remote CI results when the user authorises committing and pushing.
 
 The wider Phase 1 display adapters, sources, controls and runtime CRS switching

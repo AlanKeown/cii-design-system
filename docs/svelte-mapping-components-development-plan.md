@@ -111,6 +111,24 @@ Installed-grid comparisons are now available, but production client grid
 integration is still disabled. The initial Phase 1 slice does not complete its
 wider adapter/source/control scope.
 
+### Hosted Supabase audit — 5 November 2026
+
+The project-scoped read-only MCP connection to `kykbgwewulzceunbbsfa` reports
+PostGIS 3.3.7 in `extensions`, PROJ 9.7.1 and PostgreSQL 17.11. It ran 38 of the
+40 planned browser/server comparisons: all 32 same-datum cases passed existing
+tolerances; six automatic datum comparisons were characterised (up to about 1.55
+projected metres difference from the browser). The two explicit-pipeline cases
+cannot run because `ST_TransformPipeline` is absent. Both named-grid operations
+fail through the available explicit-definition `ST_Transform` overload, while
+its null-grid control succeeds; physical grid installation is not established by
+those errors.
+
+The full measured result is retained in
+`packages/maps/tests/fixtures/supabase-target-audit.json`. No hosted schema/data
+changes were made. A specific self-hosted deployment has not been designated;
+the disposable PostGIS oracle remains the local development reference. The S7
+accuracy/pipeline limitations remain open for the intended deployment scope.
+
 ## Status of the earlier specification
 
 This plan **supersedes**
