@@ -385,15 +385,51 @@ Reconfiguration uses numeric view fixtures, optionally returns
 in-place CRS change. The fake has no rendering or datum maths and cannot
 establish real-engine projection, browser gesture, capture or precision parity.
 
-Still pending in Phase 0: extension schema merging, remaining typed subsystem
-registries, real-engine version CI, and spikes S1–S8. Vetted client grid
-integration, installed-grid comparisons and per-target-server PostGIS audits
-remain outstanding. The first Leaflet/Svelte feature slice starts Phase 1; the
-remaining adapters, sources, controls and display-CRS switch orchestration
-remain pending.
+Phase 0 follow-up now includes the shared `createRegistries()` collection,
+strict extension schema composition at `@cii/maps/config/extensions`, Leaflet
+version workflow definitions and reproducible engine/storage/server spikes. See
+[the evidence and remaining exit work](../../docs/mapping-phase-0-spike-report.md).
+D1–D6 and the initial GeoPackage routing policy are approved; target-server
+audits, report acceptance and remote CI results remain outstanding. Production
+client grid integration is still disabled. Spike-only MapLibre/OpenLayers
+bridges, capture and custom Leaflet CRS construction do not expand the
+production adapter's capabilities.
+
+`createRegistries({ australia, fetch })` exposes engines, CRS providers, data
+sources, renderers, controls, capture modes, validators, persistence adapters,
+exporters and style compilers. The Leaflet runtime registers its engine and
+feature renderer through that collection. Empty registries describe extension
+slots, not implemented controls/capture/persistence features.
+
+The extension compiler is a Node/build entry point requiring the optional Ajv
+peer. `createExtendedMapConfigValidator(fragments)` validates registered source
+and control config branches plus namespaced `extensions[id]` settings.
+`compileExtendedMapConfigValidator(fragments)` emits a standalone ESM predicate;
+pass that predicate to `validateConfigWith()` for JSON-boundary, defaults and
+cross-reference checks without runtime Ajv or dynamic code evaluation. Core
+identity, CRS declarations, attribution and editable-target rules remain
+enforced. Fragments are trusted application code and cannot resolve external
+schema URLs. The default `MapContainer` still uses the built-in schema;
+extension-aware component orchestration and versioned extension installation
+remain later work.
 
 Runtime peer: proj4 (`>=2.20.9 <3`, tested at 2.20.9; MIT), whose current
 runtime dependencies mgrs and wkt-parser are also MIT. Build tooling uses Ajv
 (MIT) for JSON Schema validation code generation and json-schema-to-typescript
 (MIT) for configuration types. CRS definitions come from PROJ's EPSG dataset;
 see [PROJ licensing](https://proj.org/en/stable/about.html#license).
+
+Phase 0 development dependencies, isolated from production exports: MapLibre GL
+JS 6.15.0 (BSD-3-Clause) and OpenLayers 10.11.0 (BSD-2-Clause) exercise actual
+rendering/interaction surfaces; official SQLite WASM 3.54.1-build1 (Apache-2.0
+package wrapper, upstream SQLite public domain) and sql.js 1.15.2 (MIT) compare
+worker readers; GeoTIFF 3.1.0-beta.0 (MIT) decodes checksum-pinned Australian
+shift grids in the CLI comparison. None provide library controls. The optional
+Python test environment is pinned separately in
+`spikes/pygeoapi-requirements.txt`.
+
+`routeGeoPackageFile(fileBytes, { opfsAvailable, opfsLimitBytes })` implements
+the approved 16 MiB browser-memory default. Above that, files route to the
+server unless the application explicitly supplies a fitting OPFS byte limit and
+OPFS is available. This pure selection helper does not load a GeoPackage or
+confirm its CRS; those provider features remain Phase 2 work.

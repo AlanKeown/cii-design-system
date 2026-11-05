@@ -1,0 +1,88 @@
+name: Leaflet compatibility
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 19 * * 0'
+permissions:
+  contents: read
+jobs:
+  leaflet-stable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:packages
+      - run: npm run check -w @cii/maps
+      - run: npm run test:unit -w @cii/maps
+      - run: npx playwright test --config playwright.maps.config.ts
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: leaflet-stable-results
+          path: test-results/maps/
+  leaflet-next-pinned:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:packages
+      - name: Install isolated pinned prerelease without changing production peers
+        run: npm install --prefix "$RUNNER_TEMP/leaflet-next" --no-save --ignore-scripts leaflet@2.0.0-beta.1
+      - name: Probe pinned prerelease
+        run: npx playwright test --config playwright.maps.config.ts
+        env:
+          CII_LEAFLET_MODULE: ${{ runner.temp }}/leaflet-next/node_modules/leaflet/dist/leaflet.js
+          CII_LEAFLET_CSS: ${{ runner.temp }}/leaflet-next/node_modules/leaflet/dist/leaflet.css
+      - name: Record readiness result
+        if: always()
+        run: echo 'Pinned prerelease results are diagnostic. Production remains on Leaflet 1.9.4; current adapter tests and the retained-vertex capture spike are included; full production capture conformance remains future work.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: leaflet-next-pinned-results
+          path: test-results/maps/
+  leaflet-next-dev:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:packages
+      - name: Download official main-branch development build
+        run: |
+          mkdir -p "$RUNNER_TEMP/leaflet-dev"
+          curl --fail --location --retry 3 https://github.com/Leaflet/Leaflet/releases/download/dev/leaflet.zip --output "$RUNNER_TEMP/leaflet-dev.zip"
+          sha256sum "$RUNNER_TEMP/leaflet-dev.zip" >> "$GITHUB_STEP_SUMMARY"
+          unzip -q "$RUNNER_TEMP/leaflet-dev.zip" -d "$RUNNER_TEMP/leaflet-dev"
+      - name: Probe development snapshot
+        run: npx playwright test --config playwright.maps.config.ts
+        env:
+          CII_LEAFLET_MODULE: ${{ runner.temp }}/leaflet-dev/leaflet.js
+          CII_LEAFLET_CSS: ${{ runner.temp }}/leaflet-dev/leaflet.css
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: leaflet-next-dev-results
+          path: test-results/maps/

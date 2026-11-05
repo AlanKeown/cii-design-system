@@ -1,0 +1,41 @@
+name: Mapping server and storage spikes
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  phase-zero-spikes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:packages
+      - run: npm run spike:sqlite -w @cii/maps
+      - run: npm run spike:vertices -w @cii/maps
+      - run: npm run spike:grids -w @cii/maps
+      - name: Prepare isolated pygeoapi dependencies
+        run: |
+          python -m venv "$RUNNER_TEMP/pygeoapi"
+          "$RUNNER_TEMP/pygeoapi/bin/pip" install -r packages/maps/spikes/pygeoapi-requirements.txt
+      - run: npm run spike:oapif -w @cii/maps
+        env:
+          CII_PYGEOAPI_PYTHON: ${{ runner.temp }}/pygeoapi/bin/python
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: mapping-phase-zero-measurements
+          path: |
+            packages/maps/tests/fixtures/sqlite-benchmark.json
+            packages/maps/tests/fixtures/vertex-benchmark.json
+            packages/maps/tests/fixtures/grid-comparison.json
+            packages/maps/tests/fixtures/oapif-probe.json
+            test-results/maps/

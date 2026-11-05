@@ -1,5 +1,6 @@
 import type * as Leaflet from 'leaflet';
 import { MapError } from './errors.ts';
+import { loadLeaflet } from './engine/leaflet-api.ts';
 import { assertDisplayCrs } from './engine/registry.ts';
 import { resolveViewResolution, resolutionToZoom } from './view.ts';
 import { geometryHitDistance } from './engine/geometry-hit.ts';
@@ -116,7 +117,7 @@ export default class LeafletEngine implements IMapEngine {
     init.signal?.addEventListener('abort', abort, { once: true });
     this.#cleanups.push(() => init.signal?.removeEventListener('abort', abort));
     try {
-      const L = await import('leaflet');
+      const L = await loadLeaflet();
       if (this.#destroyed || init.signal?.aborted)
         throw new MapError('ENGINE_MOUNT_ABORTED');
       this.#library = L;

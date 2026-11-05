@@ -1,0 +1,139 @@
+{
+  "browserName": "chromium",
+  "measuredAt": "2026-11-05T05:20:55.774Z",
+  "limitations": "Synthetic GeoPackage metadata reads with a padding table. Heap snapshots exclude transient allocations, browser overhead and OS caches; this is not a peak-memory or mobile-device certification.",
+  "results": [
+    {
+      "mib": 1,
+      "mode": "sqljs",
+      "bytes": 995328,
+      "elapsedMs": 114.47499999776483,
+      "heapBytes": null,
+      "inputBufferBytes": 995328,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": false
+    },
+    {
+      "mib": 1,
+      "mode": "sqlite-memory",
+      "bytes": 995328,
+      "elapsedMs": 240.5,
+      "heapBytes": 8388608,
+      "inputBufferBytes": 995328,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": false
+    },
+    {
+      "mib": 1,
+      "mode": "sqlite-opfs",
+      "bytes": 995328,
+      "elapsedMs": 197.94500000029802,
+      "heapBytes": 8388608,
+      "inputBufferBytes": 995328,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": true
+    },
+    {
+      "mib": 16,
+      "mode": "sqljs",
+      "bytes": 16736256,
+      "elapsedMs": 517.5249999985099,
+      "heapBytes": null,
+      "inputBufferBytes": 16736256,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": false
+    },
+    {
+      "mib": 16,
+      "mode": "sqlite-memory",
+      "bytes": 16736256,
+      "elapsedMs": 362.179999999702,
+      "heapBytes": 21168128,
+      "inputBufferBytes": 16736256,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": false
+    },
+    {
+      "mib": 16,
+      "mode": "sqlite-opfs",
+      "bytes": 16736256,
+      "elapsedMs": 468.0950000025332,
+      "heapBytes": 8388608,
+      "inputBufferBytes": 2097152,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": true
+    },
+    {
+      "mib": 64,
+      "mode": "sqljs",
+      "bytes": 67117056,
+      "elapsedMs": 997.355000000447,
+      "heapBytes": null,
+      "inputBufferBytes": 67117056,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": false
+    },
+    {
+      "mib": 64,
+      "mode": "sqlite-memory",
+      "bytes": 67117056,
+      "elapsedMs": 299.6550000011921,
+      "heapBytes": 81657856,
+      "inputBufferBytes": 67117056,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": false
+    },
+    {
+      "mib": 64,
+      "mode": "sqlite-opfs",
+      "bytes": 67117056,
+      "elapsedMs": 1450.530000001192,
+      "heapBytes": 8388608,
+      "inputBufferBytes": 2097152,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": true
+    },
+    {
+      "mib": 128,
+      "mode": "sqljs",
+      "bytes": 134295552,
+      "elapsedMs": 1046.144999999553,
+      "heapBytes": null,
+      "inputBufferBytes": 134295552,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": false
+    },
+    {
+      "mib": 128,
+      "mode": "sqlite-memory",
+      "bytes": 134295552,
+      "elapsedMs": 1238.25,
+      "heapBytes": 162267136,
+      "inputBufferBytes": 134295552,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": false
+    },
+    {
+      "mib": 128,
+      "mode": "sqlite-opfs",
+      "bytes": 134295552,
+      "elapsedMs": 1862.870000001043,
+      "heapBytes": 8388608,
+      "inputBufferBytes": 2097152,
+      "count": 1000,
+      "srid": 4326,
+      "opfs": true
+    }
+  ]
+}

@@ -92,13 +92,24 @@ type checks and Node test runner.
   labels/rules/icons, other controls and editing remain pending. Engine/display
   changes require an explicit remount until switch orchestration is implemented.
 
-Phase 0 is **not complete**. Remaining work includes extension schema merging,
-remaining typed subsystem registries, Leaflet version CI, and spikes S1–S8.
-Vetted client grid integration, installed-grid comparisons and per-target-server
-PostGIS audits remain outstanding. The first vertical slice starts Phase 1
-without completing its wider adapter/source/control scope. Decisions D1–D6
-remain open; the database declaration override implements the draft's proposed
-policy without closing D1.
+### Phase 0 follow-up — 5 November 2026
+
+Added strict extension schema composition, the shared typed registry collection,
+Leaflet version workflow definitions, and reproducible experiments for S1–S8.
+D1–D6 were explicitly approved by the project owner. Local measurements and
+their limits are recorded in `docs/mapping-phase-0-spike-report.md` in the
+repository.
+
+The initial GeoPackage policy is approved: browser workers up to 16 MiB, server
+processing above that unless the application explicitly configures a larger OPFS
+limit and OPFS is available. `routeGeoPackageFile()` implements reader
+selection.
+
+Phase 0 is **not complete**: audits of the intended self-hosted/Supabase
+environments, report acceptance and remote CI results remain outstanding.
+Installed-grid comparisons are now available, but production client grid
+integration is still disabled. The initial Phase 1 slice does not complete its
+wider adapter/source/control scope.
 
 ## Status of the earlier specification
 
@@ -798,9 +809,10 @@ target** until it meets the switch criteria below. It is tested in CI from Phase
 
 #### Why 2.0 is not the production target
 
-- **The alpha has stalled.** 2.0.0-alpha.1 was released in August 2025, and
-  there has been no beta or release candidate since. The API can still change
-  before 2.0 is final, and there is no published release date.
+- **The API is still a prerelease.** The pinned Phase 0 diagnostic now uses
+  2.0.0-beta.1, verified against the official install page on 5 November 2026.
+  The original alpha and current beta expose different custom-CRS migration
+  gaps; see the spike report. The production switch criteria still apply.
 - **The custom-CRS code is the most exposed.** The first-party custom CRS (MGA,
   NSW Lambert) builds on Leaflet's `CRS`, `Projection` and `Transformation`
   objects. Few people use these, so breaking changes there are less likely to be
@@ -839,11 +851,11 @@ These rules keep 1.9.4 code close to 2.0:
 
 #### CI matrix
 
-| Job                   | Leaflet version                                    | Blocking? | Purpose                                                                               |
-| --------------------- | -------------------------------------------------- | --------- | ------------------------------------------------------------------------------------- |
-| `leaflet-stable`      | 1.9.4                                              | **Yes**   | Production gate: full conformance, capture parity and E2E suites                      |
-| `leaflet-next-pinned` | 2.0.0-alpha.1, or the latest tagged 2.0 prerelease | No        | Shows the current migration gap; failures are logged in a "Leaflet 2 readiness" issue |
-| `leaflet-next-dev`    | Leaflet development snapshot, weekly               | No        | Early warning of upcoming breaking changes                                            |
+| Job                   | Leaflet version                          | Blocking? | Purpose                                                                               |
+| --------------------- | ---------------------------------------- | --------- | ------------------------------------------------------------------------------------- |
+| `leaflet-stable`      | 1.9.4                                    | **Yes**   | Production gate: full conformance, capture parity and E2E suites                      |
+| `leaflet-next-pinned` | 2.0.0-beta.1 (pinned on 5 November 2026) | No        | Shows the current migration gap; failures are logged in a "Leaflet 2 readiness" issue |
+| `leaflet-next-dev`    | Leaflet development snapshot, weekly     | No        | Early warning of upcoming breaking changes                                            |
 
 **Switch criteria.** All of these must hold before 2.0 becomes the production
 target:
@@ -1377,11 +1389,12 @@ RETURNING ...;          -- zero rows ⇒ conflict
   transaction (§10.1).
 - **Vertex rebuilding.** When an op has `vertexSources`, the server replaces
   each `snapped` vertex with `ST_Transform` of its source coordinate, and each
-  `stored` vertex with the matching vertex of the current stored row. This
-  happens before the geometry is transformed to the target SRID and validated. A
-  `stored` reference to a row whose version no longer matches `baseVersion` is a
-  conflict. Proving this rebuild is practical in PL/pgSQL and in the adapter A
-  helpers is spike S8.
+  `stored` vertex with the matching vertex of the current stored row. The S8
+  prototype transforms freehand geometry to the target SRID first, then replaces
+  retained vertices in target coordinates to avoid numerical round trips, before
+  final validation. A `stored` reference to a row whose version no longer
+  matches `baseVersion` is a conflict. The XY Polygon prototype and its measured
+  limits are recorded in the Phase 0 spike report (S8).
 - **Idempotency.** Adapters A and B record `clientRequestId` and the op results
   in a `capture_commit_log` table inside the same transaction. A repeated
   request with the same id returns the stored results without applying anything
@@ -2301,9 +2314,9 @@ marked as gaps, and no plugin is adopted for them.
 | Malicious or malformed uploads reach GDAL                             | Server compromise or denial of service                | The §15.6 upload controls: authentication, size and type limits, isolated worker process, time and memory limits, no remote virtual file systems        |
 | Large feature layers on Leaflet                                       | Performance                                           | Feature budget, then MVT on MapLibre/OL or server-side paging                                                                                           |
 
-### 17.3 Open decisions
+### 17.3 Policy decisions — approved 5 November 2026
 
-| ID  | Decision                                                                          | Recommendation                                                                                       |
+| ID  | Decision                                                                          | Adopted policy                                                                                       |
 | --- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | D1  | Should PostGIS CRS count as metadata (automatic) or require a declaration?        | Metadata, with an organisation-level `requireDeclaration` override                                   |
 | D2  | Should config-driven maps have a default engine?                                  | No. Require `engine` explicitly.                                                                     |
@@ -2311,6 +2324,10 @@ marked as gaps, and no plugin is adopted for them.
 | D4  | Validity policy for invalid geometry                                              | Reject by default. `ST_MakeValid` only when configured per target.                                   |
 | D5  | Concurrency column convention                                                     | Integer `row_version`, incremented by trigger, rather than `updated_at` or `xmin`                    |
 | D6  | How are file and service features brought into PostGIS?                           | An "import as inserts" change set for small volumes; the server-side GDAL ingest path for bulk loads |
+
+D1–D6 were explicitly approved by the project owner on 5 November 2026. D1
+retains the SRID 0 declaration requirement; the metadata policy does not assign
+an unknown CRS automatically.
 
 #### Decisions made
 

@@ -170,7 +170,7 @@ async function readResponse(response: Response): Promise<unknown> {
   }
 }
 
-export interface FeatureSourceProvider extends SourceProvider {
+export interface DataSourceProvider extends SourceProvider {
   open(
     source: SourceInput,
     crs: ConfirmedCrs,
@@ -178,11 +178,14 @@ export interface FeatureSourceProvider extends SourceProvider {
   ): Promise<ResolvedSource>;
 }
 
+/** Compatibility name for the first feature-only slice. */
+export type FeatureSourceProvider = DataSourceProvider;
+
 /** Per-map provider instances: probes and opens share a request, without a global cache. */
 export function createFeatureSources(
   fetcher: typeof fetch = (...args) => globalThis.fetch(...args)
-): Registry<FeatureSourceProvider> {
-  const registry = new Registry<FeatureSourceProvider>();
+): Registry<DataSourceProvider> {
+  const registry = new Registry<DataSourceProvider>();
   for (const provider of ['inline', 'geojson']) {
     const cache = new WeakMap<
       SourceInput,

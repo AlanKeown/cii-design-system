@@ -1,11 +1,9 @@
-import { EngineRegistry, assertDisplayCrs } from './engine/registry.ts';
-import { createCrsRegistry } from './crs/registry.ts';
+import { assertDisplayCrs } from './engine/registry.ts';
+import { createRegistries } from './extensions/registries.ts';
 import { createTransformService } from './crs/transform.ts';
 import { resolveSourceCrs } from './crs/resolve.ts';
 import { LayerManager } from './layers/manager.ts';
 import { layerIdentityKey } from './layers/compatibility.ts';
-import { Registry } from './registry.ts';
-import { createFeatureSources } from './sources/geojson.ts';
 import { validateMapConfig } from './config/index.ts';
 import { resolveViewResolution } from './view.ts';
 import { MapError } from './errors.ts';
@@ -16,7 +14,7 @@ import type {
   IMapEngine,
   PortableStyle
 } from './engine/types.ts';
-import type { LayerRenderer, LayerSpec, ManagedLayer } from './layers/types.ts';
+import type { LayerSpec, ManagedLayer } from './layers/types.ts';
 import type { TransformAccuracy } from './crs/transform-types.ts';
 import type { ConfirmedCrs } from './crs/types.ts';
 import type { ViewState } from './view.ts';
@@ -24,12 +22,10 @@ import type { ViewState } from './view.ts';
 export function createLeafletRuntime(
   options: { fetch?: typeof fetch; acknowledgeHintMismatch?: boolean } = {}
 ) {
-  const crs = createCrsRegistry();
+  const registries = createRegistries(options);
+  const { crs, engines, sources, renderers } = registries;
   const transforms = createTransformService(crs);
-  const engines = new EngineRegistry();
   engines.register('leaflet', () => import('./leaflet.ts'));
-  const sources = createFeatureSources(options.fetch);
-  const renderers = new Registry<LayerRenderer>();
   renderers.register('leaflet:features', {
     compatibility: () => undefined,
     prepare: async (source, context) => {
@@ -75,11 +71,8 @@ export function createLeafletRuntime(
     }
   });
   return {
-    engines,
-    crs,
-    sources,
+    ...registries,
     transforms,
-    renderers,
     acknowledgeHintMismatch: options.acknowledgeHintMismatch ?? false
   };
 }

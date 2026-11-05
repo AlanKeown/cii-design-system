@@ -13,3 +13,5 @@ apps/docs/src/routes/design/
 .dev.vars
 .dev.vars.*
 .wrangler/
+
+/packages/maps/tests/browser/fixtures/generated/

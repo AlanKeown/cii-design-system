@@ -41,6 +41,11 @@
     "./config/schema.json": {
       "development": "./src/config/map.schema.json",
       "default": "./dist/config/map.schema.json"
+    },
+    "./config/extensions": {
+      "types": "./dist/config/extensions.d.ts",
+      "development": "./src/config/extensions.ts",
+      "default": "./dist/config/extensions.js"
     }
   },
   "scripts": {
@@ -52,30 +57,45 @@
     "generate:transform-fixtures": "node --experimental-strip-types scripts/generate-transform-fixtures.ts",
     "generate:accuracy-fixtures": "node --experimental-strip-types scripts/postgis-accuracy.ts --write",
     "test:accuracy": "node --experimental-strip-types scripts/postgis-accuracy.ts --check",
-    "test:browser:serve": "vite --config tests/browser/fixtures/vite.config.ts --host 127.0.0.1 --port 4185 --strictPort"
+    "test:browser:serve": "vite build --config tests/browser/fixtures/vite.worker.config.ts && vite --config tests/browser/fixtures/vite.config.ts --host 127.0.0.1 --port 4185 --strictPort",
+    "spike:sqlite": "node --experimental-strip-types scripts/generate-sqlite-spike.ts && CII_SQLITE_BENCHMARK=1 playwright test --config ../../playwright.maps.config.ts sqlite-benchmark",
+    "spike:vertices": "node --experimental-strip-types scripts/spike-vertices.ts",
+    "spike:oapif": "node --experimental-strip-types scripts/spike-oapif.ts",
+    "spike:grids": "node --experimental-strip-types scripts/spike-grids.ts",
+    "audit:target": "node --experimental-strip-types scripts/audit-target-postgis.ts"
   },
   "devDependencies": {
+    "@cii/svelte": "0.2.0",
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
     "@sveltejs/package": "^3.0.1",
     "@types/leaflet": "^1.9.22",
+    "@types/sql.js": "1.4.11",
     "ajv": "^8.20.0",
+    "geotiff": "3.1.0-beta.0",
     "json-schema-to-typescript": "^16.0.0",
     "leaflet": "1.9.4",
+    "maplibre-gl": "6.15.0",
+    "ol": "10.11.0",
     "proj4": "2.20.9",
+    "sql.js": "1.15.2",
     "svelte": "^5.57.2",
-    "svelte-check": "^4.7.7",
-    "@cii/svelte": "0.2.0"
+    "svelte-check": "^4.7.7"
   },
   "peerDependencies": {
+    "@cii/svelte": "^0.2.0",
+    "ajv": "^8.20.0",
     "leaflet": ">=1.9.4 <2",
-    "svelte": "^5.57.2",
     "proj4": ">=2.20.9 <3",
-    "@cii/svelte": "^0.2.0"
+    "svelte": "^5.57.2"
   },
   "peerDependenciesMeta": {
     "leaflet": {
       "optional": true
     },
     "svelte": {
+      "optional": true
+    },
+    "ajv": {
       "optional": true
     }
   },

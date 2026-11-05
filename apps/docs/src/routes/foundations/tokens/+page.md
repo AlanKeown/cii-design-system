@@ -8,18 +8,18 @@ community portal. Their source of truth is `packages/tokens/tokens.json`.
 
 ## Colour and meaning
 
-| Token                   | Light               | Dark                |
-| ----------------------- | ------------------- | ------------------- |
-| `--cii-brand-primary`   | #122B4D             | #173A63             |
-| `--cii-map-feature`     | #122B4D             | #B39BFF             |
+| Token                       | Light                  | Dark                   |
+| --------------------------- | ---------------------- | ---------------------- |
+| `--cii-brand-primary`       | #122B4D                | #173A63                |
+| `--cii-map-feature`         | #122B4D                | #B39BFF                |
 | `--cii-map-feature-invalid` | #C85652 (status-error) | #D66D68 (status-error) |
-| `--cii-map-surface`     | #EDF2F8 (bg-subtle) | #18283C (bg-subtle) |
-| `--cii-brand-secondary` | #A88BFF             | #B39BFF             |
-| `--cii-bg-page`         | #F5F7FB             | #0A121C             |
-| `--cii-bg-card`         | #FFFFFF             | #101B2A             |
-| `--cii-text-primary`    | #152232             | #EDF3FF             |
-| `--cii-text-secondary`  | #4F5F74             | #BAC9DF             |
-| `--cii-focus-ring`      | #8D76F7             | #B39BFF             |
+| `--cii-map-surface`         | #EDF2F8 (bg-subtle)    | #18283C (bg-subtle)    |
+| `--cii-brand-secondary`     | #A88BFF                | #B39BFF                |
+| `--cii-bg-page`             | #F5F7FB                | #0A121C                |
+| `--cii-bg-card`             | #FFFFFF                | #101B2A                |
+| `--cii-text-primary`        | #152232                | #EDF3FF                |
+| `--cii-text-secondary`      | #4F5F74                | #BAC9DF                |
+| `--cii-focus-ring`          | #8D76F7                | #B39BFF                |
 
 Brand and status colours follow the supplied specification. Separate
 `text-success`, `text-warning`, `text-error` and `text-info` tokens provide

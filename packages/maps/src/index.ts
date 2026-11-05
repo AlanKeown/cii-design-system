@@ -20,3 +20,6 @@ export type {
   CaptureConfig,
   ViewConfig
 } from './config/types.ts';
+export * from './extensions/types.ts';
+export * from './extensions/registries.ts';
+export * from './sources/file-routing.ts';

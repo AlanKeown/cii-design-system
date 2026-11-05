@@ -105,7 +105,18 @@ function formatErrors(errors: readonly ConfigValidationError[]): ConfigIssue[] {
   });
 }
 
-function referenceIssues(config: ResolvedMapConfig): ConfigIssue[] {
+export interface ConfigEnvelope {
+  view: ResolvedMapConfig['view'];
+  layers: readonly { id: string; editable?: boolean }[];
+  capture?: ResolvedMapConfig['capture'];
+}
+
+export interface SchemaValidator<T> {
+  (input: unknown): input is T;
+  errors?: readonly ConfigValidationError[] | null;
+}
+
+function referenceIssues(config: ConfigEnvelope): ConfigIssue[] {
   const issues: ConfigIssue[] = [];
   const ids = new Set<string>();
   config.layers.forEach((layer, index) => {
@@ -148,6 +159,14 @@ function referenceIssues(config: ResolvedMapConfig): ConfigIssue[] {
 
 /** Validate before probing sources. Applies schema defaults to a copy, never to the caller. */
 export function validateMapConfig(input: unknown): Result<ResolvedMapConfig> {
+  return validateConfigWith(input, validate);
+}
+
+/** Reuse JSON-boundary and cross-reference checks with an extension-aware compiled schema. */
+export function validateConfigWith<T extends ConfigEnvelope>(
+  input: unknown,
+  validator: SchemaValidator<T>
+): Result<T> {
   let copy: unknown;
   try {
     if (!isJson(input)) throw new Error('Non-JSON configuration.');
@@ -166,8 +185,8 @@ export function validateMapConfig(input: unknown): Result<ResolvedMapConfig> {
       })
     };
   }
-  if (!validate(copy)) {
-    const errors = validate.errors ?? [];
+  if (!validator(copy)) {
+    const errors = validator.errors ?? [];
     const attribution = errors.some(
       (error) =>
         (error.keyword === 'required' &&

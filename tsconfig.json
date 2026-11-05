@@ -14,7 +14,7 @@
     "allowImportingTsExtensions": true
   },
   "include": [
-    "playwright.config.ts",
+    "playwright*.config.ts",
     "scripts/**/*.ts",
     "packages/tokens/**/*.ts"
   ]

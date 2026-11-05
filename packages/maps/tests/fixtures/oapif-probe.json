@@ -1,0 +1,33 @@
+{
+  "measuredAt": "2026-11-05T05:25:52.014Z",
+  "versions": {
+    "pygeoapi": "0.23.3",
+    "psycopg2-binary": "2.9.13",
+    "geoalchemy2": "0.21.0",
+    "pyproj": "3.6.1"
+  },
+  "postgis": "POSTGIS=\"3.5.2 dea6d0a\" [EXTENSION] PGSQL=\"170\" GEOS=\"3.9.0-CAPI-1.16.2\" PROJ=\"7.2.1 NETWORK_ENABLED=OFF URL_ENDPOINT=https://cdn.proj.org USER_WRITABLE_DIRECTORY=/var/lib/postgresql/.local/share/proj DATABASE_PATH=/usr/share/proj/proj.db\" (compiled against PROJ 7.2.1) LIBXML=\"2.9.10\" LIBJSON=\"0.15\" LIBPROTOBUF=\"1.3.3\" WAGYU=\"0.5.0 (Internal)\" TOPOLOGY",
+  "unauthorisedStatus": 401,
+  "nativePostStatus": 201,
+  "crs84PostStatus": 201,
+  "getStatus": 200,
+  "etag": null,
+  "staleUpdateStatus": 204,
+  "contentCrsHonoured": false,
+  "etagEnforced": false,
+  "rows": [
+    {
+      "id": 1,
+      "name": "stale-update",
+      "srid": 7856,
+      "coordinate": [334435.70614098536, 6250816.397908207]
+    },
+    {
+      "id": 2,
+      "name": "crs84",
+      "srid": 7856,
+      "coordinate": [151.21, -33.87]
+    }
+  ],
+  "limits": "Disposable pygeoapi/PostGIS behind a local HTTP bearer-token proxy. This measures the pinned server/provider combination, not all OAPIF deployments or production authentication."
+}

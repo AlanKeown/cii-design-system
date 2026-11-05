@@ -13,3 +13,5 @@ packages/tokens/tokens.css
 apps/community-portal/src/lib/backend/database.types.ts
 
 .wrangler/
+
+/packages/maps/tests/browser/fixtures/generated/

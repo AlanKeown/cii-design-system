@@ -1,0 +1,93 @@
+{
+  "measuredAt": "2026-11-05T05:40:25.347Z",
+  "proj4": "2.20.9",
+  "geotiff": "3.1.0-beta.0",
+  "postgis": "POSTGIS=\"3.5.2 dea6d0a\" [EXTENSION] PGSQL=\"170\" GEOS=\"3.9.0-CAPI-1.16.2\" PROJ=\"7.2.1 NETWORK_ENABLED=OFF URL_ENDPOINT=https://cdn.proj.org USER_WRITABLE_DIRECTORY=/var/lib/postgresql/.local/share/proj DATABASE_PATH=/usr/share/proj/proj.db\" (compiled against PROJ 7.2.1) LIBXML=\"2.9.10\" LIBJSON=\"0.15\" LIBPROTOBUF=\"1.3.3\" WAGYU=\"0.5.0 (Internal)\" TOPOLOGY",
+  "grids": [
+    {
+      "name": "au_icsm_GDA94_GDA2020_conformal.tif",
+      "bytes": 4561222,
+      "sha256": "92b39b4898aff9e9921dce83daed4f942da0c1e714905612fa7ffdc0081dcc9c"
+    },
+    {
+      "name": "au_icsm_GDA94_GDA2020_conformal_and_distortion.tif",
+      "bytes": 27272664,
+      "sha256": "89bb9e5c55a714c8925ddc134bf4c191be8df2607b229a05efb778f5f6166ee0"
+    }
+  ],
+  "results": [
+    {
+      "grid": "au_icsm_GDA94_GDA2020_conformal.tif",
+      "sample": "Sydney",
+      "input": [151.21, -33.87],
+      "expected": [151.21000542954647, -33.86998731693341],
+      "actual": [151.21000542954647, -33.86998731693356],
+      "residualDegrees": 1.4921397450962104e-13,
+      "pipeline": "+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=hgridshift +grids=au_icsm_GDA94_GDA2020_conformal.tif +step +proj=unitconvert +xy_in=rad +xy_out=deg"
+    },
+    {
+      "grid": "au_icsm_GDA94_GDA2020_conformal.tif",
+      "sample": "Melbourne",
+      "input": [144.96, -37.81],
+      "expected": [144.96000593760493, -37.809986837175266],
+      "actual": [144.96000593760485, -37.80998683717516],
+      "residualDegrees": 1.3649080239232024e-13,
+      "pipeline": "+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=hgridshift +grids=au_icsm_GDA94_GDA2020_conformal.tif +step +proj=unitconvert +xy_in=rad +xy_out=deg"
+    },
+    {
+      "grid": "au_icsm_GDA94_GDA2020_conformal.tif",
+      "sample": "Canberra",
+      "input": [149.13, -35.28],
+      "expected": [149.13000555392293, -35.27998714093091],
+      "actual": [149.13000555392284, -35.27998714093084],
+      "residualDegrees": 1.1099032343376302e-13,
+      "pipeline": "+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=hgridshift +grids=au_icsm_GDA94_GDA2020_conformal.tif +step +proj=unitconvert +xy_in=rad +xy_out=deg"
+    },
+    {
+      "grid": "au_icsm_GDA94_GDA2020_conformal.tif",
+      "sample": "Darwin",
+      "input": [130.84, -12.46],
+      "expected": [130.84000871010392, -12.459986119671349],
+      "actual": [130.84000871010377, -12.459986119671367],
+      "residualDegrees": 1.432144669219779e-13,
+      "pipeline": "+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=hgridshift +grids=au_icsm_GDA94_GDA2020_conformal.tif +step +proj=unitconvert +xy_in=rad +xy_out=deg"
+    },
+    {
+      "grid": "au_icsm_GDA94_GDA2020_conformal_and_distortion.tif",
+      "sample": "Sydney",
+      "input": [151.21, -33.87],
+      "expected": [151.2100052265879, -33.869987120351446],
+      "actual": [151.2100052265878, -33.869987120351375],
+      "residualDegrees": 1.1099032343376302e-13,
+      "pipeline": "+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=hgridshift +grids=au_icsm_GDA94_GDA2020_conformal_and_distortion.tif +step +proj=unitconvert +xy_in=rad +xy_out=deg"
+    },
+    {
+      "grid": "au_icsm_GDA94_GDA2020_conformal_and_distortion.tif",
+      "sample": "Melbourne",
+      "input": [144.96, -37.81],
+      "expected": [144.9600059625523, -37.80998683966769],
+      "actual": [144.9600059625522, -37.80998683966754],
+      "residualDegrees": 1.718573603063735e-13,
+      "pipeline": "+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=hgridshift +grids=au_icsm_GDA94_GDA2020_conformal_and_distortion.tif +step +proj=unitconvert +xy_in=rad +xy_out=deg"
+    },
+    {
+      "grid": "au_icsm_GDA94_GDA2020_conformal_and_distortion.tif",
+      "sample": "Canberra",
+      "input": [149.13, -35.28],
+      "expected": [149.13000545681362, -35.279987250233425],
+      "actual": [149.13000545681348, -35.279987250233276],
+      "residualDegrees": 2.0605739337042905e-13,
+      "pipeline": "+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=hgridshift +grids=au_icsm_GDA94_GDA2020_conformal_and_distortion.tif +step +proj=unitconvert +xy_in=rad +xy_out=deg"
+    },
+    {
+      "grid": "au_icsm_GDA94_GDA2020_conformal_and_distortion.tif",
+      "sample": "Darwin",
+      "input": [130.84, -12.46],
+      "expected": [130.84000856807165, -12.45998625999636],
+      "actual": [130.8400085680718, -12.459986259996267],
+      "residualDegrees": 1.6949088094799781e-13,
+      "pipeline": "+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +proj=hgridshift +grids=au_icsm_GDA94_GDA2020_conformal_and_distortion.tif +step +proj=unitconvert +xy_in=rad +xy_out=deg"
+    }
+  ],
+  "limits": "Four sampled geographic points per grid. The isolated CLI process owns proj4 global grid registrations; this does not enable grids in the production transform service or audit target-server grid installations. No epoch/vertical or survey-accuracy certification."
+}
