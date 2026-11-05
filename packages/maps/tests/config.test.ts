@@ -353,3 +353,28 @@ test('standalone validation runs when dynamic code evaluation is disabled', asyn
   ]);
   assert.equal(stdout.trim(), 'EPSG:3857');
 });
+
+test('configuration diagnostics name missing and unsupported fields and suggest corrections', () => {
+  const input = config();
+  const missing = validateMapConfig({ view: input.view, layers: [] });
+  assert.ok(!missing.ok);
+  assert.ok(Array.isArray(missing.error.details.issues));
+  assert.ok(
+    missing.error.details.issues.some(
+      (issue) =>
+        issue.path === '/engine' &&
+        issue.action === 'Add this required setting.'
+    )
+  );
+  const extra = validateMapConfig({ ...input, unsupported: 'secret-value' });
+  assert.ok(!extra.ok);
+  assert.ok(Array.isArray(extra.error.details.issues));
+  assert.ok(
+    extra.error.details.issues.some(
+      (issue) =>
+        issue.path === '/unsupported' &&
+        issue.action === 'Remove this unsupported setting.'
+    )
+  );
+  assert.ok(!JSON.stringify(extra.error.details).includes('secret-value'));
+});

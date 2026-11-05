@@ -51,6 +51,7 @@
   --cii-text-info: #315C9B;
   --cii-focus-ring: #8D76F7;
   --cii-text-on-action: #FFFFFF;
+  --cii-map-feature: #122B4D;
 }
 [data-cii-theme="dark"] {
   color-scheme: dark;
@@ -75,4 +76,5 @@
   --cii-text-info: #7AA8FF;
   --cii-focus-ring: #B39BFF;
   --cii-text-on-action: #FFFFFF;
+  --cii-map-feature: #B39BFF;
 }

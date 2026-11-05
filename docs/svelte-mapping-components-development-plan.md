@@ -1624,7 +1624,8 @@ Target: WCAG 2.2 AA, as in [product-design-spec.md](./product-design-spec.md) §
 ### 15.5 Theming and CII integration
 
 - Controls and panels use `@cii/svelte` components (`Button`, `Alert`, form fields) and `--cii-*` tokens: `--cii-bg-card`, `--cii-border-default`, `--cii-text-primary`, `--cii-text-secondary`, `--cii-radius-button`, `--cii-space-*` and `--cii-focus-ring`.
-- Default feature styles use tokens: `--cii-brand-primary` for data, `--cii-brand-secondary` for selection and `--cii-status-error` for invalid features. Capture styles (active vertex, midpoint handles, sketch line) come from tokens too.
+- Default feature styles use tokens: `--cii-map-feature` for data, `--cii-brand-secondary` for selection and `--cii-status-error` for invalid features. Capture styles (active vertex, midpoint handles, sketch line) come from tokens too.
+- `--cii-map-feature` uses light-theme navy (`#122B4D`) and dark-theme light purple (`#B39BFF`). This dedicated semantic token keeps default feature outlines distinguishable against `--cii-bg-subtle` without changing brand colours. Custom colours, transparency and basemaps need their own contrast checks.
 - `token:` colours in `PortableStyle` (§7.4) resolve from computed CSS custom properties when the map mounts, and again when `data-cii-theme` changes. Canvas and WebGL renderers cannot read CSS variables directly. Theme changes restyle layers through `LayerHandle.setStyle()`, without re-mounting.
 - Basemaps can be configured in light and dark pairs. The map follows `data-cii-theme` until the user picks a basemap.
 - Controls sit in the map corners and must not cover attribution. On narrow screens they collapse into a single "Map tools" menu.

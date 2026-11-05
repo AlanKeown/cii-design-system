@@ -54,7 +54,7 @@ Install the `leaflet` peer (`>=1.9.4 <2`) and the package's `proj4` peer. Leafle
 | `onerror` | `(error: MapError) => void` | — |
 | `onviewchange` | `(view: ViewState, source: 'api' \| 'user') => void` | — |
 
-`MapContainer` does not yet accept `class` or forward other attributes to its root element.
+`MapContainer` accepts `class` and forwards HTML attributes, including `data-*` and ARIA attributes, to its root section. Caller-provided `aria-describedby` IDs are combined with the component description.
 
 ## Behaviour and accessibility
 
@@ -74,13 +74,13 @@ The first adapter supports EPSG:3857, EPSG:4326 and CRS84 display. A display CRS
 
 Make `label` name what the map shows, such as "Community sites"; the canvas is announced as that label followed by "map canvas". Use `description` for the purpose of the map and where its text alternative is. It is shown above the map and linked to it with `aria-describedby`. Put every fact a user needs from the map in that alternative, such as a list or [data table](/components/data-table/), because features on the canvas are not exposed to assistive technology.
 
-Write attribution as the provider's required credit in plain text. When the map cannot load or update, it shows a danger [Alert](/components/alert/) headed "Map could not be updated", followed by the error code and a technical reason. Use `onerror` to explain the problem and the next step in the language of the task.
+Write attribution as the provider's required credit in plain text. When the map cannot load or update, a danger [Alert](/components/alert/) explains what happened and what to check next. Invalid configurations include field paths, validation messages and suggested corrections. `onerror` retains the original typed error codes and details for application diagnostics.
 
 ## Themes and responsive layout
 
 The map surface, border, controls and alerts use semantic tokens and follow `data-cii-theme`. `token:` colours in layer styles are resolved again when the theme changes, without remounting the map.
 
-Without a style, features use `--cii-brand-primary`. In the dark theme that colour measures 1.29:1 against the map background, below the 3:1 needed for meaningful graphics, so set stroke and fill colours explicitly. `token:--cii-text-info` measures 5.95:1 in the light theme and 6.30:1 in the dark theme. Do not rely on colour alone to distinguish layers.
+Without a colour override, feature outlines use `--cii-map-feature`: navy (`#122B4D`) in light mode and light purple (`#B39BFF`) in dark mode. The token is designed for the `--cii-bg-subtle` canvas; custom colours, reduced opacity and basemaps need separate contrast checks. Import `@cii/tokens/tokens.css`; missing colour tokens produce an actionable layer error instead of a substitute palette. Do not rely on colour alone to distinguish layers.
 
 The map fills the width of its container and resizes with it. `height` sets the viewport height, with a minimum of 12rem. On small screens, choose a height that leaves the text alternative and surrounding content easy to reach. Attribution wraps within the container.
 

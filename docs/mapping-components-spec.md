@@ -798,7 +798,8 @@ Capture must be possible with a keyboard and a screen reader. These features are
 ## 9) Theming and styling
 
 - Controls and panels use tokens: `--cii-bg-card`, `--cii-border-default`, `--cii-text-primary`, `--cii-text-secondary`, `--cii-radius-button`, `--cii-space-*`, and `--cii-focus-ring` for focus outlines.
-- Default feature styles: `--cii-brand-primary` for data, `--cii-brand-secondary` for selection and `--cii-status-error` for invalid features. Capture styles (active vertex, midpoint handles, drawing line) come from tokens too.
+- Default feature styles: `--cii-map-feature` for data, `--cii-brand-secondary` for selection and `--cii-status-error` for invalid features. Capture styles (active vertex, midpoint handles, drawing line) come from tokens too.
+- `--cii-map-feature` uses light-theme navy (`#122B4D`) and dark-theme light purple (`#B39BFF`). This dedicated semantic token keeps default feature outlines distinguishable against `--cii-bg-subtle` without changing brand colours. Custom colours, transparency and basemaps need their own contrast checks.
 - Selection is shown by more than colour: a thicker outline and, for points, a ring.
 - Basemaps can come in light and dark pairs (`BasemapConfig.theme`). The map follows `data-cii-theme` until the user picks a basemap.
 - Theme changes re-resolve `token:` colours and update layer styles through reconciliation, without re-mounting.

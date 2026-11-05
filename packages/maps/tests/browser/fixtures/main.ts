@@ -5,6 +5,7 @@ import type { MapConfig, ViewState } from '../../../src/index.ts';
 declare global {
   interface Window {
     mapHarness?: {
+      errorCodes(): string[];
       config(): MapConfig;
       setConfig(config: MapConfig): void;
       view(): ViewState;

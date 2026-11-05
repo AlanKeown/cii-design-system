@@ -62,12 +62,14 @@
     "leaflet": "1.9.4",
     "proj4": "2.20.9",
     "svelte": "^5.57.2",
-    "svelte-check": "^4.7.7"
+    "svelte-check": "^4.7.7",
+    "@cii/svelte": "0.2.0"
   },
   "peerDependencies": {
     "leaflet": ">=1.9.4 <2",
     "svelte": "^5.57.2",
-    "proj4": ">=2.20.9 <3"
+    "proj4": ">=2.20.9 <3",
+    "@cii/svelte": "^0.2.0"
   },
   "peerDependenciesMeta": {
     "leaflet": {
@@ -78,6 +80,6 @@
     }
   },
   "dependencies": {
-    "@cii/svelte": "0.2.0"
+    "@cii/tokens": "0.2.0"
   }
 }

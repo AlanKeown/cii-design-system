@@ -404,22 +404,16 @@ export default class LeafletEngine implements IMapEngine {
       : 'rebuild-required';
   }
 
-  #color(value: string | undefined, fallback: string): string {
-    const token = value?.startsWith('token:') ? value.slice(6) : undefined;
-    if (!token)
-      return (
-        value ??
-        (getComputedStyle(this.#getMap().getContainer())
-          .getPropertyValue('--cii-brand-primary')
-          .trim() ||
-          fallback)
-      );
+  #color(value: string | undefined): string {
+    if (value !== undefined && !value.startsWith('token:')) return value;
+    const token = value?.slice(6) ?? '--cii-map-feature';
     const color = getComputedStyle(this.#getMap().getContainer())
       .getPropertyValue(token)
       .trim();
     if (!/^--cii-[\w-]+$/.test(token) || !color)
       throw new MapError('STYLE_UNSUPPORTED', {
-        reason: 'Unresolved theme colour token.'
+        reason:
+          'Unresolved theme colour token. Import @cii/tokens/tokens.css and check the token name.'
       });
     return color;
   }
@@ -428,10 +422,10 @@ export default class LeafletEngine implements IMapEngine {
       pane: entry.paneName,
       renderer: entry.renderer,
       interactive: false,
-      color: this.#color(entry.style?.stroke?.color, '#7955bd'),
+      color: this.#color(entry.style?.stroke?.color),
       weight: entry.style?.stroke?.width ?? 2,
       opacity: entry.opacity * (entry.style?.stroke?.opacity ?? 1),
-      fillColor: this.#color(entry.style?.fill?.color, '#7955bd'),
+      fillColor: this.#color(entry.style?.fill?.color),
       fillOpacity: entry.opacity * (entry.style?.fill?.opacity ?? 0.2),
       dashArray: entry.style?.stroke?.dash?.join(' ')
     };
@@ -521,8 +515,8 @@ export default class LeafletEngine implements IMapEngine {
       setStyle: (style) => {
         active();
         assertLeafletStyle(style);
-        this.#color(style.stroke?.color, '#7955bd');
-        this.#color(style.fill?.color, '#7955bd');
+        this.#color(style.stroke?.color);
+        this.#color(style.fill?.color);
         entry.style = structuredClone(style);
         this.#restyle(entry);
       },

@@ -34,7 +34,9 @@ test('controlled view applies after async mount, binds user movement, and report
   await page
     .getByRole('button', { name: 'Invalid controlled view', exact: true })
     .click();
-  await expect(page.getByRole('alert')).toContainText('VIEW_INVALID');
+  await expect(page.getByRole('alert')).toContainText(
+    'Check the centre coordinates'
+  );
   await page.waitForTimeout(100);
   await expect(page.getByLabel('Error count')).toHaveText('1');
   expect(errors).toEqual([]);
@@ -182,7 +184,9 @@ test('GeoJSON requests reject malformed data and recover; stale requests do not 
     .poll(() => page.evaluate(() => window.mapHarness!.stats()))
     .toMatchObject({ count: 1 });
   await page.getByRole('button', { name: 'Toggle remote' }).click();
-  await expect(page.getByRole('alert')).toContainText('SOURCE_INVALID');
+  await expect(page.getByRole('alert')).toContainText(
+    'Check the file’s format and geometry'
+  );
   await expect(page.getByLabel('Error count')).toHaveText('1');
   await page.getByRole('button', { name: 'Toggle remote' }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
@@ -242,11 +246,13 @@ for (const failure of ['http', 'malformed']) {
     await expect(
       page.getByRole('alert').filter({ hasText: 'Layer remote' })
     ).toContainText(
-      failure === 'http' ? 'SOURCE_LOAD_FAILED' : 'SOURCE_INVALID'
+      failure === 'http'
+        ? 'Check your connection and the data address'
+        : 'Check the file’s format and geometry'
     );
     await expect(
       page.getByRole('alert').filter({ hasText: 'Layer polar' })
-    ).toContainText('LAYER_INCOMPATIBLE');
+    ).toContainText('Check its coordinates');
     await expect(page.getByLabel('Error count')).toHaveText('2');
     await expect
       .poll(() => page.evaluate(() => window.mapHarness!.hit()))
@@ -446,7 +452,9 @@ test('adding a layer alongside an invalid token update recovers without duplicat
     config.layers = [added, existing];
     window.mapHarness!.setConfig(config);
   });
-  await expect(page.getByRole('alert')).toContainText('STYLE_UNSUPPORTED');
+  await expect(page.getByRole('alert')).toContainText(
+    'check any colour token names'
+  );
   await expect(page.getByLabel('Error count')).toHaveText('1');
   await expect
     .poll(() => page.evaluate(() => window.mapHarness!.stats()))
@@ -490,4 +498,145 @@ test('adding a layer alongside an invalid token update recovers without duplicat
   await expect(page.getByLabel('Destroyed count')).toHaveText('0');
   await expect(page.getByLabel('Error count')).toHaveText('1');
   expect(errors).toEqual([]);
+});
+
+test('default feature outlines meet contrast in both themes and restyle without remounting', async ({
+  page
+}) => {
+  await page.goto('/?default-style');
+  await expect(page.getByLabel('Ready count')).toHaveText('1');
+  await expect
+    .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+    .toMatchObject({ count: 1 });
+  const luminance = (hex: string) => {
+    const channels = hex
+      .replace('#', '')
+      .match(/../g)!
+      .map((part) => {
+        const value = parseInt(part, 16) / 255;
+        return value <= 0.04045
+          ? value / 12.92
+          : ((value + 0.055) / 1.055) ** 2.4;
+      });
+    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  };
+  const colors: string[] = [];
+  for (const theme of ['light', 'dark']) {
+    if (theme === 'dark')
+      await page.getByRole('button', { name: 'Toggle theme' }).click();
+    const tokens = await page.getByRole('application').evaluate((node) => {
+      const css = getComputedStyle(node);
+      return {
+        feature: css.getPropertyValue('--cii-map-feature').trim(),
+        background: css.getPropertyValue('--cii-bg-subtle').trim()
+      };
+    });
+    await expect
+      .poll(
+        async () =>
+          (await page.evaluate(() => window.mapHarness!.stats())).color
+      )
+      .toBe(tokens.feature);
+    const values = [
+      luminance(tokens.feature),
+      luminance(tokens.background)
+    ].sort((a, b) => a - b);
+    expect((values[1] + 0.05) / (values[0] + 0.05)).toBeGreaterThanOrEqual(3);
+    colors.push(tokens.feature);
+  }
+  expect(colors[0]).not.toBe(colors[1]);
+  await expect(page.getByLabel('Ready count')).toHaveText('1');
+  await expect(page.getByLabel('Destroyed count')).toHaveText('0');
+});
+
+test('root class and HTML attributes are forwarded and description IDs are combined', async ({
+  page
+}) => {
+  await page.goto('/');
+  const root = page.getByTestId('map-root');
+  await expect(root).toHaveClass(/\bcii-map\b/);
+  await expect(root).toHaveClass(/\bfixture-map\b/);
+  await expect(root).toHaveAttribute('aria-details', 'fixture-details');
+  const ids = (await root.getAttribute('aria-describedby'))!.split(' ');
+  expect(ids).toHaveLength(2);
+  expect(ids).toContain('external-description');
+  for (const id of ids)
+    expect(await page.locator(`[id="${id}"]`).count()).toBe(1);
+  await expect(root).toHaveAccessibleDescription(
+    'Additional context Map description'
+  );
+});
+
+test('loading surface uses spacing, typography, border and radius tokens', async ({
+  page
+}) => {
+  await page.goto('/?delayed-engine=2000');
+  const loading = page.getByRole('status').filter({ hasText: 'Loading map…' });
+  await expect(loading).toBeVisible();
+  await expect(loading).toHaveCSS('border-radius', '8px');
+  await expect(loading).toHaveCSS('border-top-style', 'solid');
+  await page.getByTestId('map-root').evaluate((node) => {
+    node.style.setProperty('--cii-space-2', '10px');
+    node.style.setProperty('--cii-space-3', '15px');
+    node.style.setProperty('--cii-radius-input', '9px');
+    node.style.setProperty('--cii-bg-card', 'rgb(10, 20, 30)');
+    node.style.setProperty('--cii-font-caption', '13px');
+  });
+  await expect(loading).toHaveCSS('padding', '10px 15px');
+  await expect(loading).toHaveCSS('border-radius', '9px');
+  await expect(loading).toHaveCSS('background-color', 'rgb(10, 20, 30)');
+  await expect(page.getByLabel('Map attribution')).toHaveCSS(
+    'font-size',
+    '13px'
+  );
+});
+
+test('missing token CSS reports an actionable style error instead of fallback colours', async ({
+  page
+}) => {
+  await page.goto('/?default-style');
+  await expect(page.getByLabel('Ready count')).toHaveText('1');
+  await expect
+    .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+    .toMatchObject({ count: 1 });
+  await page.evaluate(() => {
+    for (const style of document.querySelectorAll('style')) {
+      if (style.textContent?.includes('--cii-map-feature:')) style.remove();
+    }
+    const config = window.mapHarness!.config();
+    config.layers[0].style = {
+      stroke: { color: 'token:--cii-map-feature', width: 3 }
+    };
+    window.mapHarness!.setConfig(config);
+  });
+  await expect(page.getByRole('alert')).toContainText(
+    'import @cii/tokens/tokens.css'
+  );
+  await expect(page.getByRole('alert')).not.toContainText('STYLE_UNSUPPORTED');
+  expect(await page.evaluate(() => window.mapHarness!.errorCodes())).toEqual([
+    'STYLE_UNSUPPORTED'
+  ]);
+  await expect
+    .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+    .toMatchObject({ count: 0 });
+});
+
+test('invalid configuration shows field paths, validation messages and corrections, preserving typed errors', async ({
+  page
+}) => {
+  await page.goto('/');
+  await expect(page.getByLabel('Ready count')).toHaveText('1');
+  await page.evaluate(() => {
+    const config = window.mapHarness!.config();
+    config.layers[0].opacity = 2;
+    window.mapHarness!.setConfig(config);
+  });
+  const alert = page.getByRole('alert');
+  await expect(alert).toContainText('/layers/0/opacity');
+  await expect(alert).toContainText('must be <= 1');
+  await expect(alert).toContainText('Reduce the value to the stated maximum');
+  await expect(alert).not.toContainText('CONFIG_INVALID');
+  expect(await page.evaluate(() => window.mapHarness!.errorCodes())).toEqual([
+    'CONFIG_INVALID'
+  ]);
 });

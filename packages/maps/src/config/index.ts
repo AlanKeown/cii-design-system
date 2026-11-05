@@ -21,6 +21,7 @@ export type ResolvedMapConfig = Omit<MapConfig, 'display'> & {
 export interface ConfigIssue {
   path: string;
   message: string;
+  action?: string;
 }
 
 /** Returns a fresh schema so callers cannot mutate another map's contract. */
@@ -69,10 +70,39 @@ function isJson(
 
 function formatErrors(errors: readonly ConfigValidationError[]): ConfigIssue[] {
   // Report structural diagnostics only; never include submitted values in errors.
-  return errors.map((error) => ({
-    path: error.instancePath || '/',
-    message: error.message ?? 'Invalid setting.'
-  }));
+  const actions: Record<string, string> = {
+    required: 'Add this required setting.',
+    additionalProperties: 'Remove this unsupported setting.',
+    type: 'Use the expected value type.',
+    enum: 'Choose one of the supported values.',
+    const: 'Use the required value.',
+    minimum: 'Increase the value to the stated minimum.',
+    exclusiveMinimum: 'Use a value greater than the stated minimum.',
+    maximum: 'Reduce the value to the stated maximum.',
+    minLength: 'Enter a non-empty value.',
+    pattern: 'Use the required format.',
+    minItems: 'Add the required entries.',
+    maxItems: 'Remove the extra entries.'
+  };
+  return errors.map((error) => {
+    const property =
+      error.keyword === 'required'
+        ? error.params.missingProperty
+        : error.keyword === 'additionalProperties'
+          ? error.params.additionalProperty
+          : undefined;
+    const suffix =
+      typeof property === 'string'
+        ? `/${property.replace(/~/g, '~0').replace(/\//g, '~1')}`
+        : '';
+    return {
+      path: `${error.instancePath}${suffix}` || '/',
+      message: error.message ?? 'Invalid setting.',
+      action:
+        actions[error.keyword] ??
+        'Update this setting to match the map configuration schema.'
+    };
+  });
 }
 
 function referenceIssues(config: ResolvedMapConfig): ConfigIssue[] {

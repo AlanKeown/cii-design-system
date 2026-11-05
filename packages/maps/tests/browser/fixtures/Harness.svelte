@@ -13,6 +13,7 @@
   let visible = $state(true);
   let large = $state(false);
   let remote = $state(false);
+  const errorCodes: string[] = [];
   let errorCount = $state(0);
   let readyCount = $state(0);
   let destroyed = $state(0);
@@ -113,7 +114,9 @@
             },
         style: {
           point: { shape: 'circle', size: large ? 24 : 12 },
-          stroke: { color: 'token:--cii-brand-primary', width: 3 }
+          ...(!params.has('default-style')
+            ? { stroke: { color: 'token:--cii-map-feature', width: 3 } }
+            : {})
         }
       }
     ]
@@ -125,6 +128,7 @@
   }
   onMount(() => {
     window.mapHarness = {
+      errorCodes: () => [...errorCodes],
       config: () => $state.snapshot(overrideConfig ?? config),
       setConfig: (next: MapConfig) => {
         overrideConfig = next;
@@ -197,6 +201,8 @@
   });
 </script>
 
+<p id="external-description">Additional context</p>
+<p id="fixture-details">Map details</p>
 <div data-cii-theme={dark ? 'dark' : 'light'}>
   <button onclick={() => (mounted = !mounted)}>Toggle mount</button>
   <button onclick={() => (visible = !visible)}>Toggle visibility</button>
@@ -222,8 +228,16 @@
       {runtime}
       bind:view={controlledView}
       label="Fixture"
+      description="Map description"
+      class="fixture-map"
+      data-testid="map-root"
+      aria-describedby="external-description"
+      aria-details="fixture-details"
       onready={ready}
       onviewchange={(view, source) => viewEvents.push({ view, source })}
-      onerror={() => errorCount++}
+      onerror={(error) => {
+        errorCount++;
+        errorCodes.push(error.code);
+      }}
     />{/if}
 </div>
