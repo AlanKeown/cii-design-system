@@ -1,10 +1,12 @@
 import { mount } from 'svelte';
 import '@cii/tokens/tokens.css';
 import Harness from './Harness.svelte';
-import type { ViewState } from '../../../src/index.ts';
+import type { MapConfig, ViewState } from '../../../src/index.ts';
 declare global {
   interface Window {
     mapHarness?: {
+      config(): MapConfig;
+      setConfig(config: MapConfig): void;
       view(): ViewState;
       viewEvents(): { view: ViewState; source: 'api' | 'user' }[];
       clearViewEvents(): void;

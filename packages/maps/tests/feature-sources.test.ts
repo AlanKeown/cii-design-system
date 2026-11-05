@@ -212,13 +212,11 @@ test('other legacy CRS names retain their own hints', async () => {
       url: '/sites.geojson',
       crs: declaration
     };
-    const result = await sources
-      .require('geojson')
-      .probe(source, {
-        sources,
-        crsRegistry: createCrsRegistry(),
-        displayCrs: 'EPSG:3857'
-      });
+    const result = await sources.require('geojson').probe(source, {
+      sources,
+      crsRegistry: createCrsRegistry(),
+      displayCrs: 'EPSG:3857'
+    });
     assert.deepEqual(result, {
       kind: 'hint',
       hint: { code, from: 'geojson_crs' }

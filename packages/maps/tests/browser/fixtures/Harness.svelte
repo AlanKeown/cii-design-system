@@ -8,6 +8,7 @@
   import type { IMapEngine, MapConfig, ViewState } from '../../../src/index.ts';
   import type { Map as LeafletMap } from 'leaflet';
   const viewEvents: { view: ViewState; source: 'api' | 'user' }[] = [];
+  let overrideConfig = $state.raw<MapConfig | undefined>();
   let mounted = $state(true);
   let visible = $state(true);
   let large = $state(false);
@@ -124,6 +125,10 @@
   }
   onMount(() => {
     window.mapHarness = {
+      config: () => $state.snapshot(overrideConfig ?? config),
+      setConfig: (next: MapConfig) => {
+        overrideConfig = next;
+      },
       view: () => engine!.getView(),
       viewEvents: () => structuredClone(viewEvents),
       clearViewEvents: () => {
@@ -213,7 +218,7 @@
   <p aria-label="Feature name">{text}</p>
   <output aria-label="Bound center">{controlledView?.center[0]}</output>
   {#if mounted}<MapContainer
-      {config}
+      config={overrideConfig ?? config}
       {runtime}
       bind:view={controlledView}
       label="Fixture"

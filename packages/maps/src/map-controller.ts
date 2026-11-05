@@ -176,6 +176,16 @@ export class MapController {
       this.#callbacks.onstate?.(this.snapshot());
   }
 
+  #removeLayer(id: string): void {
+    try {
+      // The manager owns registrations, including any created before bookkeeping
+      // completed. Always clear our record even if engine cleanup throws.
+      this.layers.get(id)?.remove();
+    } finally {
+      this.#records.delete(id);
+    }
+  }
+
   async applyConfig(input: unknown): Promise<void> {
     this.#preparing?.abort();
     const preparing = new AbortController();
@@ -260,8 +270,7 @@ export class MapController {
         for (const [id, entry] of this.#records) {
           const item = config.layers.find((layer) => layer.id === id);
           if (!item || entry.key !== JSON.stringify(item.source)) {
-            entry.managed.remove();
-            this.#records.delete(id);
+            this.#removeLayer(id);
           }
         }
         this.#layerErrors.clear();
@@ -337,7 +346,7 @@ export class MapController {
               managed.update(spec);
               if (managed.status === 'error') managed.reload();
             } else {
-              old?.managed.remove();
+              this.#removeLayer(item.id);
               managed = this.layers.add(spec);
             }
             this.#records.set(item.id, { key, spec, accuracy, managed });
@@ -349,8 +358,7 @@ export class MapController {
               cause instanceof MapError
                 ? new MapError(cause.code, { ...cause.details, id: item.id })
                 : new MapError('LAYER_LOAD_FAILED', { id: item.id });
-            this.#records.get(item.id)?.managed.remove();
-            this.#records.delete(item.id);
+            this.#removeLayer(item.id);
             this.#layerErrors.set(item.id, error);
             this.#emit();
             this.#callbacks.onlayererror?.(error);

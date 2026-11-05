@@ -425,3 +425,69 @@ test('controlled and engine API view changes report once; equivalent bound views
     )
   ).toEqual(['api']);
 });
+
+test('adding a layer alongside an invalid token update recovers without duplicate registrations or a remount', async ({
+  page
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByLabel('Ready count')).toHaveText('1');
+  await expect
+    .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+    .toMatchObject({ count: 1 });
+  await page.evaluate(() => {
+    const config = window.mapHarness!.config();
+    const existing = config.layers[0];
+    const added = structuredClone(existing);
+    added.id = 'added';
+    // Add a new registration and invalidate a later existing layer together.
+    existing.style = { stroke: { color: 'token:--cii-missing', width: 3 } };
+    config.layers = [added, existing];
+    window.mapHarness!.setConfig(config);
+  });
+  await expect(page.getByRole('alert')).toContainText('STYLE_UNSUPPORTED');
+  await expect(page.getByLabel('Error count')).toHaveText('1');
+  await expect
+    .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+    .toMatchObject({ count: 1 });
+  for (const color of ['#123456', '#654321']) {
+    await page.evaluate((color) => {
+      const config = window.mapHarness!.config();
+      config.layers[1].style = { stroke: { color, width: 3 } };
+      window.mapHarness!.setConfig(config);
+    }, color);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+      .toMatchObject({ count: 2 });
+    await expect(
+      page
+        .getByRole('listitem', { includeHidden: true })
+        .filter({ hasText: 'added: 1 features' })
+    ).toHaveCount(1);
+    await expect(
+      page
+        .getByRole('listitem', { includeHidden: true })
+        .filter({ hasText: 'sites: 1 features' })
+    ).toHaveCount(1);
+  }
+  // Both registrations can still be removed and re-added after recovery.
+  const config = await page.evaluate(() => window.mapHarness!.config());
+  await page.evaluate(() => {
+    const config = window.mapHarness!.config();
+    config.layers = [];
+    window.mapHarness!.setConfig(config);
+  });
+  await expect
+    .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+    .toMatchObject({ count: 0 });
+  await page.evaluate((config) => window.mapHarness!.setConfig(config), config);
+  await expect
+    .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+    .toMatchObject({ count: 2 });
+  await expect(page.getByLabel('Ready count')).toHaveText('1');
+  await expect(page.getByLabel('Destroyed count')).toHaveText('0');
+  await expect(page.getByLabel('Error count')).toHaveText('1');
+  expect(errors).toEqual([]);
+});
