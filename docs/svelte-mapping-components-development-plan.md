@@ -2120,10 +2120,21 @@ not optional extras.
   fields) and `--cii-*` tokens: `--cii-bg-card`, `--cii-border-default`,
   `--cii-text-primary`, `--cii-text-secondary`, `--cii-radius-button`,
   `--cii-space-*` and `--cii-focus-ring`.
-- Default feature styles use tokens: `--cii-map-feature` for data,
-  `--cii-brand-secondary` for selection and `--cii-status-error` for invalid
-  features. Capture styles (active vertex, midpoint handles, sketch line) come
-  from tokens too.
+- Default map colours come only from `--cii-map-*` tokens: `--cii-map-feature`
+  for data, `--cii-map-feature-selected` for selection and
+  `--cii-map-feature-invalid` for invalid features. Capture styles (active
+  vertex, midpoint handles, sketch line) and casing get their own `--cii-map-*`
+  tokens when they are built. A map token may alias a UI token (for example,
+  `--cii-map-feature-invalid` aliases `--cii-status-error`), but map code never
+  uses UI or brand tokens directly.
+- `--cii-map-feature-selected` meets 3:1 against `--cii-map-surface` and differs
+  from both `--cii-map-feature` and `--cii-focus-ring` in each theme. Its values
+  are not chosen yet. `--cii-brand-secondary` is not suitable: it measures
+  2.39:1 in the light theme and is identical to `--cii-map-feature` (`#B39BFF`)
+  in the dark theme. A 3:1 ratio between selected and unselected features is not
+  required, and cannot be met against both a light and a dark default feature
+  colour. Selection is still shown by a thicker outline and a point ring
+  (§15.4), with colour as an additional cue. Invalid features are also dashed.
 - `--cii-map-feature` uses light-theme navy (`#122B4D`) and dark-theme light
   purple (`#B39BFF`). This dedicated semantic token keeps default feature
   outlines distinguishable against `--cii-map-surface` without changing brand
@@ -2133,8 +2144,9 @@ not optional extras.
 - Map colour tokens resolve to six-digit hex colours, directly or through
   `var(--cii-…)` aliases, because canvas renderers cannot use `color-mix()` or
   relative colours. A `@cii/tokens` unit test enforces this, along with 3:1
-  contrast for each declared foreground/surface pair in both themes. New map
-  tokens (selection, invalid, sketch, casing) add their pairs to that test.
+  contrast for each declared foreground/surface pair and the selection
+  distinctness rule in both themes. Each new map token adds its rules to that
+  test; rules for tokens without approved values run as pending (todo) checks.
 - `token:` colours in `PortableStyle` (§7.4) resolve from computed CSS custom
   properties when the map mounts, and again when `data-cii-theme` changes.
   Canvas and WebGL renderers cannot read CSS variables directly. Theme changes

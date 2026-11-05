@@ -12,6 +12,7 @@ community portal. Their source of truth is `packages/tokens/tokens.json`.
 | ----------------------- | ------------------- | ------------------- |
 | `--cii-brand-primary`   | #122B4D             | #173A63             |
 | `--cii-map-feature`     | #122B4D             | #B39BFF             |
+| `--cii-map-feature-invalid` | #C85652 (status-error) | #D66D68 (status-error) |
 | `--cii-map-surface`     | #EDF2F8 (bg-subtle) | #18283C (bg-subtle) |
 | `--cii-brand-secondary` | #A88BFF             | #B39BFF             |
 | `--cii-bg-page`         | #F5F7FB             | #0A121C             |
@@ -98,9 +99,13 @@ token definitions.
 The portal aliases semantic colours inside .app, but also uses hardcoded avatar
 colours, blue/lilac/peach/green metric accents, promotional card colours,
 shadows and backdrops. These values do not automatically adapt into approved
-dark variants. New shared components should use existing semantic tokens; any
-new semantic colour pair needs explicit light/dark definitions and contrast
-review in packages/tokens/tokens.json before adoption.
+dark variants. New shared components should use existing semantic tokens. Any
+new semantic colour token needs a definition for both light and dark themes in
+packages/tokens/tokens.json before adoption. A definition can be a hex colour or
+an alias of an existing token, such as `var(--cii-bg-subtle)`, and must be
+reviewed for contrast. Map colour tokens are reviewed automatically:
+`tests/contrast.test.ts` in `@cii/tokens` checks each required pair in both
+themes. Other new colour pairs still need manual contrast review.
 
 The portal's local H2 is 18/26px, while the shared H2 token remains 22/30px;
 mobile H1 and several metadata sizes also differ. These are documented

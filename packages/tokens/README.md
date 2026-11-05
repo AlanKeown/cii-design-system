@@ -11,13 +11,17 @@ schemes without resetting consumer elements.
 
 `--cii-map-feature` is the default map feature outline colour: light-theme navy
 and dark-theme light purple. `--cii-map-surface` is the map background when no
-basemap is shown; it currently aliases `--cii-bg-subtle`. Custom colours,
-opacity and basemaps require separate contrast checks.
+basemap is shown; it currently aliases `--cii-bg-subtle`.
+`--cii-map-feature-invalid` aliases `--cii-status-error`.
+`--cii-map-feature-selected` is reserved: its values are not chosen yet, and its
+checks run as pending tests. Custom colours, opacity and basemaps require
+separate contrast checks.
 
 Map colour tokens must resolve to six-digit hex colours, directly or through
 `var(--cii-…)` aliases, because canvas renderers cannot use `color-mix()` or
 relative colours. Run `npm run test:unit -w @cii/tokens` after editing them. The
-test checks that each map colour token is defined in both themes and that
-`--cii-map-feature` meets 3:1 against `--cii-map-surface`. Add a row to
-`requirements` in `tests/contrast.test.ts` for each new pair that must stay
-distinguishable.
+test checks that each map colour token is defined in both themes, that each pair
+in `requirements` meets its minimum contrast, and that each token in `distinct`
+differs from the tokens it lists. Add rules there for every new map token. Mark
+a rule `pending` until its token has approved values, and remove the mark when
+the values land.

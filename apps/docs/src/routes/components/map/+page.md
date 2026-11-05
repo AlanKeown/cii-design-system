@@ -30,7 +30,6 @@ zoom controls and mandatory attribution.
         provider: 'geojson', url: '/data/sites.geojson',
         crs: { code: 'OGC:CRS84', provenance: { kind: 'declared', by: 'application author' } }
       },
-      style: { stroke: { color: 'token:--cii-text-info' }, fill: { color: 'token:--cii-text-info' } },
       attribution: 'Your data attribution'
     }]
   };
@@ -124,9 +123,12 @@ Without a colour override, feature outlines use `--cii-map-feature`: navy
 (`#122B4D`) in light mode and light purple (`#B39BFF`) in dark mode. The token
 is designed for the `--cii-map-surface` background, which currently matches
 `--cii-bg-subtle`; custom colours, reduced opacity and basemaps need separate
-contrast checks. Import `@cii/tokens/tokens.css`; missing colour tokens produce
-an actionable layer error instead of a substitute palette. Do not rely on colour
-alone to distinguish layers.
+contrast checks. When a layer sets its own colours, prefer `--cii-map-*` tokens,
+such as `token:--cii-map-feature`, over UI or brand tokens. Map tokens are
+checked against the map background in both themes. Import
+`@cii/tokens/tokens.css`; missing colour tokens produce an actionable layer error
+instead of a substitute palette. Do not rely on colour alone to distinguish
+layers.
 
 The map fills the width of its container and resizes with it. `height` sets the
 viewport height, with a minimum of 12rem. On small screens, choose a height that
