@@ -36,15 +36,17 @@ Phase 0 is **not complete**. Remaining work includes extension schema merging, r
 
 This plan **supersedes** [mapping-components-spec.md](./mapping-components-spec.md) (v0.1). Where the two documents disagree, this plan wins. These parts of the earlier spec remain in force, and have been folded into this plan:
 
-| Earlier spec section                                                                     | Carried forward to |
-| ---------------------------------------------------------------------------------------- | ------------------ |
-| §4.2 zoom normalisation                                                                  | §6.4 view contract |
-| §5.3 style rule labels and precedence                                                    | §7.4               |
-| §7.2 `<CiiMap>` behaviour (controlled view, reconciliation, queued registration, resize) | §12.2              |
-| §8.5 drafts                                                                              | §9.6               |
-| §8.6 accessible capture, §10 accessibility                                               | §15.4              |
-| §9 theming                                                                               | §15.5              |
-| §13 security, keys and attribution                                                       | §15.6              |
+| Earlier spec section                                                                     | Carried forward to     |
+| ---------------------------------------------------------------------------------------- | ---------------------- |
+| §4.2 zoom normalisation                                                                  | §6.4 view contract     |
+| §5.3 style rule labels and precedence                                                    | §7.4                   |
+| §7.2 `<CiiMap>` behaviour (controlled view, reconciliation, queued registration, resize) | §12.2 (`MapContainer`) |
+| §8.5 drafts                                                                              | §9.6                   |
+| §8.6 accessible capture, §10 accessibility                                               | §15.4                  |
+| §9 theming                                                                               | §15.5                  |
+| §13 security, keys and attribution                                                       | §15.6                  |
+
+The earlier spec's `<CiiMap>` component, imported from `@cii/maps`, is named `MapContainer` here and imported from `@cii/maps/svelte`.
 
 Everything else in the earlier spec (Terra Draw, WGS 84-only public geometry, the generic `CaptureSink`) is **replaced** by this plan. Its single `@cii/maps` package with engine subpath exports is kept as the starting layout (decision D9). Scope items it listed that are not in this plan are recorded as retained, deferred or removed in §16.1.
 

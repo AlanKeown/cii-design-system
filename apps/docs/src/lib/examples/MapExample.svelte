@@ -40,8 +40,8 @@
         },
         style: {
           point: { shape: 'circle', size: large ? 24 : 12 },
-          stroke: { color: 'token:--cii-brand-primary', width: 3 },
-          fill: { color: 'token:--cii-brand-primary', opacity: 0.35 }
+          stroke: { color: 'token:--cii-text-info', width: 3 },
+          fill: { color: 'token:--cii-text-info', opacity: 0.35 }
         }
       }
     ]

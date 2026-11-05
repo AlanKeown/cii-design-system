@@ -5,11 +5,10 @@ description: The complete CII Design System component catalogue and implementati
 
 The catalogue covers the product specification and the additional primitives found in the community portal audit. Individual controls and feedback components have separate pages; composed workflows live in [Patterns](/patterns/).
 
-**Shared** components are exported by `@cii/svelte` and have live examples. **Application guidance** documents usage, contracts, semantic structure, states, keyboard behaviour, themes and responsive layout, but has no shared export. Each guide records whether the portal implements it and which gaps remain. HTML structure examples require application behaviour where described; they are not live widgets or invented package APIs.
+**Shared** components are exported by a CII package and have live examples. Most come from `@cii/svelte`; Map comes from `@cii/maps/svelte`, which builds on `@cii/svelte`. **Application guidance** documents usage, contracts, semantic structure, states, keyboard behaviour, themes and responsive layout, but has no shared export. Each guide records whether the portal implements it and which gaps remain. HTML structure examples require application behaviour where described; they are not live widgets or invented package APIs.
 
 | Component | Purpose | Implementation |
 | --- | --- | --- |
-| [Map](/components/map/) | Display declared-CRS features with Leaflet. | Shared first slice (`@cii/maps/svelte`) |
 | [App shell](/components/app-shell/) | Structure the top bar, sidebar and main content. | Application guidance |
 | [Button](/components/button/) | Trigger actions with consistent emphasis. | Shared |
 | [Icon button](/components/icon-button/) | Trigger compact, explicitly named actions. | Application guidance |
@@ -26,6 +25,7 @@ The catalogue covers the product specification and the additional primitives fou
 | [Toggle](/components/toggle/) | Turn a setting on or off. | Application guidance |
 | [Search and filter bar](/components/search-filter-bar/) | Find records and narrow a list. | Application guidance |
 | [Data table](/components/data-table/) | Compare and act on structured records. | Application guidance |
+| [Map](/components/map/) | Display declared-CRS features with Leaflet. | Shared, first slice (`@cii/maps/svelte`) |
 | [Status chip](/components/status-chip/) | Show a concise record status. | Shared |
 | [Tag](/components/tag/) | Label and organise records with categories. | Application guidance |
 | [Card](/components/card/) | Group metrics, information or a related action. | Application guidance |
@@ -46,6 +46,6 @@ The catalogue covers the product specification and the additional primitives fou
 
 Use [design tokens](/foundations/tokens/), [responsive layout](/foundations/responsive-layout/) and [iconography](/foundations/iconography/) across components. Follow the component-specific contracts rather than treating visual similarity to the portal as proof of accessibility.
 
-The catalogue contains 31 guides: four shared components and 27 application guides. Multiselect, Radio group and Tag are specified for future use; the portal does not currently implement them. Toggle guidance distinguishes the portal's theme action button from a switch.
+The catalogue contains 32 guides: five shared components (four from `@cii/svelte` and Map from `@cii/maps/svelte`) and 27 application guides. Multiselect, Radio group and Tag are specified for future use; the portal does not currently implement them. Toggle guidance distinguishes the portal's theme action button from a switch.
 
 Before promoting application guidance into a shared component, define its typed API, implement its behaviour, add interactive light/dark examples and verify keyboard, focus, semantics, responsive layout and feedback. Documented requirements do not mean that extraction or verification has already happened.

@@ -36,7 +36,7 @@ Business data, role previews, navigation, local persistence and record workflows
 | Reports | [Reporting and date ranges](/patterns/reporting/), [date input](/components/date-input/) |
 | Appearance | [Tokens](/foundations/tokens/), [responsive layout](/foundations/responsive-layout/), [iconography](/foundations/iconography/) |
 
-The [catalogue](/components/) separates four shared exports from application guidance. Multiselect, Radio group and Tag are documented future patterns without current portal examples. Toggle guidance records the distinction between a switch and the existing theme action button.
+The [catalogue](/components/) separates five shared exports (four from `@cii/svelte` and Map from `@cii/maps/svelte`) from application guidance. Multiselect, Radio group and Tag are documented future patterns without current portal examples. Toggle guidance records the distinction between a switch and the existing theme action button.
 
 Component and pattern guides document implemented accessibility behaviour and remaining gaps, including draft lifecycle, production authorization and hardcoded theme values. This documentation pass does not extract new shared components or change portal behaviour.
 

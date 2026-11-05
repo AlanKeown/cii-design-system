@@ -29,7 +29,6 @@ const sidebar = [
     title: 'Components',
     items: [
       { title: 'Overview', to: '/components/' },
-      { title: 'Map', to: '/components/map/' },
       { title: 'App shell', to: '/components/app-shell/' },
       { title: 'Button', to: '/components/button/' },
       { title: 'Icon button', to: '/components/icon-button/' },
@@ -46,6 +45,7 @@ const sidebar = [
       { title: 'Toggle', to: '/components/toggle/' },
       { title: 'Search and filter bar', to: '/components/search-filter-bar/' },
       { title: 'Data table', to: '/components/data-table/' },
+      { title: 'Map', to: '/components/map/' },
       { title: 'Status chip', to: '/components/status-chip/' },
       { title: 'Tag', to: '/components/tag/' },
       { title: 'Card', to: '/components/card/' },
