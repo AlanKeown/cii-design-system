@@ -165,13 +165,11 @@ test('failed HTTP, invalid JSON and byte limits fail before rendering', async ()
       crs: declaration
     };
     await assert.rejects(
-      sources
-        .require('geojson')
-        .probe(source, {
-          sources,
-          crsRegistry: createCrsRegistry(),
-          displayCrs: 'EPSG:3857'
-        }),
+      sources.require('geojson').probe(source, {
+        sources,
+        crsRegistry: createCrsRegistry(),
+        displayCrs: 'EPSG:3857'
+      }),
       (error: unknown) => error instanceof MapError && error.code === code
     );
   }
