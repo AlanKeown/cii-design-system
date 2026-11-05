@@ -1,2 +1,2 @@
 [mcp_servers.supabase]
-url = "https://mcp.supabase.com/mcp?project_ref=kykbgwewulzceunbbsfa"
+url = "https://mcp.supabase.com/mcp?project_ref=kykbgwewulzceunbbsfa&read_only=true&features=database%2Cdocs"
