@@ -146,6 +146,86 @@ test('GeoJSON hints cannot confirm or override a declaration', async () => {
   assert.equal(missing.ok, false);
 });
 
+test('legacy CRS84 names normalise to a CRS84 hint without changing coordinates', async () => {
+  for (const name of [
+    'OGC:CRS84',
+    'urn:ogc:def:crs:OGC::CRS84',
+    'urn:ogc:def:crs:OGC:1.3:CRS84',
+    'urn:ogc:def:crs:ogc:1.3:crs84',
+    'http://www.opengis.net/def/crs/OGC/0/CRS84',
+    'http://www.opengis.net/def/crs/OGC/1.3/CRS84',
+    'https://www.opengis.net/def/crs/OGC/1.3/CRS84'
+  ]) {
+    const sources = createFeatureSources(async () =>
+      Response.json({
+        ...point,
+        crs: { type: 'name', properties: { name } }
+      })
+    );
+    const source = {
+      provider: 'geojson',
+      url: '/sites.geojson',
+      crs: declaration
+    };
+    const context = {
+      sources,
+      crsRegistry: createCrsRegistry(),
+      displayCrs: 'EPSG:3857'
+    };
+    const confirmed = await resolveSourceCrs(source, context);
+    assert.ok(confirmed.ok, name);
+    assert.deepEqual(confirmed.value.provenance, {
+      ...declaration.provenance,
+      hint: { code: 'OGC:CRS84', from: 'geojson_crs' }
+    });
+    const opened = await sources
+      .require('geojson')
+      .open(source, confirmed.value, {});
+    assert.deepEqual(opened.data, parseGeoJson(point));
+    const mismatch = await resolveSourceCrs(
+      {
+        ...source,
+        crs: { ...declaration, code: 'EPSG:4326' }
+      },
+      context
+    );
+    assert.ok(!mismatch.ok);
+    assert.equal(mismatch.error.code, 'CRS_HINT_MISMATCH');
+  }
+});
+
+test('other legacy CRS names retain their own hints', async () => {
+  for (const [name, code] of [
+    ['urn:ogc:def:crs:EPSG::4326', 'EPSG:4326'],
+    ['http://www.opengis.net/def/crs/EPSG/0/7844', 'EPSG:7844'],
+    ['urn:ogc:def:crs:OGC:1.3:CRS84h', 'urn:ogc:def:crs:OGC:1.3:CRS84h'],
+    ['custom:CRS84', 'custom:CRS84']
+  ]) {
+    const sources = createFeatureSources(async () =>
+      Response.json({
+        ...point,
+        crs: { type: 'name', properties: { name } }
+      })
+    );
+    const source = {
+      provider: 'geojson',
+      url: '/sites.geojson',
+      crs: declaration
+    };
+    const result = await sources
+      .require('geojson')
+      .probe(source, {
+        sources,
+        crsRegistry: createCrsRegistry(),
+        displayCrs: 'EPSG:3857'
+      });
+    assert.deepEqual(result, {
+      kind: 'hint',
+      hint: { code, from: 'geojson_crs' }
+    });
+  }
+});
+
 test('failed HTTP, invalid JSON and byte limits fail before rendering', async () => {
   for (const [response, code] of [
     [new Response('missing', { status: 404 }), 'SOURCE_LOAD_FAILED'],

@@ -219,8 +219,12 @@ export function createFeatureSources(
               throw invalid();
             const name = raw.crs.properties.name;
             const epsg = name.match(/(?:EPSG:|EPSG::|EPSG\/0\/)(\d+)$/i);
+            const crs84 =
+              /^(?:OGC:CRS84|urn:ogc:def:crs:OGC:(?:1\.3)?:CRS84|https?:\/\/www\.opengis\.net\/def\/crs\/OGC\/(?:0|1\.3)\/CRS84)$/i.test(
+                name
+              );
             hint = {
-              code: epsg ? `EPSG:${epsg[1]}` : name,
+              code: crs84 ? 'OGC:CRS84' : epsg ? `EPSG:${epsg[1]}` : name,
               from: 'geojson_crs'
             };
           }
