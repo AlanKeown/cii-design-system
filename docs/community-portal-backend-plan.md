@@ -13,16 +13,37 @@
 
 ## Decisions already taken for this plan
 
-- **Supabase is the data and identity backend.** Supabase Auth handles sign-in, Postgres stores the data, and Row Level Security (RLS) enforces permissions. Database triggers write the audit log.
-- **The portal runs as a SvelteKit server on Cloudflare** using `@sveltejs/adapter-cloudflare`. Static assets are still served from Cloudflare's edge; pages and API routes run in Pages Functions.
-- **Supabase's server-side auth model is used in full.** `hooks.server.ts` creates one `@supabase/ssr` client per request from the request's cookies. Sessions live in **`httpOnly` cookies**, and the server verifies the user's token on every request. Sign-in, sign-out, the email link and the OAuth callback are server routes and form actions.
-- **The browser holds no Supabase client and no tokens.** It loads data through server `load` functions and changes data through the portal's own JSON endpoints. Each server call uses the signed-in user's token, so **RLS still decides every read and write**. The server adds validation, session handling and clean errors on top, but it is not the security boundary.
-- **No Supabase secret key at runtime in version 1.** The Worker only ever acts as the signed-in user. When a later feature needs privileged code, it can go in a SvelteKit server route or a Supabase Edge Function. §7.7 sets these out as equal alternatives, chosen per feature.
-- **Data is hosted in Australia.** The Supabase project runs in `ap-southeast-2` (Sydney).
-- **Email goes through Resend's free plan**, connected to Supabase Auth as custom SMTP.
-- **The free Supabase project is kept awake** by a scheduled GitHub Actions workflow (§9.3).
-- **Every account gets its own demo organisation** filled with the existing fictional records. Organisations are isolated from each other.
-- **Browser-only mode stays.** Without Supabase configuration, or when a visitor picks "Try without an account", the portal stores data in `localStorage` exactly as it does today. All existing tests keep passing in this mode.
+- **Supabase is the data and identity backend.** Supabase Auth handles sign-in,
+  Postgres stores the data, and Row Level Security (RLS) enforces permissions.
+  Database triggers write the audit log.
+- **The portal runs as a SvelteKit server on Cloudflare** using
+  `@sveltejs/adapter-cloudflare`. Static assets are still served from
+  Cloudflare's edge; pages and API routes run in Pages Functions.
+- **Supabase's server-side auth model is used in full.** `hooks.server.ts`
+  creates one `@supabase/ssr` client per request from the request's cookies.
+  Sessions live in **`httpOnly` cookies**, and the server verifies the user's
+  token on every request. Sign-in, sign-out, the email link and the OAuth
+  callback are server routes and form actions.
+- **The browser holds no Supabase client and no tokens.** It loads data through
+  server `load` functions and changes data through the portal's own JSON
+  endpoints. Each server call uses the signed-in user's token, so **RLS still
+  decides every read and write**. The server adds validation, session handling
+  and clean errors on top, but it is not the security boundary.
+- **No Supabase secret key at runtime in version 1.** The Worker only ever acts
+  as the signed-in user. When a later feature needs privileged code, it can go
+  in a SvelteKit server route or a Supabase Edge Function. §7.7 sets these out
+  as equal alternatives, chosen per feature.
+- **Data is hosted in Australia.** The Supabase project runs in `ap-southeast-2`
+  (Sydney).
+- **Email goes through Resend's free plan**, connected to Supabase Auth as
+  custom SMTP.
+- **The free Supabase project is kept awake** by a scheduled GitHub Actions
+  workflow (§9.3).
+- **Every account gets its own demo organisation** filled with the existing
+  fictional records. Organisations are isolated from each other.
+- **Browser-only mode stays.** Without Supabase configuration, or when a visitor
+  picks "Try without an account", the portal stores data in `localStorage`
+  exactly as it does today. All existing tests keep passing in this mode.
 
 ---
 
@@ -46,19 +67,30 @@
 
 ## 1. Purpose and scope
 
-The portal should become a live demo. Visitors can sign in, try every role and keep their data between visits. Permissions must be enforced by the backend, not just by hiding buttons.
+The portal should become a live demo. Visitors can sign in, try every role and
+keep their data between visits. Permissions must be enforced by the backend, not
+just by hiding buttons.
 
-**In scope for this plan**
+### In scope for this plan
 
 - Moving the portal from `adapter-static` to `adapter-cloudflare`.
-- Supabase server-side auth: email one-time code and email link, optional GitHub sign-in, Cloudflare Turnstile, `httpOnly` cookie sessions, a route guard.
-- Shared Postgres storage for Members, Programs, Events, Donations, Cases, saved views, organisation users and the audit log.
-- Role permissions enforced by RLS. The rules are the matrix that `permissions` in `src/lib/data.ts` defines today.
+- Supabase server-side auth: email one-time code and email link, optional GitHub
+  sign-in, Cloudflare Turnstile, `httpOnly` cookie sessions, a route guard.
+- Shared Postgres storage for Members, Programs, Events, Donations, Cases, saved
+  views, organisation users and the audit log.
+- Role permissions enforced by RLS. The rules are the matrix that `permissions`
+  in `src/lib/data.ts` defines today.
 - An audit log written by database triggers, which clients cannot alter.
-- Per-organisation isolation, invitations and a way for the demo owner to switch roles.
-- Keep-alive, cleanup of inactive data, CI database tests and deployment of migrations.
+- Per-organisation isolation, invitations and a way for the demo owner to switch
+  roles.
+- Keep-alive, cleanup of inactive data, CI database tests and deployment of
+  migrations.
 
-**Out of scope (later plans):** document uploads (Supabase Storage), individual attendance, XLSX/PDF exports, realtime collaboration, field-level privacy controls for roles other than Board Member, server-only admin features that need the Supabase secret key (§7.7 describes the two ways to add them), and paid-plan features such as point-in-time recovery.
+**Out of scope (later plans):** document uploads (Supabase Storage), individual
+attendance, XLSX/PDF exports, realtime collaboration, field-level privacy
+controls for roles other than Board Member, server-only admin features that need
+the Supabase secret key (§7.7 describes the two ways to add them), and paid-plan
+features such as point-in-time recovery.
 
 ---
 
@@ -74,7 +106,8 @@ The portal should become a live demo. Visitors can sign in, try every role and k
 | P6  | Local tooling                | Docker (already on this machine), the Supabase CLI as a root `devDependency` (`supabase`), and `wrangler` pinned to `4.156.0` as a portal `devDependency`, matching the deploy workflow.                                                                                                                                                                                                                                         |
 | P7  | GitHub secrets and variables | See §9.1.                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
-**Free-plan facts this plan relies on.** Re-check them at setup, because providers change them.
+**Free-plan facts this plan relies on.** Re-check them at setup, because
+providers change them.
 
 | Fact                                                                                                                                                                    | Used in     |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
@@ -123,26 +156,47 @@ GitHub Actions
 
 **Layers of protection, in order of authority:**
 
-1. **Postgres RLS and constraints** (§5): the security boundary. They hold even if someone bypasses the portal and calls Supabase's API directly with their own token. That is always possible, because the publishable key is public.
-2. **SvelteKit server** (§6, §7): verifies the session, rejects bad input before it reaches the database, turns database errors into clear messages, and keeps tokens away from JavaScript running in the page.
+1. **Postgres RLS and constraints** (§5): the security boundary. They hold even
+   if someone bypasses the portal and calls Supabase's API directly with their
+   own token. That is always possible, because the publishable key is public.
+2. **SvelteKit server** (§6, §7): verifies the session, rejects bad input before
+   it reaches the database, turns database errors into clear messages, and keeps
+   tokens away from JavaScript running in the page.
 3. **UI**: hides what the role can't use, following the product spec.
 
-**Why JSON endpoints rather than form actions for data changes:** saves, archives, status changes and role switches come from dialogs, the detail drawer and bulk table actions, and not all of them are forms. Endpoints map one-to-one onto the `PortalBackend` interface (§7.3), which local mode implements too. Sign-in and sign-out _are_ form actions, so they work without JavaScript.
+**Why JSON endpoints rather than form actions for data changes:** saves,
+archives, status changes and role switches come from dialogs, the detail drawer
+and bulk table actions, and not all of them are forms. Endpoints map one-to-one
+onto the `PortalBackend` interface (§7.3), which local mode implements too.
+Sign-in and sign-out _are_ form actions, so they work without JavaScript.
 
 ---
 
 ## 4. Database schema
 
-Everything lives in `supabase/` at the repository root (`supabase init`). Migrations go in `supabase/migrations/`, pgTAP tests in `supabase/tests/`, and local settings in `supabase/config.toml`.
+Everything lives in `supabase/` at the repository root (`supabase init`).
+Migrations go in `supabase/migrations/`, pgTAP tests in `supabase/tests/`, and
+local settings in `supabase/config.toml`.
 
 ### 4.1 Conventions
 
-- Tables exposed through the API live in `public`, with RLS enabled in the same migration that creates them.
-- Helper and `security definer` functions live in a `private` schema that is **not** in the API's exposed schemas. Every function sets `search_path = ''` and schema-qualifies every name.
-- Enum labels match the TypeScript literal unions exactly (`'Volunteer Coordinator'`, `'Needs receipt'`), so no mapping table is needed. §8.2 checks this at compile time.
-- Every record table is keyed by `(org_id, id)`. `id` is the existing display code (`M-1001`, `C-2003` and so on), so the `PortalRecord.id: string` contract stays the same.
-- `updated_by` and `updated_at` are set **by trigger** from `auth.uid()` and `now()`. Values sent by the client are overwritten. This replaces the hard-coded `'Sarah Mitchell'` in `records.ts`.
-- Records are never deleted through the API. Archiving is a status change, as it is now. The only deletes are organisation reset and the scheduled cleanup jobs.
+- Tables exposed through the API live in `public`, with RLS enabled in the same
+  migration that creates them.
+- Helper and `security definer` functions live in a `private` schema that is
+  **not** in the API's exposed schemas. Every function sets `search_path = ''`
+  and schema-qualifies every name.
+- Enum labels match the TypeScript literal unions exactly
+  (`'Volunteer Coordinator'`, `'Needs receipt'`), so no mapping table is needed.
+  §8.2 checks this at compile time.
+- Every record table is keyed by `(org_id, id)`. `id` is the existing display
+  code (`M-1001`, `C-2003` and so on), so the `PortalRecord.id: string` contract
+  stays the same.
+- `updated_by` and `updated_at` are set **by trigger** from `auth.uid()` and
+  `now()`. Values sent by the client are overwritten. This replaces the
+  hard-coded `'Sarah Mitchell'` in `records.ts`.
+- Records are never deleted through the API. Archiving is a status change, as it
+  is now. The only deletes are organisation reset and the scheduled cleanup
+  jobs.
 
 ### 4.2 Enums
 
@@ -170,7 +224,9 @@ create type public.case_priority   as enum ('Normal', 'High', 'Urgent');
 | `role_permissions`  | `role app_role`, `module app_module`, `can_write boolean`; pk `(role, module)`                                                                                                                                                               | Seed data, readable by `authenticated`. Not writable through the API.                                                       |
 | `private.heartbeat` | `id boolean pk default true check (id)`, `beat_at timestamptz`                                                                                                                                                                               | Single row used by keep-alive (§9.3).                                                                                       |
 
-`role_permissions` is seeded from today's matrix. A row means the role can read the module. `can_write` is true for every role except Board Member, matching `canWrite = role !== 'Board Member'`.
+`role_permissions` is seeded from today's matrix. A row means the role can read
+the module. `can_write` is true for every role except Board Member, matching
+`canWrite = role !== 'Board Member'`.
 
 ### 4.4 Record tables
 
@@ -198,15 +254,34 @@ primary key (org_id, id)
 | `donations` | `status donation_status`, `amount numeric(12,2) not null check (amount > 0)`                                                                                                                                          |
 | `cases`     | `status case_status`, `priority case_priority not null`, `member_id text not null`, FK `(org_id, member_id) → members`                                                                                                |
 
-`programs` is created before `members` because of the foreign key. When the client omits an `id` on insert, a `before insert` trigger assigns the next numeric code for that organisation and table (for example `M-1004` after `M-1003`). The trigger takes a transaction-scoped advisory lock per organisation and table, so concurrent inserts can't get the same code, and the same lock makes the row cap exact. Codes may also be sent by the client: seed data uses `P-101` and `M-1001`, and local mode creates `M-<uuid>`. The check accepts the table's prefix followed by up to 60 letters, digits or hyphens.
+`programs` is created before `members` because of the foreign key. When the
+client omits an `id` on insert, a `before insert` trigger assigns the next
+numeric code for that organisation and table (for example `M-1004` after
+`M-1003`). The trigger takes a transaction-scoped advisory lock per organisation
+and table, so concurrent inserts can't get the same code, and the same lock
+makes the row cap exact. Codes may also be sent by the client: seed data uses
+`P-101` and `M-1001`, and local mode creates `M-<uuid>`. The check accepts the
+table's prefix followed by up to 60 letters, digits or hyphens.
 
-**Optimistic concurrency.** Updates send the `updated_at` they last read, and the endpoint adds `.eq('updated_at', expected)`. If zero rows come back, the portal shows "This record was changed by someone else. Reload it to see the latest version." This is one predicate per update and needs no locking.
+**Optimistic concurrency.** Updates send the `updated_at` they last read, and
+the endpoint adds `.eq('updated_at', expected)`. If zero rows come back, the
+portal shows "This record was changed by someone else. Reload it to see the
+latest version." This is one predicate per update and needs no locking.
 
-**Row caps.** A `before insert` trigger rejects a new row once an organisation has 1,000 rows in that table (error code `P0001`, message `ORG_ROW_LIMIT`). This keeps the 500 MB free-plan database safe from one noisy account.
+**Row caps.** A `before insert` trigger rejects a new row once an organisation
+has 1,000 rows in that table (error code `P0001`, message `ORG_ROW_LIMIT`). This
+keeps the 500 MB free-plan database safe from one noisy account.
 
 ### 4.5 Administration module
 
-In live mode, Administration records are the organisation's **real users**: a `security definer` function `public.list_org_users(p_org)` that combines memberships (joined to profiles and `auth.users.email`) with open invitations. It raises an error unless the caller is an Admin of the organisation. A function is used rather than a view because invitations have no RLS policies at all (their token hashes stay unreadable through the API). Rows have the same fields as `UserRecord`: `id` is `U-` (members) or `I-` (invitations) plus a short form of the ID, `role` becomes `type`, and `status` is Active, Pending or Inactive.
+In live mode, Administration records are the organisation's **real users**: a
+`security definer` function `public.list_org_users(p_org)` that combines
+memberships (joined to profiles and `auth.users.email`) with open invitations.
+It raises an error unless the caller is an Admin of the organisation. A function
+is used rather than a view because invitations have no RLS policies at all
+(their token hashes stay unreadable through the API). Rows have the same fields
+as `UserRecord`: `id` is `U-` (members) or `I-` (invitations) plus a short form
+of the ID, `role` becomes `type`, and `status` is Active, Pending or Inactive.
 
 The view is read-only. Changes go through RPCs (§5.5):
 
@@ -221,9 +296,17 @@ The view is read-only. Changes go through RPCs (§5.5):
 | `saved_views` | `id uuid pk`, `org_id`, `user_id`, `name`, `module app_module`, `query`, `status`, `sort` (check `name/status/date`)                                   | Owner only: `user_id = (select auth.uid())`, and only if still a member of the organisation. |
 | `audit_log`   | `id bigint identity pk`, `org_id`, `actor_id`, `actor_name`, `action text`, `table_name`, `record_id`, `changes jsonb`, `at timestamptz default now()` | Admins of the organisation can select. **No** insert, update or delete policies.             |
 
-Audit rows are written by an `after insert or update` trigger function, `private.audit_record_change()`, attached to every record table, `memberships` and `invitations`. It runs as `security definer` so it can insert even though clients cannot. `action` is one of `Created`, `Updated`, `Archived` (status changed to Archived), `Role changed`, `Invited`, `Joined`, `Reset`. `changes` holds only the columns that changed, and leaves out `notes` content (it records only that notes changed), so personal text isn't copied into the log. A daily job keeps the newest 500 entries per organisation.
+Audit rows are written by an `after insert or update` trigger function,
+`private.audit_record_change()`, attached to every record table, `memberships`
+and `invitations`. It runs as `security definer` so it can insert even though
+clients cannot. `action` is one of `Created`, `Updated`, `Archived` (status
+changed to Archived), `Role changed`, `Invited`, `Joined`, `Reset`. `changes`
+holds only the columns that changed, and leaves out `notes` content (it records
+only that notes changed), so personal text isn't copied into the log. A daily
+job keeps the newest 500 entries per organisation.
 
-Theme preference and form drafts stay in `localStorage`. They are per-device conveniences, not shared data.
+Theme preference and form drafts stay in `localStorage`. They are per-device
+conveniences, not shared data.
 
 ---
 
@@ -253,11 +336,13 @@ create function private.is_admin(p_org uuid) returns boolean ...    -- active ro
 create function private.is_owner(p_org uuid) returns boolean ...
 ```
 
-Grant `usage` on schema `private` and `execute` on these functions to `authenticated` only. Revoke them from `public` and `anon`.
+Grant `usage` on schema `private` and `execute` on these functions to
+`authenticated` only. Revoke them from `public` and `anon`.
 
 ### 5.2 Record table policies
 
-The same three policies on each of `members`, `programs`, `events`, `donations` and `cases`, shown here for `members`:
+The same three policies on each of `members`, `programs`, `events`, `donations`
+and `cases`, shown here for `members`:
 
 ```sql
 alter table public.members enable row level security;
@@ -272,9 +357,11 @@ create policy members_update on public.members for update to authenticated
 -- No delete policy.
 ```
 
-Add indexes on `(org_id)` for every table. `role_permissions` is tiny, so the helper's lookup is cheap.
+Add indexes on `(org_id)` for every table. `role_permissions` is tiny, so the
+helper's lookup is cheap.
 
-Policies alone would let a user move a row to another organisation they can write to. A `before update` trigger stops `org_id` and `id` from being changed.
+Policies alone would let a user move a row to another organisation they can
+write to. A `before update` trigger stops `org_id` and `id` from being changed.
 
 ### 5.3 What each role can do
 
@@ -289,51 +376,105 @@ Taken directly from `permissions` in `data.ts`:
 | Case Worker           | Members, Programs, Cases         | Same        |                                                    |
 | Board Member          | No record tables                 | Nothing     | De-identified reports through `report_rows` (§5.6) |
 
-Dashboard and Reports have no tables of their own. They are computed from whatever the user can read.
+Dashboard and Reports have no tables of their own. They are computed from
+whatever the user can read.
 
-**Cross-module references.** A Donations Manager can read members but not programs, so `programId` can't be resolved for them. The UI must show the code with "Restricted" rather than failing. Add a browser test for this.
+**Cross-module references.** A Donations Manager can read members but not
+programs, so `programId` can't be resolved for them. The UI must show the code
+with "Restricted" rather than failing. Add a browser test for this.
 
 ### 5.4 Workspace bootstrap
 
-Use `public.ensure_workspace(display_name text default null) returns table (org_id uuid, created boolean)` (`security definer`). The page's server `load` calls it on every visit by a signed-in user. It is idempotent:
+Use the following function (`security definer`):
 
-1. Insert the profile if missing (default display name: the part of the email before the `@`).
-2. If the user has no active membership, create an organisation named "`<display name>`'s demo organisation" and add an owner membership with role `Admin`. Return `created = true`.
-3. Update `last_active_at` and return the ID of the user's most recently active organisation, or of the organisation chosen with the switcher (§5.5).
+```sql
+public.ensure_workspace(display_name text default null)
+  returns table (org_id uuid, created boolean)
+```
 
-This is a callable RPC rather than a trigger on `auth.users`, so a bug in it can never block sign-up. It also re-creates a workspace after cleanup (§9.4).
+The page's server `load` calls it on every visit by a signed-in user. It is
+idempotent:
 
-**Seeding.** Use `public.seed_demo_workspace(p_org uuid, p_payload jsonb)`, which is owner-only. It runs in a single transaction, deletes the organisation's record rows, inserts the payload, resets the code counters and writes a `Reset` audit row. When `ensure_workspace` returns `created = true`, the server `load` calls it with `initialRecords` from `data.ts`, so the fictional data has one source and the database constraints still validate it. The function rejects payloads over 200 rows per table. The same RPC provides a **Reset demo data** action in Administration.
+1. Insert the profile if missing (default display name: the part of the email
+   before the `@`).
+2. If the user has no active membership, create an organisation named
+   "`<display name>`'s demo organisation" and add an owner membership with role
+   `Admin`. Return `created = true`.
+3. Update `last_active_at` and return the ID of the user's most recently active
+   organisation, or of the organisation chosen with the switcher (§5.5).
+
+This is a callable RPC rather than a trigger on `auth.users`, so a bug in it can
+never block sign-up. It also re-creates a workspace after cleanup (§9.4).
+
+**Seeding.** Use `public.seed_demo_workspace(p_org uuid, p_payload jsonb)`,
+which is owner-only. It runs in a single transaction, deletes the organisation's
+record rows, inserts the payload, resets the code counters and writes a `Reset`
+audit row. When `ensure_workspace` returns `created = true`, the server `load`
+calls it with `initialRecords` from `data.ts`, so the fictional data has one
+source and the database constraints still validate it. The function rejects
+payloads over 200 rows per table. The same RPC provides a **Reset demo data**
+action in Administration.
 
 ### 5.5 Demo role switching and invitations
 
-The live demo's main purpose is trying different roles, so the existing **Preview role** control becomes a real role change:
+The live demo's main purpose is trying different roles, so the existing
+**Preview role** control becomes a real role change:
 
-- `set_my_demo_role(p_org uuid, p_role app_role)`: allowed only when `is_owner(p_org)`. It changes the caller's own membership role. Because `is_owner` doesn't depend on the role, the owner can always switch back to Admin. Each change is audited.
-- After the call, the portal reloads its data (`invalidateAll()`), so what the user sees is exactly what RLS now returns.
+- `set_my_demo_role(p_org uuid, p_role app_role)`: allowed only when
+  `is_owner(p_org)`. It changes the caller's own membership role. Because
+  `is_owner` doesn't depend on the role, the owner can always switch back to
+  Admin. Each change is audited.
+- After the call, the portal reloads its data (`invalidateAll()`), so what the
+  user sees is exactly what RLS now returns.
 - Non-owners don't see the control.
 
 Invitations let a second real account test a role from the inside:
 
-- `create_invitation(p_org, p_email, p_role) returns text` (Admin only): generates a 32-byte random token, stores its SHA-256 hash and returns the raw token. The portal shows a copyable link, `https://cii-community-portal.pages.dev/invite/<token>`. **No email is sent**, which saves Resend quota and needs no secret key.
-- The `/invite/[token]` route: the guard sends signed-out visitors to `/auth?next=/invite/<token>`. Once signed in, the page shows the organisation and role with an **Accept** button. Accepting is a POST form action that calls `accept_invitation(p_token text)`, so link previewers can't accept on someone's behalf.
-- `accept_invitation` requires the signed-in user's email to match the invitation (case-insensitive). The invitation must not be expired or accepted. It creates the membership and marks the invitation accepted.
-- `set_member_role(p_org, p_user, p_role)` and `deactivate_member(p_org, p_user)` (Admin only): these cannot target the owner.
-- If a user belongs to more than one organisation, a switcher appears in the header. The selected organisation is stored in an `httpOnly` cookie, `portal-org`, which the server reads and checks against the user's memberships.
+- `create_invitation(p_org, p_email, p_role) returns text` (Admin only):
+  generates a 32-byte random token, stores its SHA-256 hash and returns the raw
+  token. The portal shows a copyable link,
+  `https://cii-community-portal.pages.dev/invite/<token>`. **No email is sent**,
+  which saves Resend quota and needs no secret key.
+- The `/invite/[token]` route: the guard sends signed-out visitors to
+  `/auth?next=/invite/<token>`. Once signed in, the page shows the organisation
+  and role with an **Accept** button. Accepting is a POST form action that calls
+  `accept_invitation(p_token text)`, so link previewers can't accept on
+  someone's behalf.
+- `accept_invitation` requires the signed-in user's email to match the
+  invitation (case-insensitive). The invitation must not be expired or accepted.
+  It creates the membership and marks the invitation accepted.
+- `set_member_role(p_org, p_user, p_role)` and
+  `deactivate_member(p_org, p_user)` (Admin only): these cannot target the
+  owner.
+- If a user belongs to more than one organisation, a switcher appears in the
+  header. The selected organisation is stored in an `httpOnly` cookie,
+  `portal-org`, which the server reads and checks against the user's
+  memberships.
 
 ### 5.6 Board Member reports
 
-At the moment Board Members can download every module's rows as CSV, including emails, phone numbers and case notes. In live mode, `public.report_rows(p_org, p_module, p_from date, p_to date) returns jsonb` (`security definer`) does the following:
+At the moment Board Members can download every module's rows as CSV, including
+emails, phone numbers and case notes. In live mode,
+`public.report_rows(p_org, p_module, p_from date, p_to date) returns jsonb`
+(`security definer`) does the following:
 
 - If the caller can read `p_module`, it returns full rows, like a normal select.
-- Otherwise, if the caller has Reports access, it returns **de-identified** rows: `id`, `status`, `type`, `location`, `date` and the module's numeric fields. No `name`, `email`, `phone`, `notes`, `tags` or linked IDs.
+- Otherwise, if the caller has Reports access, it returns **de-identified**
+  rows: `id`, `status`, `type`, `location`, `date` and the module's numeric
+  fields. No `name`, `email`, `phone`, `notes`, `tags` or linked IDs.
 - Otherwise, it raises an exception.
 
-`Reports.svelte` requests these rows through `GET /api/reports/[module]` for modules outside `allowed`. CSV export uses the same rows.
+`Reports.svelte` requests these rows through `GET /api/reports/[module]` for
+modules outside `allowed`. CSV export uses the same rows.
 
 ### 5.7 Account deletion
 
-`public.delete_my_account()` (`security definer`): deletes the caller's row in `auth.users`. That cascades to the organisations they own and everything in them, plus their memberships and profile. The portal calls it from `DELETE /api/account` after a confirmation step, then clears the session cookies. It's needed for the privacy notice (§10.2). Because it runs inside the database as the caller, it needs no secret key in the Worker.
+`public.delete_my_account()` (`security definer`): deletes the caller's row in
+`auth.users`. That cascades to the organisations they own and everything in
+them, plus their memberships and profile. The portal calls it from
+`DELETE /api/account` after a confirmation step, then clears the session
+cookies. It's needed for the privacy notice (§10.2). Because it runs inside the
+database as the caller, it needs no secret key in the Worker.
 
 ---
 
@@ -414,10 +555,21 @@ export const handle = sequence(supabase, guard);
 
 Notes:
 
-- **Cookie options** are deliberately stricter than the library defaults. `httpOnly` works here because nothing in the browser reads the session. If a later feature needs a browser Supabase client (realtime, for example), it has to give up `httpOnly`. Make that trade-off explicitly; don't slip it in.
-- **`getClaims()`** checks the token locally with the project's public signing key (cached), so a normal request costs no extra call to Supabase Auth. With older symmetric keys it falls back to a network call, which is why P1 requires asymmetric keys. Follow the `@supabase/ssr` release notes for the current `setAll` signature. Recent versions also pass cache headers, which must be applied to the response.
-- **`Cache-Control: private, no-store`** on every signed-in response stops Cloudflare or the browser caching one user's page for another.
-- **Local mode:** "Try without an account" sets `portal-mode=local` (not a session, just a preference). The guard lets the visitor through and the page uses the `localStorage` backend. Signing in clears that cookie.
+- **Cookie options** are deliberately stricter than the library defaults.
+  `httpOnly` works here because nothing in the browser reads the session. If a
+  later feature needs a browser Supabase client (realtime, for example), it has
+  to give up `httpOnly`. Make that trade-off explicitly; don't slip it in.
+- **`getClaims()`** checks the token locally with the project's public signing
+  key (cached), so a normal request costs no extra call to Supabase Auth. With
+  older symmetric keys it falls back to a network call, which is why P1 requires
+  asymmetric keys. Follow the `@supabase/ssr` release notes for the current
+  `setAll` signature. Recent versions also pass cache headers, which must be
+  applied to the response.
+- **`Cache-Control: private, no-store`** on every signed-in response stops
+  Cloudflare or the browser caching one user's page for another.
+- **Local mode:** "Try without an account" sets `portal-mode=local` (not a
+  session, just a preference). The guard lets the visitor through and the page
+  uses the `localStorage` backend. Signing in clears that cookie.
 - **Types:** declare `App.Locals` in `src/app.d.ts`:
 
   ```ts
@@ -437,7 +589,11 @@ Notes:
 
 ### 6.2 Auth routes
 
-All of these are server routes or form actions under `src/routes/auth/`. They use `@cii/svelte` `TextField`, `Button` and `Alert`, with the same labelling, error summary and focus handling as the record form. With `use:enhance` they behave like the rest of the app; without JavaScript they still work, apart from Turnstile.
+All of these are server routes or form actions under `src/routes/auth/`. They
+use `@cii/svelte` `TextField`, `Button` and `Alert`, with the same labelling,
+error summary and focus handling as the record form. With `use:enhance` they
+behave like the rest of the app; without JavaScript they still work, apart from
+Turnstile.
 
 | Route              | Kind                            | Behaviour                                                                                                                                                                                                                                                                      |
 | ------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -449,9 +605,12 @@ All of these are server routes or form actions under `src/routes/auth/`. They us
 | `/auth/confirm`    | `+page.server.ts` load + action | **GET verifies nothing.** It shows "Continue signing in" with a button. The POST action calls `verifyOtp({ token_hash, type })`. This stops email security scanners, which open links automatically, from using up the one-time link.                                          |
 | `/auth/signout`    | Form action (POST only)         | `signOut()`, clears `portal-org`, redirects to `/auth`. The header's sign-out button is a small form.                                                                                                                                                                          |
 
-**Safe redirects.** `next` is accepted only if it is a path that starts with a single `/` (not `//` and no scheme). Anything else becomes `/`. Put this in `src/lib/server/redirect.ts` and unit-test it.
+**Safe redirects.** `next` is accepted only if it is a path that starts with a
+single `/` (not `//` and no scheme). Anything else becomes `/`. Put this in
+`src/lib/server/redirect.ts` and unit-test it.
 
-**Error messages** keep to plain language and never reveal whether an email already has an account.
+**Error messages** keep to plain language and never reveal whether an email
+already has an account.
 
 ### 6.3 Sign-in methods
 
@@ -476,7 +635,10 @@ All of these are server routes or form actions under `src/routes/auth/`. They us
 | Email rate limit (custom SMTP)   | 30 per hour (see §10.3)                                                                                                                                                     |
 | Sign-ins per IP / OTP resend gap | Defaults to start with, but see §10.4: requests now come from Cloudflare's IP addresses                                                                                     |
 
-Record every value in `supabase/config.toml` too, with secrets written as `env(...)` references. That keeps local and production in step and allows `supabase config push` later. Local settings: captcha off, SMTP pointed at the bundled Mailpit, `site_url = "http://localhost:5187"`.
+Record every value in `supabase/config.toml` too, with secrets written as
+`env(...)` references. That keeps local and production in step and allows
+`supabase config push` later. Local settings: captcha off, SMTP pointed at the
+bundled Mailpit, `site_url = "http://localhost:5187"`.
 
 ### 6.5 Resend as custom SMTP
 
@@ -493,9 +655,12 @@ In **Supabase → Authentication → Emails → SMTP settings**:
 
 Steps:
 
-1. Verify the domain in Resend (P3). Wait until SPF and DKIM both show **Verified** before you turn on SMTP in Supabase.
-2. Enter the settings above and save. Send a test sign-in to an address you own, then check the Resend **Emails** log shows it as `delivered`.
-3. Replace the **Magic Link** and **Confirm signup** templates. Both must contain the code and the server-side confirmation link, in plain language:
+1. Verify the domain in Resend (P3). Wait until SPF and DKIM both show
+   **Verified** before you turn on SMTP in Supabase.
+2. Enter the settings above and save. Send a test sign-in to an address you own,
+   then check the Resend **Emails** log shows it as `delivered`.
+3. Replace the **Magic Link** and **Confirm signup** templates. Both must
+   contain the code and the server-side confirmation link, in plain language:
 
    ```html
    <h2>Your Common Ground demo sign-in code</h2>
@@ -513,10 +678,17 @@ Steps:
    </p>
    ```
 
-   Keep copies in `supabase/templates/` and reference them from `config.toml`, so templates are reviewed like code.
+   Keep copies in `supabase/templates/` and reference them from `config.toml`,
+   so templates are reviewed like code.
 
-4. Turn off Resend's **click tracking** for the domain. Rewritten links break the confirmation link, and tracking adds no value here.
-5. **Region and privacy:** the domain is in Resend's Tokyo region, because Resend has no Australian region. Recipient addresses are therefore processed outside Australia. If Australian processing becomes a requirement, Amazon SES in Sydney or Melbourne can replace Resend as Supabase's SMTP provider. Name Resend in the privacy notice as an overseas recipient (§10.2). The email contains only the code, the link and the address.
+4. Turn off Resend's **click tracking** for the domain. Rewritten links break
+   the confirmation link, and tracking adds no value here.
+5. **Region and privacy:** the domain is in Resend's Tokyo region, because
+   Resend has no Australian region. Recipient addresses are therefore processed
+   outside Australia. If Australian processing becomes a requirement, Amazon SES
+   in Sydney or Melbourne can replace Resend as Supabase's SMTP provider. Name
+   Resend in the privacy notice as an overseas recipient (§10.2). The email
+   contains only the code, the link and the address.
 
 ---
 
@@ -524,8 +696,13 @@ Steps:
 
 ### 7.1 Adapter and Cloudflare configuration
 
-- Replace `@sveltejs/adapter-static` with `@sveltejs/adapter-cloudflare` (currently 8.x) in `apps/community-portal/vite.config.ts`. The adapter writes `.svelte-kit/cloudflare`, including `_routes.json`, so requests for static assets don't run the Function.
-- Remove `export const prerender = true` from `src/routes/+layout.ts`; the portal page now depends on the session. Set `export const prerender = true` in `src/routes/privacy/+page.ts` only.
+- Replace `@sveltejs/adapter-static` with `@sveltejs/adapter-cloudflare`
+  (currently 8.x) in `apps/community-portal/vite.config.ts`. The adapter writes
+  `.svelte-kit/cloudflare`, including `_routes.json`, so requests for static
+  assets don't run the Function.
+- Remove `export const prerender = true` from `src/routes/+layout.ts`; the
+  portal page now depends on the session. Set `export const prerender = true` in
+  `src/routes/privacy/+page.ts` only.
 - Add `apps/community-portal/wrangler.jsonc`:
 
   ```jsonc
@@ -547,10 +724,22 @@ Steps:
   }
   ```
 
-  These three values are public by design, so committing them is safe. Because they sit only under `env.production`, `wrangler pages dev` and preview builds have **no** Supabase settings and run in local mode unless you pass them explicitly. Once this file exists, it is the source of truth for the Pages project's settings; the dashboard shows them as read-only.
+  These three values are public by design, so committing them is safe. Because
+  they sit only under `env.production`, `wrangler pages dev` and preview builds
+  have **no** Supabase settings and run in local mode unless you pass them
+  explicitly. Once this file exists, it is the source of truth for the Pages
+  project's settings; the dashboard shows them as read-only.
 
-- **Environment variables** are read with `$env/dynamic/public` at runtime, not baked in at build time. A build with no variables is therefore valid and runs in local mode. For live-mode development, put local values in `apps/community-portal/.env` (for `vite dev`) and `.dev.vars` (for `wrangler pages dev`). Both are git-ignored; add `.dev.vars` to `.gitignore`.
-- Replace the portal's `preview` script with `wrangler pages dev .svelte-kit/cloudflare --port 4187 --ip 0.0.0.0`. The shared `scripts/preview.ts` (sirv) stays for the docs site. Update the Playwright `webServer` entry so its readiness check matches Wrangler's "Ready on" output.
+- **Environment variables** are read with `$env/dynamic/public` at runtime, not
+  baked in at build time. A build with no variables is therefore valid and runs
+  in local mode. For live-mode development, put local values in
+  `apps/community-portal/.env` (for `vite dev`) and `.dev.vars` (for
+  `wrangler pages dev`). Both are git-ignored; add `.dev.vars` to `.gitignore`.
+- Replace the portal's `preview` script with
+  `wrangler pages dev .svelte-kit/cloudflare --port 4187 --ip 0.0.0.0`. The
+  shared `scripts/preview.ts` (sirv) stays for the docs site. Update the
+  Playwright `webServer` entry so its readiness check matches Wrangler's "Ready
+  on" output.
 
 ### 7.2 Server files
 
@@ -569,11 +758,15 @@ Steps:
 | `src/lib/server/redirect.ts`                | Safe `next` handling (§6.2)                                                                                                                                                                                                                      |
 | `src/lib/backend/database.types.ts`         | **Generated** by `supabase gen types typescript --local`. Checked in, and kept up to date by a CI check.                                                                                                                                         |
 
-SvelteKit refuses to bundle anything under `$lib/server` into browser code, which enforces the "no Supabase in the browser" decision.
+SvelteKit refuses to bundle anything under `$lib/server` into browser code,
+which enforces the "no Supabase in the browser" decision.
 
 ### 7.3 Backend interface in the browser
 
-The pure helpers in `records.ts` (`validateForm`, `buildRecord`, `decodeRecord`, `changeRecord`) run in the browser for instant feedback, **and again on the server** in each endpoint before anything reaches the database. The database's constraints are the final check.
+The pure helpers in `records.ts` (`validateForm`, `buildRecord`, `decodeRecord`,
+`changeRecord`) run in the browser for instant feedback, **and again on the
+server** in each endpoint before anything reaches the database. The database's
+constraints are the final check.
 
 ```ts
 // src/lib/backend/types.ts
@@ -621,7 +814,9 @@ export interface BackendError {
 | `src/lib/backend/local.ts` | Wraps today's `persistence.ts` behaviour (`loadWorkspace`, `saveWorkspace`, recovery flow). Same storage keys, so no existing data or tests are affected.                              |
 | `src/lib/backend/live.ts`  | A thin `fetch` client for `/api/*`. It sends `Content-Type: application/json`, parses `BackendError`, and on a 401 sends the user to `/auth?next=…`. It imports nothing from Supabase. |
 
-In live mode the initial `Workspace` comes from the server `load`, so the page renders with data on first paint. Role switches, organisation switches and resets call `invalidateAll()` to load it again.
+In live mode the initial `Workspace` comes from the server `load`, so the page
+renders with data on first paint. Role switches, organisation switches and
+resets call `invalidateAll()` to load it again.
 
 ### 7.4 API endpoints
 
@@ -639,19 +834,38 @@ In live mode the initial `Workspace` comes from the server `load`, so the page r
 | `PATCH /api/members/[userId]`        | `set_member_role` or `deactivate_member`                                   |
 | `DELETE /api/account`                | `delete_my_account`, then sign out                                         |
 
-Every endpoint uses `locals.supabase`, which carries the signed-in user's token, so RLS applies exactly as it would to a direct call. Every endpoint accepts only `application/json` and returns 415 for anything else. Cross-site pages can't send JSON with cookies without a CORS preflight, which the portal never approves. Combined with `SameSite=Lax` cookies and SvelteKit's origin check on form posts, this covers cross-site request forgery.
+Every endpoint uses `locals.supabase`, which carries the signed-in user's token,
+so RLS applies exactly as it would to a direct call. Every endpoint accepts only
+`application/json` and returns 415 for anything else. Cross-site pages can't
+send JSON with cookies without a CORS preflight, which the portal never
+approves. Combined with `SameSite=Lax` cookies and SvelteKit's origin check on
+form posts, this covers cross-site request forgery.
 
 ### 7.5 Page changes
 
-`+page.svelte` is 801 lines and currently saves the whole snapshot automatically in an `$effect`. Changes:
+`+page.svelte` is 801 lines and currently saves the whole snapshot automatically
+in an `$effect`. Changes:
 
-- Pick the backend from `data.mode`. Replace the auto-save effect with explicit calls such as `await backend.createRecord(...)`. Use the record the backend returns (which has the server's `updatedAt` and `updatedBy`) with `putRecord`. In local mode, the local backend saves the snapshot after each operation, so behaviour stays the same.
-- Saving shows a pending state on the dialog's submit button. Errors go to the existing toast or alert, with `fieldErrors` mapped onto the form's fields.
-- `role` and `permissions` come from `data.session` and `data.workspace` in live mode, so the UI uses the same matrix as RLS. **Preview role** calls `POST /api/role` for owners and is hidden for everyone else. In local mode it stays a client-side preview.
-- The header shows the signed-in user's display name instead of "Sarah Mitchell". `records.ts` takes the actor name as a parameter instead of hard-coding it; the local backend passes "Sarah Mitchell".
+- Pick the backend from `data.mode`. Replace the auto-save effect with explicit
+  calls such as `await backend.createRecord(...)`. Use the record the backend
+  returns (which has the server's `updatedAt` and `updatedBy`) with `putRecord`.
+  In local mode, the local backend saves the snapshot after each operation, so
+  behaviour stays the same.
+- Saving shows a pending state on the dialog's submit button. Errors go to the
+  existing toast or alert, with `fieldErrors` mapped onto the form's fields.
+- `role` and `permissions` come from `data.session` and `data.workspace` in live
+  mode, so the UI uses the same matrix as RLS. **Preview role** calls
+  `POST /api/role` for owners and is hidden for everyone else. In local mode it
+  stays a client-side preview.
+- The header shows the signed-in user's display name instead of "Sarah
+  Mitchell". `records.ts` takes the actor name as a parameter instead of
+  hard-coding it; the local backend passes "Sarah Mitchell".
 - The header gains a sign-out form and, if needed, the organisation switcher.
-- Administration gains: **Invite user** (shows a copyable link), **Reset demo data**, **Delete my account** and a short "Demo data only" notice.
-- Consider moving workspace state into `src/lib/workspace.svelte.ts` while making these changes, so the page stops growing. This is optional and outside the backend's critical path.
+- Administration gains: **Invite user** (shows a copyable link), **Reset demo
+  data**, **Delete my account** and a short "Demo data only" notice.
+- Consider moving workspace state into `src/lib/workspace.svelte.ts` while
+  making these changes, so the page stops growing. This is optional and outside
+  the backend's critical path.
 
 ### 7.6 Entry flow
 
@@ -665,9 +879,16 @@ signed in ──► GET / ──► +page.server.ts: ensure_workspace → (first
 
 ### 7.7 Privileged operations: two alternatives
 
-Version 1 has no privileged code. Everything runs as the signed-in user, and the few cross-user rules live in narrow `security definer` database functions. Later features may need the Supabase **secret key**, which bypasses RLS. Examples: sending invitation emails with `auth.admin.inviteUserByEmail`, admin-only user management, accepting webhooks from outside services, or creating signed Storage URLs on someone else's behalf.
+Version 1 has no privileged code. Everything runs as the signed-in user, and the
+few cross-user rules live in narrow `security definer` database functions. Later
+features may need the Supabase **secret key**, which bypasses RLS. Examples:
+sending invitation emails with `auth.admin.inviteUserByEmail`, admin-only user
+management, accepting webhooks from outside services, or creating signed Storage
+URLs on someone else's behalf.
 
-There are two sound places for that code. **Neither is mandated.** Choose per feature, record the choice in that feature's plan, and don't add the secret key anywhere until a feature needs it.
+There are two sound places for that code. **Neither is mandated.** Choose per
+feature, record the choice in that feature's plan, and don't add the secret key
+anywhere until a feature needs it.
 
 |                        | **A. SvelteKit server route (in the Cloudflare Worker)**                                                                                                                       | **B. Supabase Edge Function**                                                                                                                                                                                                                                                                                                         |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -679,11 +900,18 @@ There are two sound places for that code. **Neither is mandated.** Choose per fe
 
 Rules for either option:
 
-- Check the caller's identity (`getClaims()` in the Worker; JWT verification left on for the function) and their role **before** creating or using the admin client.
-- Keep the admin client in one module that nothing else imports casually. For option A, `$lib/server` already stops it reaching browser code. For option B, it never leaves the function.
-- Write an audit row for every privileged action, using the same `audit_log` table.
-- Test both the allowed path and the refused paths: not signed in, wrong role, wrong organisation.
-- Both are TypeScript, in line with AGENTS.md. Edge Functions are not SvelteKit code, but they still follow the repository's `.ts`-only rule.
+- Check the caller's identity (`getClaims()` in the Worker; JWT verification
+  left on for the function) and their role **before** creating or using the
+  admin client.
+- Keep the admin client in one module that nothing else imports casually. For
+  option A, `$lib/server` already stops it reaching browser code. For option B,
+  it never leaves the function.
+- Write an audit row for every privileged action, using the same `audit_log`
+  table.
+- Test both the allowed path and the refused paths: not signed in, wrong role,
+  wrong organisation.
+- Both are TypeScript, in line with AGENTS.md. Edge Functions are not SvelteKit
+  code, but they still follow the repository's `.ts`-only rule.
 
 ---
 
@@ -691,30 +919,71 @@ Rules for either option:
 
 ### 8.1 Database tests (pgTAP, `supabase/tests/*.sql`)
 
-Run with `supabase test db` against a freshly reset local database. Cover at least:
+Run with `supabase test db` against a freshly reset local database. Cover at
+least:
 
-- **Isolation:** user A cannot select, insert or update any row in B's organisation through any table, view or RPC. This includes forged `org_id` values on insert and update.
-- **Matrix:** for every role × module, select, insert and update succeed or fail exactly as `role_permissions` says. Drive this from the table itself, so the matrix and tests can't drift apart.
-- **Board Member:** cannot select from any record table. `report_rows` returns no PII keys.
-- **Audit:** every insert, update and archive writes one row. Clients cannot insert, update or delete audit rows. `notes` contents never appear in `changes`.
-- **Constraints:** each `validateForm` rule has a matching rejected insert (empty name, bad date, bad email, negative counts, participants > capacity, amount ≤ 0, unknown enum value).
-- **RPCs:** `ensure_workspace` is idempotent; only owners can call `seed_demo_workspace` and `set_my_demo_role`; invitations reject the wrong email, expired, reused and malformed tokens; `set_member_role` cannot demote the owner; row caps and payload caps trigger correctly.
-- **Grants:** `anon` can execute only `keepalive()`. Nothing in `private` is reachable through the API.
+- **Isolation:** user A cannot select, insert or update any row in B's
+  organisation through any table, view or RPC. This includes forged `org_id`
+  values on insert and update.
+- **Matrix:** for every role × module, select, insert and update succeed or fail
+  exactly as `role_permissions` says. Drive this from the table itself, so the
+  matrix and tests can't drift apart.
+- **Board Member:** cannot select from any record table. `report_rows` returns
+  no PII keys.
+- **Audit:** every insert, update and archive writes one row. Clients cannot
+  insert, update or delete audit rows. `notes` contents never appear in
+  `changes`.
+- **Constraints:** each `validateForm` rule has a matching rejected insert
+  (empty name, bad date, bad email, negative counts, participants > capacity,
+  amount ≤ 0, unknown enum value).
+- **RPCs:** `ensure_workspace` is idempotent; only owners can call
+  `seed_demo_workspace` and `set_my_demo_role`; invitations reject the wrong
+  email, expired, reused and malformed tokens; `set_member_role` cannot demote
+  the owner; row caps and payload caps trigger correctly.
+- **Grants:** `anon` can execute only `keepalive()`. Nothing in `private` is
+  reachable through the API.
 
 ### 8.2 TypeScript checks
 
-- **Compile-time parity:** a type-level test in `tests/unit/` asserts that the generated enum types equal the model's unions. Examples: `Database['public']['Enums']['app_role']` equals `Role`; `member_status` equals `(typeof statuses)['Members'][number]`. Any drift fails `svelte-check`.
-- **Unit tests** (`node --test`, no database): row ↔ record mapping, Postgres error mapping, safe `next` handling, and the local backend (moving the existing `persistence.test.ts` cases across). Keep these modules free of `$env` and `$app` imports so plain Node can load them.
-- **Integration test** (`tests/integration/permissions.test.ts`, local Supabase): `role_permissions` read through the API deep-equals `permissions` in `data.ts`.
+- **Compile-time parity:** a type-level test in `tests/unit/` asserts that the
+  generated enum types equal the model's unions. Examples:
+  `Database['public']['Enums']['app_role']` equals `Role`; `member_status`
+  equals `(typeof statuses)['Members'][number]`. Any drift fails `svelte-check`.
+- **Unit tests** (`node --test`, no database): row ↔ record mapping, Postgres
+  error mapping, safe `next` handling, and the local backend (moving the
+  existing `persistence.test.ts` cases across). Keep these modules free of
+  `$env` and `$app` imports so plain Node can load them.
+- **Integration test** (`tests/integration/permissions.test.ts`, local
+  Supabase): `role_permissions` read through the API deep-equals `permissions`
+  in `data.ts`.
 
 ### 8.3 Browser and HTTP tests
 
-- The existing Playwright `portal` project runs unchanged against `wrangler pages dev` with **no** Supabase variables (local mode). This also proves the Cloudflare build works.
-- A new `portal-live` project starts `wrangler pages dev` on port 4189 with `--binding` values for the local Supabase URL, publishable key and Turnstile's always-pass test site key. Its helper reads the sign-in code and the confirmation link from **Mailpit's API** (`http://127.0.0.1:54324`).
-  - **Auth:** signed-out `/` redirects to `/auth`; sign in by code; sign in by email link (GET shows the Continue page and doesn't sign in, the POST signs in); `next` is honoured, and rejected when it points off-site; sign-out clears the session; the session cookies are `httpOnly` (check with `context.cookies()`); signed-in responses have `Cache-Control: private, no-store`; no Supabase token appears in page HTML or JavaScript-readable storage.
-  - **Data:** first-run seeding; create, edit and archive with values persisted after reload; a stale update is rejected as a conflict; owner role switching hides modules; invitation accepted by a second browser context; Board Member reports are de-identified; Reset demo data; Delete my account.
-  - **API** (Playwright `request` context): `/api/*` returns 401 without a session and 415 for non-JSON bodies; a form post from another origin is rejected; a role without write access gets 403 from the endpoint, **and** a direct call to Supabase's REST API with that user's token is refused by RLS.
-- Add the sign-in, confirm and invitation pages to the accessibility suite: labels, error summary focus, a code input announced as a one-time code (`autocomplete="one-time-code"`).
+- The existing Playwright `portal` project runs unchanged against
+  `wrangler pages dev` with **no** Supabase variables (local mode). This also
+  proves the Cloudflare build works.
+- A new `portal-live` project starts `wrangler pages dev` on port 4189 with
+  `--binding` values for the local Supabase URL, publishable key and Turnstile's
+  always-pass test site key. Its helper reads the sign-in code and the
+  confirmation link from **Mailpit's API** (`http://127.0.0.1:54324`).
+  - **Auth:** signed-out `/` redirects to `/auth`; sign in by code; sign in by
+    email link (GET shows the Continue page and doesn't sign in, the POST signs
+    in); `next` is honoured, and rejected when it points off-site; sign-out
+    clears the session; the session cookies are `httpOnly` (check with
+    `context.cookies()`); signed-in responses have
+    `Cache-Control: private, no-store`; no Supabase token appears in page HTML
+    or JavaScript-readable storage.
+  - **Data:** first-run seeding; create, edit and archive with values persisted
+    after reload; a stale update is rejected as a conflict; owner role switching
+    hides modules; invitation accepted by a second browser context; Board Member
+    reports are de-identified; Reset demo data; Delete my account.
+  - **API** (Playwright `request` context): `/api/*` returns 401 without a
+    session and 415 for non-JSON bodies; a form post from another origin is
+    rejected; a role without write access gets 403 from the endpoint, **and** a
+    direct call to Supabase's REST API with that user's token is refused by RLS.
+- Add the sign-in, confirm and invitation pages to the accessibility suite:
+  labels, error summary focus, a code input announced as a one-time code
+  (`autocomplete="one-time-code"`).
 
 ### 8.4 CI (`ci.yml`)
 
@@ -728,7 +997,9 @@ database:
     - uses: actions/setup-node@v7.1.0
       with: { node-version: 24, cache: npm }
     - run: npm ci
-    - run: npx supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,supavisor
+    - run:
+        npx supabase start -x
+        studio,imgproxy,storage-api,edge-runtime,logflare,vector,supavisor
     - run: npx supabase db reset
     - run: npx supabase test db
     - run: npx supabase db lint --level warning
@@ -737,11 +1008,15 @@ database:
         npx supabase gen types typescript --local > apps/community-portal/src/lib/backend/database.types.ts
         git diff --exit-code apps/community-portal/src/lib/backend/database.types.ts
     - run: npx playwright install --with-deps chromium
-    - run: npm run build:packages && npm run build --workspace @cii/community-portal
+    - run:
+        npm run build:packages && npm run build --workspace
+        @cii/community-portal
     - run: npm run test:portal-live
 ```
 
-Pin action versions to match the existing workflows. The deploy gate already requires the whole Verify workflow to succeed, so the new job is gated automatically.
+Pin action versions to match the existing workflows. The deploy gate already
+requires the whole Verify workflow to succeed, so the new job is gated
+automatically.
 
 ---
 
@@ -757,13 +1032,19 @@ Pin action versions to match the existing workflows. The deploy gate already req
 | `PUBLIC_SUPABASE_URL`             | Variable | Keep-alive                          |
 | `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Variable | Keep-alive                          |
 
-The portal's runtime values live in `wrangler.jsonc` (§7.1). The Resend API key, Turnstile secret and GitHub OAuth secret are entered **only in the Supabase dashboard**. The Cloudflare Pages project has no secrets at all in version 1. If a later feature takes option A in §7.7, `SUPABASE_SECRET_KEY` becomes its only secret. Option B adds none to Cloudflare.
+The portal's runtime values live in `wrangler.jsonc` (§7.1). The Resend API key,
+Turnstile secret and GitHub OAuth secret are entered **only in the Supabase
+dashboard**. The Cloudflare Pages project has no secrets at all in version 1. If
+a later feature takes option A in §7.7, `SUPABASE_SECRET_KEY` becomes its only
+secret. Option B adds none to Cloudflare.
 
-Put the two deploy secrets in a GitHub **environment** called `production`, restricted to `main`, so only the deploy workflow can read them.
+Put the two deploy secrets in a GitHub **environment** called `production`,
+restricted to `main`, so only the deploy workflow can read them.
 
 ### 9.2 Deploy workflow changes (`deploy-portal.yml`)
 
-Keep the existing verification gate and exact-SHA checkout. After `npm ci`, run the migrations **before** building and deploying the portal:
+Keep the existing verification gate and exact-SHA checkout. After `npm ci`, run
+the migrations **before** building and deploying the portal:
 
 ```yaml
 - run: npx supabase link --project-ref "$SUPABASE_PROJECT_REF"
@@ -784,22 +1065,35 @@ Keep the existing verification gate and exact-SHA checkout. After `npm ci`, run 
     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     gitHubToken: ${{ secrets.GITHUB_TOKEN }}
     workingDirectory: apps/community-portal
-    command: pages deploy .svelte-kit/cloudflare --project-name=cii-community-portal --branch=main
+    command:
+      pages deploy .svelte-kit/cloudflare --project-name=cii-community-portal
+      --branch=main
 ```
 
-Running Wrangler from `apps/community-portal` makes it pick up `wrangler.jsonc`, including the production variables. Check that the Cloudflare API token can edit Pages project settings as well as deploy.
+Running Wrangler from `apps/community-portal` makes it pick up `wrangler.jsonc`,
+including the production variables. Check that the Cloudflare API token can edit
+Pages project settings as well as deploy.
 
 Rules:
 
-- Migrations run before the new portal is deployed, so each migration must work with the **currently deployed** portal: add first, remove in a later release.
+- Migrations run before the new portal is deployed, so each migration must work
+  with the **currently deployed** portal: add first, remove in a later release.
 - Never edit a migration that has already been applied. Add a new one.
-- If `db push` fails, the job stops before deploying the portal. Nothing goes half-deployed.
-- **Rollback:** Cloudflare Pages can roll back to the previous deployment in one click. Database changes can't be rolled back that way, which is one more reason for add-first migrations.
-- The free plan has no point-in-time recovery. Before any destructive migration, take a manual `supabase db dump` and keep it as a workflow artifact for 7 days. Note that this is a demo with disposable data (§10.1).
+- If `db push` fails, the job stops before deploying the portal. Nothing goes
+  half-deployed.
+- **Rollback:** Cloudflare Pages can roll back to the previous deployment in one
+  click. Database changes can't be rolled back that way, which is one more
+  reason for add-first migrations.
+- The free plan has no point-in-time recovery. Before any destructive migration,
+  take a manual `supabase db dump` and keep it as a workflow artifact for 7
+  days. Note that this is a demo with disposable data (§10.1).
 
 ### 9.3 Keep-alive
 
-**Purpose:** stop Supabase pausing the free project after about 7 days without activity. **How:** a scheduled GitHub Actions workflow calls an RPC that makes a real database write. It calls Supabase directly rather than through the portal, so a failure points clearly at the database.
+**Purpose:** stop Supabase pausing the free project after about 7 days without
+activity. **How:** a scheduled GitHub Actions workflow calls an RPC that makes a
+real database write. It calls Supabase directly rather than through the portal,
+so a failure points clearly at the database.
 
 Migration:
 
@@ -821,7 +1115,8 @@ revoke all on function public.keepalive() from public;
 grant execute on function public.keepalive() to anon;
 ```
 
-It touches one fixed row and accepts no input, so exposing it to `anon` reveals nothing and lets no caller grow the database.
+It touches one fixed row and accepts no input, so exposing it to `anon` reveals
+nothing and lets no caller grow the database.
 
 Workflow `.github/workflows/supabase-keepalive.yml`:
 
@@ -857,15 +1152,29 @@ jobs:
 
 Operational notes:
 
-- **Failure alerts:** a failed run emails the repository owner by default (keep Actions failure notifications on). A failure usually means the project is already paused. Restore it from the Supabase dashboard, then run the workflow manually.
-- **The 60-day rule:** the repository is public, so GitHub disables this schedule after 60 days without repository activity. Any push resets the clock. If it is disabled, re-enable it from the Actions tab and run it manually. If the repository is expected to be quiet for longer, move the same request to a small TypeScript Cloudflare Worker with a Cron Trigger, which has no inactivity rule. (Pages Functions have no cron triggers, so this has to be a separate Worker.) Record that switch as a follow-up, not version 1 work.
-- **Verification:** after the first week, check in the dashboard that the project has not been flagged for pausing, and that `private.heartbeat.beat_at` shows the scheduled times.
-- **Not a backup:** keep-alive stops pausing, not data loss. Free projects paused for a long time may only be recoverable from a downloaded backup.
-- **If the plan is upgraded** to Pro, delete the workflow and the function in a new migration.
+- **Failure alerts:** a failed run emails the repository owner by default (keep
+  Actions failure notifications on). A failure usually means the project is
+  already paused. Restore it from the Supabase dashboard, then run the workflow
+  manually.
+- **The 60-day rule:** the repository is public, so GitHub disables this
+  schedule after 60 days without repository activity. Any push resets the clock.
+  If it is disabled, re-enable it from the Actions tab and run it manually. If
+  the repository is expected to be quiet for longer, move the same request to a
+  small TypeScript Cloudflare Worker with a Cron Trigger, which has no
+  inactivity rule. (Pages Functions have no cron triggers, so this has to be a
+  separate Worker.) Record that switch as a follow-up, not version 1 work.
+- **Verification:** after the first week, check in the dashboard that the
+  project has not been flagged for pausing, and that `private.heartbeat.beat_at`
+  shows the scheduled times.
+- **Not a backup:** keep-alive stops pausing, not data loss. Free projects
+  paused for a long time may only be recoverable from a downloaded backup.
+- **If the plan is upgraded** to Pro, delete the workflow and the function in a
+  new migration.
 
 ### 9.4 Scheduled database jobs (`pg_cron`)
 
-Enable the `pg_cron` extension in a migration and schedule these jobs in the same migration, so they're version-controlled:
+Enable the `pg_cron` extension in a migration and schedule these jobs in the
+same migration, so they're version-controlled:
 
 | Job                      | Schedule (UTC) | Action                                                                                             |
 | ------------------------ | -------------- | -------------------------------------------------------------------------------------------------- |
@@ -874,7 +1183,10 @@ Enable the `pg_cron` extension in a migration and schedule these jobs in the sam
 | `trim-audit-log`         | `50 17 * * *`  | Keep the newest 500 audit rows per organisation.                                                   |
 | `expire-invitations`     | `55 17 * * *`  | Delete invitations expired for more than 7 days.                                                   |
 
-`pg_cron` runs inside the database, so it does **not** count as project activity. Keep-alive is still needed. A user whose organisation was purged gets a fresh, seeded one next time they sign in (§5.4). The sign-in screen says that inactive demo data is deleted after 30 days.
+`pg_cron` runs inside the database, so it does **not** count as project
+activity. Keep-alive is still needed. A user whose organisation was purged gets
+a fresh, seeded one next time they sign in (§5.4). The sign-in screen says that
+inactive demo data is deleted after 30 days.
 
 ---
 
@@ -884,106 +1196,209 @@ Enable the `pg_cron` extension in a migration and schedule these jobs in the sam
 
 The sign-in screen, Administration, and the footer all say:
 
-> This is a public demo. Use fictional information only. Do not enter real people's names, contact details or case notes. Inactive demo data is deleted after 30 days.
+> This is a public demo. Use fictional information only. Do not enter real
+> people's names, contact details or case notes. Inactive demo data is deleted
+> after 30 days.
 
-Here "real data" means **data that persists**, not real personal information. The portal's purpose (members, case notes, donations) makes real personal information the main legal risk of a public demo.
+Here "real data" means **data that persists**, not real personal information.
+The portal's purpose (members, case notes, donations) makes real personal
+information the main legal risk of a public demo.
 
 ### 10.2 Privacy (Australia)
 
-- Publish a short privacy notice at `/privacy` (prerendered). It covers: what is collected (email address, display name, sign-in metadata, the data you enter), why, where it's stored (Supabase, Sydney), overseas recipients (Resend for email delivery, GitHub if you use GitHub sign-in, Cloudflare for hosting and Turnstile), the essential session cookies, how long data is kept (§9.4), and how to delete your account (§5.7). This follows Australian Privacy Principles 1, 5 and 8. It is not legal advice; check the wording before promoting the demo widely.
-- Supabase Auth logs, Cloudflare request logs and Resend's email logs hold personal data for their own retention periods. Mention this in the notice.
-- The session cookies are strictly necessary for signing in, so they don't need a consent banner. Don't add analytics without revisiting this.
+- Publish a short privacy notice at `/privacy` (prerendered). It covers: what is
+  collected (email address, display name, sign-in metadata, the data you enter),
+  why, where it's stored (Supabase, Sydney), overseas recipients (Resend for
+  email delivery, GitHub if you use GitHub sign-in, Cloudflare for hosting and
+  Turnstile), the essential session cookies, how long data is kept (§9.4), and
+  how to delete your account (§5.7). This follows Australian Privacy Principles
+  1, 5 and 8. It is not legal advice; check the wording before promoting the
+  demo widely.
+- Supabase Auth logs, Cloudflare request logs and Resend's email logs hold
+  personal data for their own retention periods. Mention this in the notice.
+- The session cookies are strictly necessary for signing in, so they don't need
+  a consent banner. Don't add analytics without revisiting this.
 
 ### 10.3 Email budget
 
 Resend's 100 a day is the tightest limit in this stack.
 
-- Supabase's email rate limit is 30 per hour. Resend's daily cap is the real ceiling, and when it's hit Supabase returns an error. Show "The demo has reached today's sign-in email limit. Sign in with GitHub, try again tomorrow, or use the demo without an account."
+- Supabase's email rate limit is 30 per hour. Resend's daily cap is the real
+  ceiling, and when it's hit Supabase returns an error. Show "The demo has
+  reached today's sign-in email limit. Sign in with GitHub, try again tomorrow,
+  or use the demo without an account."
 - Invitations send no email (§5.5). Only sign-in sends email.
 - The 60-second resend gap and 10-minute code life limit repeat requests.
-- Track usage in the Resend dashboard. If the demo regularly hits the cap, the next step is a paid Resend plan or making GitHub sign-in the primary method, not more workarounds.
+- Track usage in the Resend dashboard. If the demo regularly hits the cap, the
+  next step is a paid Resend plan or making GitHub sign-in the primary method,
+  not more workarounds.
 
 ### 10.4 Platform limits and abuse
 
-- **Supabase sees Cloudflare's IP addresses, not visitors'.** Sign-in and verify calls now come from the Worker, so Supabase Auth's per-IP limits apply to Cloudflare's addresses. At demo scale that's fine, but many visitors may share an address. If `429` responses appear in testing or production, raise those limits in the dashboard and add a per-visitor limit in the Worker (Cloudflare's Rate Limiting binding) keyed on `CF-Connecting-IP`. Turnstile remains the main defence against automated sign-ups.
-- **Workers free plan:** about 100,000 Function requests a day and 10 ms of CPU per request. Database waits don't count as CPU, but rendering the portal page does. Measure CPU time for `/` with a seeded workspace in Phase 2. If it gets close, cut work done during SSR or move to Workers Paid (about US$5 a month), which raises the limit a long way.
-- Turnstile on every email sign-in request (§6.4). Supabase checks the token on its own servers.
-- Row caps (§4.4), seed payload caps (§5.4), audit trimming and cleanup (§9.4) keep a single account to a few hundred kilobytes, well within 500 MB.
-- Text length checks on every column (§4.4), and request body size limits in `requireJson` (64 KB), prevent oversized values.
-- Watch the Supabase and Cloudflare usage pages monthly: database size, monthly active users, egress, Function requests and CPU.
+- **Supabase sees Cloudflare's IP addresses, not visitors'.** Sign-in and verify
+  calls now come from the Worker, so Supabase Auth's per-IP limits apply to
+  Cloudflare's addresses. At demo scale that's fine, but many visitors may share
+  an address. If `429` responses appear in testing or production, raise those
+  limits in the dashboard and add a per-visitor limit in the Worker
+  (Cloudflare's Rate Limiting binding) keyed on `CF-Connecting-IP`. Turnstile
+  remains the main defence against automated sign-ups.
+- **Workers free plan:** about 100,000 Function requests a day and 10 ms of CPU
+  per request. Database waits don't count as CPU, but rendering the portal page
+  does. Measure CPU time for `/` with a seeded workspace in Phase 2. If it gets
+  close, cut work done during SSR or move to Workers Paid (about US$5 a month),
+  which raises the limit a long way.
+- Turnstile on every email sign-in request (§6.4). Supabase checks the token on
+  its own servers.
+- Row caps (§4.4), seed payload caps (§5.4), audit trimming and cleanup (§9.4)
+  keep a single account to a few hundred kilobytes, well within 500 MB.
+- Text length checks on every column (§4.4), and request body size limits in
+  `requireJson` (64 KB), prevent oversized values.
+- Watch the Supabase and Cloudflare usage pages monthly: database size, monthly
+  active users, egress, Function requests and CPU.
 
 ---
 
 ## 11. Delivery phases
 
-Each phase ends with its checks green and its changes left uncommitted for review (AGENTS.md).
+Each phase ends with its checks green and its changes left uncommitted for
+review (AGENTS.md).
 
 ### Phase 0 — Accounts and decisions (manual, about 1 hour)
 
 - [ ] Answer §13 Q1 (sending domain).
-- [ ] Create P1 Supabase (Sydney, asymmetric JWT keys), P3 Resend (domain verified), P4 Turnstile and, optionally, P5 GitHub OAuth.
-- [ ] Add §9.1 secrets and variables, and the `production` environment. Check the Cloudflare API token's permissions (§9.2).
+- [ ] Create P1 Supabase (Sydney, asymmetric JWT keys), P3 Resend (domain
+      verified), P4 Turnstile and, optionally, P5 GitHub OAuth.
+- [ ] Add §9.1 secrets and variables, and the `production` environment. Check
+      the Cloudflare API token's permissions (§9.2).
 
-**Done when:** a test SMTP email from Supabase arrives through Resend, and Resend shows it as `delivered`.
+**Done when:** a test SMTP email from Supabase arrives through Resend, and
+Resend shows it as `delivered`.
 
 ### Phase 1 — Local database and policies
 
-- [x] `supabase init`; add the CLI devDependency (pinned to `2.122.0`) and root scripts (`db:start`, `db:stop`, `db:reset`, `db:test`, `db:lint`). `db:types` moves to Phase 2 with the portal code that uses the types.
-- [x] Migrations: enums, tenancy tables, record tables, triggers (`updated_*`, immutable keys, ID codes, row caps, audit), helpers, RLS, `list_org_users`, RPCs (§5.4–5.7), `keepalive`, `pg_cron` jobs. Five files in `supabase/migrations/`.
-- [x] `config.toml`: project ID, local site URL and redirect URLs, 10-minute codes, seeding off. Email templates move to Phase 3 with the routes they link to.
-- [x] pgTAP suite (§8.1): six files, 106 tests, with shared fixtures in `supabase/tests/_helpers.psql`. CI `database` job (§8.4) without the type, build and live E2E steps.
+- [x] `supabase init`; add the CLI devDependency (pinned to `2.122.0`) and root
+      scripts (`db:start`, `db:stop`, `db:reset`, `db:test`, `db:lint`).
+      `db:types` moves to Phase 2 with the portal code that uses the types.
+- [x] Migrations: enums, tenancy tables, record tables, triggers (`updated_*`,
+      immutable keys, ID codes, row caps, audit), helpers, RLS,
+      `list_org_users`, RPCs (§5.4–5.7), `keepalive`, `pg_cron` jobs. Five files
+      in `supabase/migrations/`.
+- [x] `config.toml`: project ID, local site URL and redirect URLs, 10-minute
+      codes, seeding off. Email templates move to Phase 3 with the routes they
+      link to.
+- [x] pgTAP suite (§8.1): six files, 106 tests, with shared fixtures in
+      `supabase/tests/_helpers.psql`. CI `database` job (§8.4) without the type,
+      build and live E2E steps.
 
-**Done when:** `supabase db reset && supabase test db` passes locally and in CI, and `db lint` is clean.
+**Done when:** `supabase db reset && supabase test db` passes locally and in CI,
+and `db lint` is clean.
 
 ### Phase 2 — Cloudflare adapter, local mode only
 
-- [x] Switch to `adapter-cloudflare`; add `wrangler.jsonc` without production variables yet; change the preview script and Playwright `webServer`; remove root prerendering.
-- [x] `src/lib/backend/` with `types.ts`, `local.ts` and the generated types. Rework `+page.svelte` to use the interface; pass the actor name into `records.ts`.
+- [x] Switch to `adapter-cloudflare`; add `wrangler.jsonc` without production
+      variables yet; change the preview script and Playwright `webServer`;
+      remove root prerendering.
+- [x] `src/lib/backend/` with `types.ts`, `local.ts` and the generated types.
+      Rework `+page.svelte` to use the interface; pass the actor name into
+      `records.ts`.
 - [x] Type-level parity test (§8.2).
 - [x] Deploy this to production on its own and measure CPU time for `/` (§10.4).
 
-**Completed 3 November 2026.** Implementation, full local validation and production release are complete. Production commit `6d15674` passed Verify and Deploy community portal; 27 browser smoke tests passed against the live portal, including CRUD, notes, assignments, saved views, drafts, report/CSV contents, storage recovery, role preview and accessibility. The current commit changes only documentation relative to CPU-tested application commit `fad72e8`.
+**Completed 3 November 2026.** Implementation, full local validation and
+production release are complete. Production commit `6d15674` passed Verify and
+Deploy community portal; 27 browser smoke tests passed against the live portal,
+including CRUD, notes, assignments, saved views, drafts, report/CSV contents,
+storage recovery, role preview and accessibility. The current commit changes
+only documentation relative to CPU-tested application commit `fad72e8`.
 
-The combined 66-request optimized CPU sample had p50/p95/p99 of 2.279/7.934/20.966 ms and no invocation errors. It meets the proposed p95 headroom target; early-request spikes remain a monitoring follow-up, and CPU must be remeasured after auth/live-data changes. The sample does not establish that every execution stays under 10 ms. Detailed deployment IDs, rollback targets, workflow links and production smoke evidence are recorded in `docs/community-portal-phase-2-implementation-plan.md`.
+The combined 66-request optimized CPU sample had p50/p95/p99 of
+2.279/7.934/20.966 ms and no invocation errors. It meets the proposed p95
+headroom target; early-request spikes remain a monitoring follow-up, and CPU
+must be remeasured after auth/live-data changes. The sample does not establish
+that every execution stays under 10 ms. Detailed deployment IDs, rollback
+targets, workflow links and production smoke evidence are recorded in
+`docs/community-portal-phase-2-implementation-plan.md`.
 
-**Completion checks:** `npm run check` and `npm test` pass with the Wrangler preview; production smoke checks pass; the combined CPU sample meets the chosen p95 target. Early CPU spikes are retained as a monitoring follow-up.
+**Completion checks:** `npm run check` and `npm test` pass with the Wrangler
+preview; production smoke checks pass; the combined CPU sample meets the chosen
+p95 target. Early CPU spikes are retained as a monitoring follow-up.
 
 ### Phase 3 — Server-side auth
 
-- [x] `@supabase/ssr` and `@supabase/supabase-js` dependencies; `hooks.server.ts`; `app.d.ts`; `/auth/**` routes; `+layout.server.ts`; safe redirects; header sign-out.
+- [x] `@supabase/ssr` and `@supabase/supabase-js` dependencies;
+      `hooks.server.ts`; `app.d.ts`; `/auth/**` routes; `+layout.server.ts`;
+      safe redirects; header sign-out.
 - [x] Turnstile widget on `/auth`; templates in `supabase/templates/`.
 - [x] `portal-live` Playwright project with Mailpit, auth scenarios only (§8.3).
 
-**Implemented and locally verified 3 November 2026.** The isolated Wrangler/Mailpit auth suite and existing regression suite pass. CI now includes the live-auth project in the database job; remote CI verification remains pending. GitHub is optional and hidden. Production auth remains Phase 5 work. Detailed evidence and prerequisites are in `docs/community-portal-phase-3-implementation-plan.md`.
+**Implemented and locally verified 3 November 2026.** The isolated
+Wrangler/Mailpit auth suite and existing regression suite pass. CI now includes
+the live-auth project in the database job; remote CI verification remains
+pending. GitHub is optional and hidden. Production auth remains Phase 5 work.
+Detailed evidence and prerequisites are in
+`docs/community-portal-phase-3-implementation-plan.md`.
 
-**Completion gate:** sign in by code and by link, GitHub (against a local or test OAuth app, if used), sign-out and the guard all pass locally and in CI, with `httpOnly` cookies and `no-store` checked.
+**Completion gate:** sign in by code and by link, GitHub (against a local or
+test OAuth app, if used), sign-out and the guard all pass locally and in CI,
+with `httpOnly` cookies and `no-store` checked.
 
 ### Phase 4 — Live data
 
-- [x] `+page.server.ts` workspace load and seeding; `src/lib/server/*`; `/api/**` endpoints; `live.ts`.
-- [x] Owner role switching, invitations (`/invite/[token]`), organisation switcher, Reset demo data, Delete my account, Board Member reports.
+- [x] `+page.server.ts` workspace load and seeding; `src/lib/server/*`;
+      `/api/**` endpoints; `live.ts`.
+- [x] Owner role switching, invitations (`/invite/[token]`), organisation
+      switcher, Reset demo data, Delete my account, Board Member reports.
 - [x] Demo notice and `/privacy`.
-- [x] Remaining `portal-live` data and API scenarios, and the permissions integration test.
+- [x] Remaining `portal-live` data and API scenarios, and the permissions
+      integration test.
 
-**Implemented and locally verified 3 November 2026.** Account workspaces now load server-side and use the signed-in client for all reads, writes and RPCs. Atomic first-run bootstrap, account CRUD, optimistic conflicts, owner role changes, invitations, team management, organisation switching, de-identified reports, reset, deletion and privacy are implemented. Verify and Deploy community portal subsequently passed for hydration-fix commit `71631b3`; the application is deployed with production auth still disabled. See `docs/community-portal-phase-4-implementation-plan.md` for evidence and the Phase 5 handoff.
+**Implemented and locally verified 3 November 2026.** Account workspaces now
+load server-side and use the signed-in client for all reads, writes and RPCs.
+Atomic first-run bootstrap, account CRUD, optimistic conflicts, owner role
+changes, invitations, team management, organisation switching, de-identified
+reports, reset, deletion and privacy are implemented. Verify and Deploy
+community portal subsequently passed for hydration-fix commit `71631b3`; the
+application is deployed with production auth still disabled. See
+`docs/community-portal-phase-4-implementation-plan.md` for evidence and the
+Phase 5 handoff.
 
 **Completion gate:** every §8.3 scenario passes locally and in CI.
 
 ### Phase 5 — Production
 
-- [ ] Production Auth settings (§6.4), Resend SMTP and templates (§6.5), Turnstile, GitHub OAuth.
-- [ ] Production variables in `wrangler.jsonc`; migration steps in `deploy-portal.yml` (§9.2).
-- [ ] `supabase-keepalive.yml` (§9.3); run it manually once and confirm `beat_at` changes.
-- [ ] Smoke test on `cii-community-portal.pages.dev`: sign in from two browsers, invite, switch roles, confirm that a direct REST call for another organisation's rows returns nothing, and confirm the session cookies are `httpOnly` and `Secure`.
+- [ ] Production Auth settings (§6.4), Resend SMTP and templates (§6.5),
+      Turnstile, GitHub OAuth.
+- [ ] Production variables in `wrangler.jsonc`; migration steps in
+      `deploy-portal.yml` (§9.2).
+- [ ] `supabase-keepalive.yml` (§9.3); run it manually once and confirm
+      `beat_at` changes.
+- [ ] Smoke test on `cii-community-portal.pages.dev`: sign in from two browsers,
+      invite, switch roles, confirm that a direct REST call for another
+      organisation's rows returns nothing, and confirm the session cookies are
+      `httpOnly` and `Secure`.
 
-**Prepared 3 November 2026.** The managed Turnstile widget, main-only GitHub production environment, guarded migration/deploy path, keep-alive workflow, production configuration preflight and operator runbook are ready. Live auth remains disabled. The saved Supabase credentials cannot access the planned hosted project, and production migration credentials/public values are missing. No hosted migration or account-mode release has been performed. See `docs/community-portal-phase-5-implementation-plan.md` for completed preparation, inputs and pending acceptance checks.
+**Prepared 3 November 2026.** The managed Turnstile widget, main-only GitHub
+production environment, guarded migration/deploy path, keep-alive workflow,
+production configuration preflight and operator runbook are ready. Live auth
+remains disabled. The saved Supabase credentials cannot access the planned
+hosted project, and production migration credentials/public values are missing.
+No hosted migration or account-mode release has been performed. See
+`docs/community-portal-phase-5-implementation-plan.md` for completed
+preparation, inputs and pending acceptance checks.
 
-**Done when:** the live portal stores data across sessions, the smoke test passes, and the first scheduled keep-alive run succeeds.
+**Done when:** the live portal stores data across sessions, the smoke test
+passes, and the first scheduled keep-alive run succeeds.
 
 ### Phase 6 — Documentation and follow-up
 
-- [ ] README: replace "front-end demo using fictional records in browser storage" with the live and local modes. Document the Cloudflare adapter, local setup (`.env`, `.dev.vars`), the `db:*` scripts, migration rules, keep-alive and its runbook.
-- [ ] Two weeks after launch, review Resend, Supabase and Cloudflare usage, keep-alive history and any `429` responses. Decide on the Cloudflare Worker keep-alive fallback (§9.3) and whether GitHub sign-in should become primary.
+- [ ] README: replace "front-end demo using fictional records in browser
+      storage" with the live and local modes. Document the Cloudflare adapter,
+      local setup (`.env`, `.dev.vars`), the `db:*` scripts, migration rules,
+      keep-alive and its runbook.
+- [ ] Two weeks after launch, review Resend, Supabase and Cloudflare usage,
+      keep-alive history and any `429` responses. Decide on the Cloudflare
+      Worker keep-alive fallback (§9.3) and whether GitHub sign-in should become
+      primary.
 
 ---
 

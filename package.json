@@ -34,7 +34,8 @@
     "test:portal-live": "node --experimental-strip-types scripts/test-portal-live.ts",
     "prepare:portal-production": "node --experimental-strip-types scripts/prepare-portal-production.ts",
     "smoke:portal-production": "node --experimental-strip-types scripts/smoke-portal-production.ts",
-    "configure:portal-auth": "node --experimental-strip-types scripts/configure-portal-auth.ts"
+    "configure:portal-auth": "node --experimental-strip-types scripts/configure-portal-auth.ts",
+    "lint:markdown": "markdownlint-cli2"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -43,6 +44,7 @@
     "@sveltepress/theme-default": "^8.11.0",
     "@sveltepress/vite": "^1.10.0",
     "@types/node": "^24.19.2",
+    "markdownlint-cli2": "^0.23.2",
     "prettier": "^3.6.2",
     "prettier-plugin-svelte": "^3.4.0",
     "sirv": "^3.0.2",

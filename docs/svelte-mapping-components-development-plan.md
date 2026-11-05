@@ -10,31 +10,102 @@
 
 ## Decisions already taken for this plan
 
-- Default display CRS is **EPSG:3857**. It can be changed per map, subject to what each engine can render (§5.5).
-- Writes to PostGIS go through a **pluggable persistence adapter**. Three adapters are specified: SvelteKit server endpoints, Supabase/PostgREST, and OGC API – Features (§10).
-- File inputs use **hybrid readers**. Light formats are parsed in the browser. SpatiaLite and large files are read on the server. Both sides use the same reader interface (§7).
-- The library is **headed for production use**. Leaflet is therefore targeted at **1.9.4 (stable)**. Leaflet 2.0 is tested continuously in CI and adopted only once it reaches a release candidate and passes the switch criteria (§6.3).
-- The library is part of the **CII design system**. It is published under `@cii/*`, uses `@cii/svelte` components and `--cii-*` tokens, and follows `data-cii-theme` (§15.5).
+- Default display CRS is **EPSG:3857**. It can be changed per map, subject to
+  what each engine can render (§5.5).
+- Writes to PostGIS go through a **pluggable persistence adapter**. Three
+  adapters are specified: SvelteKit server endpoints, Supabase/PostgREST, and
+  OGC API – Features (§10).
+- File inputs use **hybrid readers**. Light formats are parsed in the browser.
+  SpatiaLite and large files are read on the server. Both sides use the same
+  reader interface (§7).
+- The library is **headed for production use**. Leaflet is therefore targeted at
+  **1.9.4 (stable)**. Leaflet 2.0 is tested continuously in CI and adopted only
+  once it reaches a release candidate and passes the switch criteria (§6.3).
+- The library is part of the **CII design system**. It is published under
+  `@cii/*`, uses `@cii/svelte` components and `--cii-*` tokens, and follows
+  `data-cii-theme` (§15.5).
 
 ## Implementation progress — 4 November 2026
 
-Phase 0 is under way in `@cii/maps` and `@cii/maps-server` (see `packages/maps/README.md` and `packages/maps-server/README.md` in the repository). Both are private npm workspaces integrated into the existing build, type checks and Node test runner.
+Phase 0 is under way in `@cii/maps` and `@cii/maps-server` (see
+`packages/maps/README.md` and `packages/maps-server/README.md` in the
+repository). Both are private npm workspaces integrated into the existing build,
+type checks and Node test runner.
 
-- Implemented the ordered extension registry, CRS provider registry, generated core/Australian definitions, source CRS confirmation and provenance, source-boundary axis swapping, resolution/zoom helpers, a view-only fake engine and reusable view conformance checks.
-- Added a server metadata helper that distinguishes a database SRID from its CRS authority and requires a declaration for SRID 0.
-- Added a canonical draft-07 JSON Schema with generated `MapConfig`/`SourceConfig` types, standalone validation at `@cii/maps/config`, safe display defaults, attribution enforcement and layer/capture reference validation. Generated types are checked for drift. The §12.5 example is validated by the test suite; its URL-backed GeoPackage layer now includes attribution. Validation covers config structure and references; provider-specific options, file contents, full style rules and extension schema merging are still pending.
-- Implemented the full §6 `IMapEngine` contract and supporting engine/layer/interaction/style types, a lazy instance-scoped engine registry, a complete contract fake and adapter lifecycle tests. Added the layer manager with public renderer registration, runtime `ConfirmedCrs` enforcement, grid/service/engine/style compatibility checks, ordered queued attachment, surgical updates, reload, cancellation and deterministic resource cleanup. Display-CRS switch preflight checks registered layers and retained staged-edit targets without mutating state. Rendering and switch/rebuild orchestration remain work for the production adapters and map-state coordinator.
-- Added the proj4-backed horizontal display transform service through the CRS registry, with explicit source/display handling, geometry copies, datum/epoch reports and an optional same-datum policy. Generated definitions now include geodetic datum identities, distinguishing GDA94 from GDA2020 despite their matching ellipsoids. Projection tests use 15 checked-in same-datum PROJ CLI fixtures; no PostGIS accuracy certification is claimed. Named grids are rejected until vetted grid integration is available. Authoritative server pipeline/grid checks remain spike S7.
-- Added 40 actual PostGIS reference fixtures: 32 same-datum projection/inverse/off-meridian cases and eight datum comparisons. The pinned disposable oracle records PostGIS/PROJ/browser versions, axis conventions, explicit EPSG:8048-based pipelines, grid-operation probes and browser residuals. Offline tests validate the baseline and generated report; a dedicated CI job checks a fresh oracle with `npm run test:accuracy -w @cii/maps`. The reference image cannot execute the two Australian grid probes at Sydney with networking disabled. These fixtures do not certify target servers or installed-grid accuracy; those remain S7 work. See `packages/maps/tests/fixtures/accuracy-report.md` in the repository.
-- Corrected the GDA94 zone 59 identifier to **EPSG:6738** after generation with PROJ rejected EPSG:28359. The zone 59 identifier is also listed in [Esri's projected coordinate system catalogue](https://doc.arcgis.com/es/allsource/1.0/visualization/pdf/projected_coordinate_systems.pdf).
+- Implemented the ordered extension registry, CRS provider registry, generated
+  core/Australian definitions, source CRS confirmation and provenance,
+  source-boundary axis swapping, resolution/zoom helpers, a view-only fake
+  engine and reusable view conformance checks.
+- Added a server metadata helper that distinguishes a database SRID from its CRS
+  authority and requires a declaration for SRID 0.
+- Added a canonical draft-07 JSON Schema with generated
+  `MapConfig`/`SourceConfig` types, standalone validation at `@cii/maps/config`,
+  safe display defaults, attribution enforcement and layer/capture reference
+  validation. Generated types are checked for drift. The §12.5 example is
+  validated by the test suite; its URL-backed GeoPackage layer now includes
+  attribution. Validation covers config structure and references;
+  provider-specific options, file contents, full style rules and extension
+  schema merging are still pending.
+- Implemented the full §6 `IMapEngine` contract and supporting
+  engine/layer/interaction/style types, a lazy instance-scoped engine registry,
+  a complete contract fake and adapter lifecycle tests. Added the layer manager
+  with public renderer registration, runtime `ConfirmedCrs` enforcement,
+  grid/service/engine/style compatibility checks, ordered queued attachment,
+  surgical updates, reload, cancellation and deterministic resource cleanup.
+  Display-CRS switch preflight checks registered layers and retained staged-edit
+  targets without mutating state. Rendering and switch/rebuild orchestration
+  remain work for the production adapters and map-state coordinator.
+- Added the proj4-backed horizontal display transform service through the CRS
+  registry, with explicit source/display handling, geometry copies, datum/epoch
+  reports and an optional same-datum policy. Generated definitions now include
+  geodetic datum identities, distinguishing GDA94 from GDA2020 despite their
+  matching ellipsoids. Projection tests use 15 checked-in same-datum PROJ CLI
+  fixtures; no PostGIS accuracy certification is claimed. Named grids are
+  rejected until vetted grid integration is available. Authoritative server
+  pipeline/grid checks remain spike S7.
+- Added 40 actual PostGIS reference fixtures: 32 same-datum
+  projection/inverse/off-meridian cases and eight datum comparisons. The pinned
+  disposable oracle records PostGIS/PROJ/browser versions, axis conventions,
+  explicit EPSG:8048-based pipelines, grid-operation probes and browser
+  residuals. Offline tests validate the baseline and generated report; a
+  dedicated CI job checks a fresh oracle with
+  `npm run test:accuracy -w @cii/maps`. The reference image cannot execute the
+  two Australian grid probes at Sydney with networking disabled. These fixtures
+  do not certify target servers or installed-grid accuracy; those remain S7
+  work. See `packages/maps/tests/fixtures/accuracy-report.md` in the repository.
+- Corrected the GDA94 zone 59 identifier to **EPSG:6738** after generation with
+  PROJ rejected EPSG:28359. The zone 59 identifier is also listed in
+  [Esri's projected coordinate system catalogue](https://doc.arcgis.com/es/allsource/1.0/visualization/pdf/projected_coordinate_systems.pdf).
 
-- Added the first read-only vertical slice: Leaflet 1.9.4 at `@cii/maps/leaflet`, inline/fetched GeoJSON readers, a feature renderer through the transform service, and SSR-safe `MapContainer`/context at `@cii/maps/svelte`. Config updates patch layers without rebuilding the map; loading is cancellable and teardown releases native resources. First-party zoom, keyboard navigation, resize observation, token theming, mandatory attribution and datum warnings are included. A synthetic example lives at `/components/map/`. Chromium tests exercise the real adapter contract, hit testing, visual updates, request cancellation/recovery, keyboard use, theming and repeated mounts; the docs test checks prerendering and hydration. This slice supports native EPSG:3857/4326/CRS84 display and bounded GeoJSON, with linear hit testing. Custom projected displays, raster basemaps, labels/rules/icons, other controls and editing remain pending. Engine/display changes require an explicit remount until switch orchestration is implemented.
+- Added the first read-only vertical slice: Leaflet 1.9.4 at
+  `@cii/maps/leaflet`, inline/fetched GeoJSON readers, a feature renderer
+  through the transform service, and SSR-safe `MapContainer`/context at
+  `@cii/maps/svelte`. Config updates patch layers without rebuilding the map;
+  loading is cancellable and teardown releases native resources. First-party
+  zoom, keyboard navigation, resize observation, token theming, mandatory
+  attribution and datum warnings are included. A synthetic example lives at
+  `/components/map/`. Chromium tests exercise the real adapter contract, hit
+  testing, visual updates, request cancellation/recovery, keyboard use, theming
+  and repeated mounts; the docs test checks prerendering and hydration. This
+  slice supports native EPSG:3857/4326/CRS84 display and bounded GeoJSON, with
+  linear hit testing. Custom projected displays, raster basemaps,
+  labels/rules/icons, other controls and editing remain pending. Engine/display
+  changes require an explicit remount until switch orchestration is implemented.
 
-Phase 0 is **not complete**. Remaining work includes extension schema merging, remaining typed subsystem registries, Leaflet version CI, and spikes S1–S8. Vetted client grid integration, installed-grid comparisons and per-target-server PostGIS audits remain outstanding. The first vertical slice starts Phase 1 without completing its wider adapter/source/control scope. Decisions D1–D6 remain open; the database declaration override implements the draft's proposed policy without closing D1.
+Phase 0 is **not complete**. Remaining work includes extension schema merging,
+remaining typed subsystem registries, Leaflet version CI, and spikes S1–S8.
+Vetted client grid integration, installed-grid comparisons and per-target-server
+PostGIS audits remain outstanding. The first vertical slice starts Phase 1
+without completing its wider adapter/source/control scope. Decisions D1–D6
+remain open; the database declaration override implements the draft's proposed
+policy without closing D1.
 
 ## Status of the earlier specification
 
-This plan **supersedes** [mapping-components-spec.md](./mapping-components-spec.md) (v0.1). Where the two documents disagree, this plan wins. These parts of the earlier spec remain in force, and have been folded into this plan:
+This plan **supersedes**
+[mapping-components-spec.md](./mapping-components-spec.md) (v0.1). Where the two
+documents disagree, this plan wins. These parts of the earlier spec remain in
+force, and have been folded into this plan:
 
 | Earlier spec section                                                                     | Carried forward to     |
 | ---------------------------------------------------------------------------------------- | ---------------------- |
@@ -46,9 +117,14 @@ This plan **supersedes** [mapping-components-spec.md](./mapping-components-spec.
 | §9 theming                                                                               | §15.5                  |
 | §13 security, keys and attribution                                                       | §15.6                  |
 
-The earlier spec's `<CiiMap>` component, imported from `@cii/maps`, is named `MapContainer` here and imported from `@cii/maps/svelte`.
+The earlier spec's `<CiiMap>` component, imported from `@cii/maps`, is named
+`MapContainer` here and imported from `@cii/maps/svelte`.
 
-Everything else in the earlier spec (Terra Draw, WGS 84-only public geometry, the generic `CaptureSink`) is **replaced** by this plan. Its single `@cii/maps` package with engine subpath exports is kept as the starting layout (decision D9). Scope items it listed that are not in this plan are recorded as retained, deferred or removed in §16.1.
+Everything else in the earlier spec (Terra Draw, WGS 84-only public geometry,
+the generic `CaptureSink`) is **replaced** by this plan. Its single `@cii/maps`
+package with engine subpath exports is kept as the starting layout (decision
+D9). Scope items it listed that are not in this plan are recorded as retained,
+deferred or removed in §16.1.
 
 ---
 
@@ -82,26 +158,39 @@ Everything else in the earlier spec (Terra Draw, WGS 84-only public geometry, th
 
 This plan sets out how to build a family of Svelte components that:
 
-- display maps from many sources, including web services, PostGIS, GeoPackage, SpatiaLite and raw files;
-- render through any of the three major open-source engines, behind one component API;
-- scale from a simple basemap with overlays up to full spatial data capture, where edits become PostGIS rows;
-- are extensible, so new controls, data types, capture modes and backends can be added without changing the core.
+- display maps from many sources, including web services, PostGIS, GeoPackage,
+  SpatiaLite and raw files;
+- render through any of the three major open-source engines, behind one
+  component API;
+- scale from a simple basemap with overlays up to full spatial data capture,
+  where edits become PostGIS rows;
+- are extensible, so new controls, data types, capture modes and backends can be
+  added without changing the core.
 
-**Out of scope for 1.0:** topology editing (shared boundaries, network editing), 3D, offline sync, printing, and proprietary engines. The extension model in §11 is designed so these can be added later.
+**Out of scope for 1.0:** topology editing (shared boundaries, network editing),
+3D, offline sync, printing, and proprietary engines. The extension model in §11
+is designed so these can be added later.
 
 ### 1.1 Design stance
 
-The reference documents disagree on one point: should the library offer _one API across engines_ or _thin per-engine wrappers_? This plan takes a middle path:
+The reference documents disagree on one point: should the library offer _one API
+across engines_ or _thin per-engine wrappers_? This plan takes a middle path:
 
-- **One API** for everything the five requirements touch: CRS, layers, controls, capture and persistence. These must behave the same on every engine, or the requirements cannot be guaranteed.
-- **An explicit capability model.** Each engine declares what it can do, and the core refuses unsupported combinations with a clear error. It never silently degrades. For example, it will not quietly fall back to EPSG:3857.
-- **An escape hatch** (`engine.native()`) for engine-specific power use. Anything done through it is outside the guarantees.
+- **One API** for everything the five requirements touch: CRS, layers, controls,
+  capture and persistence. These must behave the same on every engine, or the
+  requirements cannot be guaranteed.
+- **An explicit capability model.** Each engine declares what it can do, and the
+  core refuses unsupported combinations with a clear error. It never silently
+  degrades. For example, it will not quietly fall back to EPSG:3857.
+- **An escape hatch** (`engine.native()`) for engine-specific power use.
+  Anything done through it is outside the guarantees.
 
 ---
 
 ## 2. Absolute requirements and acceptance criteria
 
-Each requirement is turned into testable acceptance criteria. These criteria form part of the conformance suite (§14).
+Each requirement is turned into testable acceptance criteria. These criteria
+form part of the conformance suite (§14).
 
 ### R1 — Input CRS is confirmed when a layer is created
 
@@ -141,7 +230,9 @@ Each requirement is turned into testable acceptance criteria. These criteria for
 
 ### R5 — PostGIS for outputs; multiple input types
 
-R5.1, R5.2 and R5.5 define a **conformant** persistence adapter. Editing is enabled only through a conformant adapter, unless the target explicitly opts out (R5.6).
+R5.1, R5.2 and R5.5 define a **conformant** persistence adapter. Editing is
+enabled only through a conformant adapter, unless the target explicitly opts out
+(R5.6).
 
 | ID   | Acceptance criterion                                                                                                                                                                                                                                                                                  |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -156,39 +247,64 @@ R5.1, R5.2 and R5.5 define a **conformant** persistence adapter. Editing is enab
 
 ## 3. What changed from the reference material
 
-The four reference artefacts (the Gemini spec, the design guide, the development guide, the Word spec and the architecture diagram) were checked against current documentation. The full register is in **Appendix A**. The corrections that change the design are:
+The four reference artefacts (the Gemini spec, the design guide, the development
+guide, the Word spec and the architecture diagram) were checked against current
+documentation. The full register is in **Appendix A**. The corrections that
+change the design are:
 
-1. **The drawing plugins named in the references are dropped.** Geoman, Terra Draw and Mapbox GL Draw forks conflict with R3. They also carry version risk: Terra Draw's README lists adapters for Leaflet v1 and MapLibre v4/5 only, not MapLibre v6 or Leaflet 2. This plan specifies a first-party capture engine instead.
+1. **The drawing plugins named in the references are dropped.** Geoman, Terra
+   Draw and Mapbox GL Draw forks conflict with R3. They also carry version risk:
+   Terra Draw's README lists adapters for Leaflet v1 and MapLibre v4/5 only, not
+   MapLibre v6 or Leaflet 2. This plan specifies a first-party capture engine
+   instead.
 2. **MapLibre is no longer "EPSG:3857 only".**
    - v5 added globe.
-   - v6.15 (October 2026) added an **experimental** `addProjection` API for one custom CRS per map.
-   - Tiles must already be in that CRS. MapLibre positions them but does not reproject them.
+   - v6.15 (October 2026) added an **experimental** `addProjection` API for one
+     custom CRS per map.
+   - Tiles must already be in that CRS. MapLibre positions them but does not
+     reproject them.
    - proj4 must also be loaded into MapLibre's web workers.
-3. **The MapLibre version is now 6.x.** It was released in July 2026, is ESM-only and requires WebGL2. The references cite 4.x/5.x.
+3. **The MapLibre version is now 6.x.** It was released in July 2026, is
+   ESM-only and requires WebGL2. The references cite 4.x/5.x.
 4. **Leaflet is not "3857/4326 only".**
-   - It accepts custom CRS objects. Proj4Leaflet is just a plugin that builds one, and it targets Leaflet 1.0.3.
+   - It accepts custom CRS objects. Proj4Leaflet is just a plugin that builds
+     one, and it targets Leaflet 1.0.3.
    - This plan builds the custom CRS first-party instead.
-   - The current stable release is still **1.9.4** (May 2023). 2.0 is at alpha.1 (August 2025): ESM, no global `L`, factory methods removed.
-   - Because the library is going to production, the adapter targets 1.9.4 and is written so the move to 2.0 is cheap (§6.3).
-5. **"MapLibre has no native WMS – must proxy" is wrong.** MapLibre's own example adds WMS as a raster source using a `{bbox-epsg-3857}` URL template. The real constraint is that the WMS must serve the display CRS.
+   - The current stable release is still **1.9.4** (May 2023). 2.0 is at alpha.1
+     (August 2025): ESM, no global `L`, factory methods removed.
+   - Because the library is going to production, the adapter targets 1.9.4 and
+     is written so the move to 2.0 is cheap (§6.3).
+5. **"MapLibre has no native WMS – must proxy" is wrong.** MapLibre's own
+   example adds WMS as a raster source using a `{bbox-epsg-3857}` URL template.
+   The real constraint is that the WMS must serve the display CRS.
 6. **OpenLayers is at 10.11.0** (October 2026). The references cite 9.x.
-7. **Silent CRS fallback is removed.** The development guide falls back to 3857 with a warning, which violates R1 and R2.
+7. **Silent CRS fallback is removed.** The development guide falls back to 3857
+   with a warning, which violates R1 and R2.
 8. **Capture output is not "always EPSG:4326 GeoJSON".**
    - Geometry stays in the capture CRS, with that CRS explicitly tagged.
    - PostGIS does one authoritative transform to the target SRID.
    - GeoJSON is used only as a transport encoding.
-9. **The Svelte 4 idioms in the references** (`on:create`, `createEventDispatcher`, slots) are replaced with Svelte 5 callback props, snippets, `createContext` (5.40+) and attachments (5.29+).
+9. **The Svelte 4 idioms in the references** (`on:create`,
+   `createEventDispatcher`, slots) are replaced with Svelte 5 callback props,
+   snippets, `createContext` (5.40+) and attachments (5.29+).
 10. **Persistence options were checked.**
     - pg_featureserv's transaction support (PR #152) is still unmerged.
-    - GeoSolutions' GeoServer training material states that GeoServer has no OGC API – Features transaction implementation.
-    - pygeoapi's PostgreSQL provider _does_ support transactions, but authentication is out of its scope.
-11. **The datum issue is made explicit.** NSW Spatial Services documents about 1.8 m misalignment when GDA94 and GDA2020 data are both pushed through WGS 84 / Web Mercator. The EPSG null transformations are rated at 3 m. This shapes the transform policy in §5.6.
+    - GeoSolutions' GeoServer training material states that GeoServer has no OGC
+      API – Features transaction implementation.
+    - pygeoapi's PostgreSQL provider _does_ support transactions, but
+      authentication is out of its scope.
+11. **The datum issue is made explicit.** NSW Spatial Services documents about
+    1.8 m misalignment when GDA94 and GDA2020 data are both pushed through WGS
+    84 / Web Mercator. The EPSG null transformations are rated at 3 m. This
+    shapes the transform policy in §5.6.
 
 ---
 
 ## 4. Architecture overview
 
-The layering in the supplied diagram is kept: Svelte components → core → engine adapters, with a factory that dynamically imports the chosen adapter. The diagram is extended with five subsystems it did not show:
+The layering in the supplied diagram is kept: Svelte components → core → engine
+adapters, with a factory that dynamically imports the chosen adapter. The
+diagram is extended with five subsystems it did not show:
 
 - the **CRS service**;
 - **source providers**;
@@ -196,7 +312,8 @@ The layering in the supplied diagram is kept: Svelte components → core → eng
 - the **edit buffer**;
 - **persistence adapters**.
 
-The Geoman and TerraDraw boxes in the diagram are replaced by a shared, first-party capture engine.
+The Geoman and TerraDraw boxes in the diagram are replaced by a shared,
+first-party capture engine.
 
 ```mermaid
 flowchart TB
@@ -226,22 +343,28 @@ flowchart TB
 ### Key flows
 
 1. **Layer creation:**
-   - The source provider probes the source and returns a `CrsHint` or metadata-derived CRS.
+   - The source provider probes the source and returns a `CrsHint` or
+     metadata-derived CRS.
    - For non-service sources, the creator confirms the CRS (`ConfirmedCrs`).
-   - The layer manager checks compatibility with the display CRS and the engine's capabilities.
+   - The layer manager checks compatibility with the display CRS and the
+     engine's capabilities.
    - The engine adapter renders a _resolved layer_.
 2. **Capture:**
    - The adapter's `InteractionSurface` emits pointer events in the display CRS.
-   - The capture engine runs a mode state machine and renders the sketch through the adapter.
+   - The capture engine runs a mode state machine and renders the sketch through
+     the adapter.
    - Validators run, and the finished geometry is staged in the edit buffer.
-   - The persistence adapter commits the change set, and PostGIS transforms the geometry and stores the row.
+   - The persistence adapter commits the change set, and PostGIS transforms the
+     geometry and stores the row.
    - The stored row is returned and reconciled on the map.
 
 ---
 
 ## 5. CRS subsystem (requirements R1, R2)
 
-The CRS subsystem is the backbone of the design. It lives in core and has no engine dependencies. It uses **proj4js** for client-side coordinate maths; this is a flagged dependency, see §17.
+The CRS subsystem is the backbone of the design. It lives in core and has no
+engine dependencies. It uses **proj4js** for client-side coordinate maths; this
+is a flagged dependency, see §17.
 
 ### 5.1 Types
 
@@ -308,22 +431,46 @@ export function resolveSourceCrs(
 
 There are two source types, one before CRS resolution and one after:
 
-- **`SourceConfig`** is the serialised form used in config and JSON Schema (§12.5). It carries a `CrsDeclaration`.
-- **`SourceSpec`** is the resolved form that the layer manager accepts. It carries a `ConfirmedCrs`. The only way to produce one is `resolveSourceCrs()`, or a provider's `probe()` for metadata-derived CRSs.
+- **`SourceConfig`** is the serialised form used in config and JSON Schema
+  (§12.5). It carries a `CrsDeclaration`.
+- **`SourceSpec`** is the resolved form that the layer manager accepts. It
+  carries a `ConfirmedCrs`. The only way to produce one is `resolveSourceCrs()`,
+  or a provider's `probe()` for metadata-derived CRSs.
 
-`ConfirmedCrs` is therefore required on every `SourceSpec`. The TypeScript types make it a compile-time error to pass a `SourceConfig` where a `SourceSpec` is expected, and the layer manager also enforces it at runtime (R1.1).
+`ConfirmedCrs` is therefore required on every `SourceSpec`. The TypeScript types
+make it a compile-time error to pass a `SourceConfig` where a `SourceSpec` is
+expected, and the layer manager also enforces it at runtime (R1.1).
 
 ### 5.2 CRS registry and definition providers
 
-The registry resolves a `CrsCode` to a proj4 definition plus metadata: units, extent, geographic base, and whether the CRS is projected. Definition providers are themselves registered (R4), and are queried in order:
+The registry resolves a `CrsCode` to a proj4 definition plus metadata: units,
+extent, geographic base, and whether the CRS is projected. Definition providers
+are themselves registered (R4), and are queried in order:
 
-1. **Bundled set.** Core always ships EPSG:3857, EPSG:4326 and OGC:CRS84. Regional definitions ship as separate, optional **CRS packs**, registered like any other definition provider, so an organisation loads only the pack for its jurisdiction. Each definition string is generated from PROJ during the build and checked in, not typed by hand.
-   - The Australian pack covers EPSG:7844 (GDA2020 geographic), EPSG:7854–7859 (GDA2020 MGA zones 54–59), EPSG:8058 (GDA2020 NSW Lambert), EPSG:4283 (GDA94), EPSG:28354–28358 (GDA94 MGA zones 54–58) and EPSG:6738 (GDA94 MGA zone 59).
-   - **The Australian pack is the first-class target (decision D8, §17.3).** It is installed by default, and the datum guidance (§5.6), fixtures and spikes are written for it. Other packs, such as a UK pack with EPSG:27700, can be added later as extensions.
-2. **PostGIS `spatial_ref_sys`.** A server endpoint returns `proj4text` and `srtext` for a given SRID. This makes the database the organisation's CRS authority, and it covers custom SRIDs.
-3. **Optional online lookup**, for example a spatialreference.org or MapTiler lookup. This is **disabled by default**, so an application never depends on a third-party site at runtime.
+1. **Bundled set.** Core always ships EPSG:3857, EPSG:4326 and OGC:CRS84.
+   Regional definitions ship as separate, optional **CRS packs**, registered
+   like any other definition provider, so an organisation loads only the pack
+   for its jurisdiction. Each definition string is generated from PROJ during
+   the build and checked in, not typed by hand.
+   - The Australian pack covers EPSG:7844 (GDA2020 geographic), EPSG:7854–7859
+     (GDA2020 MGA zones 54–59), EPSG:8058 (GDA2020 NSW Lambert), EPSG:4283
+     (GDA94), EPSG:28354–28358 (GDA94 MGA zones 54–58) and EPSG:6738 (GDA94 MGA
+     zone 59).
+   - **The Australian pack is the first-class target (decision D8, §17.3).** It
+     is installed by default, and the datum guidance (§5.6), fixtures and spikes
+     are written for it. Other packs, such as a UK pack with EPSG:27700, can be
+     added later as extensions.
+2. **PostGIS `spatial_ref_sys`.** A server endpoint returns `proj4text` and
+   `srtext` for a given SRID. This makes the database the organisation's CRS
+   authority, and it covers custom SRIDs.
+3. **Optional online lookup**, for example a spatialreference.org or MapTiler
+   lookup. This is **disabled by default**, so an application never depends on a
+   third-party site at runtime.
 
-> OpenLayers' `ol/proj/proj4` module looks up definitions on spatialreference.org by default. The OL adapter must call `setProjectionCodeLookup()` with the core registry, so all three engines use exactly the same definitions.
+> OpenLayers' `ol/proj/proj4` module looks up definitions on
+> spatialreference.org by default. The OL adapter must call
+> `setProjectionCodeLookup()` with the core registry, so all three engines use
+> exactly the same definitions.
 
 ### 5.3 Confirmation workflow (R1)
 
@@ -337,9 +484,16 @@ SourceProvider.probe(input)
                           → mismatch with hint ⇒ blocking warning, must acknowledge
 ```
 
-- **In the UI:** `<CrsConfirm>` shows the hint, its source, a sample coordinate decoded with that CRS, and the layer's extent drawn on the map. Showing the extent catches wrong-zone and swapped-axis errors immediately.
-- **In config-driven maps:** the creator states `crs` in the layer config. This counts as a declaration, and probing still runs so the mismatch warning can fire.
-- **Open decision (§17, D1):** whether PostGIS should count as "metadata-derived" or "declared". This plan treats it as metadata-derived because `geometry_columns` is authoritative. A `requireDeclaration` flag lets an organisation force a declaration anyway.
+- **In the UI:** `<CrsConfirm>` shows the hint, its source, a sample coordinate
+  decoded with that CRS, and the layer's extent drawn on the map. Showing the
+  extent catches wrong-zone and swapped-axis errors immediately.
+- **In config-driven maps:** the creator states `crs` in the layer config. This
+  counts as a declaration, and probing still runs so the mismatch warning can
+  fire.
+- **Open decision (§17, D1):** whether PostGIS should count as
+  "metadata-derived" or "declared". This plan treats it as metadata-derived
+  because `geometry_columns` is authoritative. A `requireDeclaration` flag lets
+  an organisation force a declaration anyway.
 
 ### 5.4 Where the CRS comes from, per source type
 
@@ -376,9 +530,12 @@ SourceProvider.probe(input)
 
 #### Rules enforced by core
 
-- `engine.capabilities.displayCrs(code)` returns `'native' | 'experimental' | 'unsupported'`.
-  - `'experimental'` requires `display.allowExperimental: true` in config and logs a one-time warning.
-  - `'unsupported'` throws `DISPLAY_CRS_UNSUPPORTED` and names the engines that _do_ support the CRS.
+- `engine.capabilities.displayCrs(code)` returns
+  `'native' | 'experimental' | 'unsupported'`.
+  - `'experimental'` requires `display.allowExperimental: true` in config and
+    logs a one-time warning.
+  - `'unsupported'` throws `DISPLAY_CRS_UNSUPPORTED` and names the engines that
+    _do_ support the CRS.
 - `layerManager.checkCompatibility(layer, displayCrs, engine)` returns one of:
   - `direct`;
   - `client-transform` (vector features);
@@ -386,10 +543,19 @@ SourceProvider.probe(input)
   - `engine-reproject` (OL rasters);
   - `incompatible` (with a reason).
 - **Runtime switch:** `MapState.setDisplayCrs()` works in three steps:
-  1. **Pre-check.** It runs `checkCompatibility` for every layer, and for the target layer of every staged edit, against the new CRS. If any of them returns `incompatible`, the switch is refused with `DISPLAY_CRS_SWITCH_BLOCKED` (R2.4). Nothing is changed. The user can remove those layers, or commit or discard the staged edits, and then try again.
-  2. **Snapshot.** It records the view (centre converted to the new CRS, scale preserved), the layer specs and the capture state.
-  3. **Apply.** It asks the adapter to reconfigure or rebuild. If that fails, the snapshot is restored in the old CRS and the error is reported.
-- Staged edits keep the CRS they were captured in (§9.4). A switch therefore never transforms staged geometry. The edit buffer can hold edits in more than one CRS, and each operation carries its own `geometryCrs` (§10.1).
+  1. **Pre-check.** It runs `checkCompatibility` for every layer, and for the
+     target layer of every staged edit, against the new CRS. If any of them
+     returns `incompatible`, the switch is refused with
+     `DISPLAY_CRS_SWITCH_BLOCKED` (R2.4). Nothing is changed. The user can
+     remove those layers, or commit or discard the staged edits, and then try
+     again.
+  2. **Snapshot.** It records the view (centre converted to the new CRS, scale
+     preserved), the layer specs and the capture state.
+  3. **Apply.** It asks the adapter to reconfigure or rebuild. If that fails,
+     the snapshot is restored in the old CRS and the error is reported.
+- Staged edits keep the CRS they were captured in (§9.4). A switch therefore
+  never transforms staged geometry. The edit buffer can hold edits in more than
+  one CRS, and each operation carries its own `geometryCrs` (§10.1).
 
 ### 5.6 Transform policy and datum handling
 
@@ -402,32 +568,61 @@ The rule is **two tiers of transformation**:
 
 #### Precision rules for captured geometry
 
-A browser transform cannot be undone without loss. So geometry that will be stored must not depend on one wherever that can be avoided:
+A browser transform cannot be undone without loss. So geometry that will be
+stored must not depend on one wherever that can be avoided:
 
-1. **Snapped vertices keep their source coordinates.** The snap index holds each feature's original coordinates in its source CRS, next to the display-CRS copy it uses for searching. When a vertex snaps, the edit buffer records the snap target: layer, feature identity, vertex or segment index, and the original coordinate in the source CRS. On commit, the server rebuilds that vertex from the original coordinate with `ST_Transform`. The display-transformed point is used only for drawing.
-2. **Freehand vertices are display-accuracy.** A vertex that is not snapped is digitised in the display CRS. It is tagged as such, and its accuracy is that of the display CRS and the screen resolution. The attribute form and commit panel say so when the target has a stated accuracy requirement.
-3. **Attribute-only edits never send geometry.** The edit buffer omits `geometry` from an update unless the geometry itself was changed. So stored geometry is never round-tripped through display coordinates.
-4. **Untouched vertices of a modified feature keep their stored coordinates.** When a modify edit moves some vertices, the others are sent as references to the stored geometry, not as display coordinates (see `VertexRef` in §10.1).
+1. **Snapped vertices keep their source coordinates.** The snap index holds each
+   feature's original coordinates in its source CRS, next to the display-CRS
+   copy it uses for searching. When a vertex snaps, the edit buffer records the
+   snap target: layer, feature identity, vertex or segment index, and the
+   original coordinate in the source CRS. On commit, the server rebuilds that
+   vertex from the original coordinate with `ST_Transform`. The
+   display-transformed point is used only for drawing.
+2. **Freehand vertices are display-accuracy.** A vertex that is not snapped is
+   digitised in the display CRS. It is tagged as such, and its accuracy is that
+   of the display CRS and the screen resolution. The attribute form and commit
+   panel say so when the target has a stated accuracy requirement.
+3. **Attribute-only edits never send geometry.** The edit buffer omits
+   `geometry` from an update unless the geometry itself was changed. So stored
+   geometry is never round-tripped through display coordinates.
+4. **Untouched vertices of a modified feature keep their stored coordinates.**
+   When a modify edit moves some vertices, the others are sent as references to
+   the stored geometry, not as display coordinates (see `VertexRef` in §10.1).
 
 #### Datum considerations (Australia)
 
-- EPSG:3857 and EPSG:4326 sit on the WGS 84 _ensemble_. NSW Spatial Services notes that the null transformations between WGS 84 and GDA94/GDA2020 are rated at 3 m. It also notes about 1.8 m misalignment when GDA94 and GDA2020 data are both pushed through Web Mercator, and the plate moves about 7 cm per year.
+- EPSG:3857 and EPSG:4326 sit on the WGS 84 _ensemble_. NSW Spatial Services
+  notes that the null transformations between WGS 84 and GDA94/GDA2020 are rated
+  at 3 m. It also notes about 1.8 m misalignment when GDA94 and GDA2020 data are
+  both pushed through Web Mercator, and the plate moves about 7 cm per year.
 - **Consequences for this design:**
-  1. The CRS registry records the geodetic datum of every confirmed CRS. The layer list shows a "datum differs from display" badge when a layer's datum differs from the display CRS datum.
-  2. Captured geometry is tagged with the **display CRS it was digitised in**, together with the _capture context_: the reference layers that were snapped to or visible, their CRSs, and the original coordinates of every snapped vertex (rule 1 above). The server can then apply the correct transformation rather than a blind null transform.
-  3. Workflows that need sub-metre accuracy should use a **GDA2020 display CRS (OpenLayers)**, so digitising happens in the authoritative datum. This is the main reason to keep OpenLayers as a first-class engine.
+  1. The CRS registry records the geodetic datum of every confirmed CRS. The
+     layer list shows a "datum differs from display" badge when a layer's datum
+     differs from the display CRS datum.
+  2. Captured geometry is tagged with the **display CRS it was digitised in**,
+     together with the _capture context_: the reference layers that were snapped
+     to or visible, their CRSs, and the original coordinates of every snapped
+     vertex (rule 1 above). The server can then apply the correct transformation
+     rather than a blind null transform.
+  3. Workflows that need sub-metre accuracy should use a **GDA2020 display CRS
+     (OpenLayers)**, so digitising happens in the authoritative datum. This is
+     the main reason to keep OpenLayers as a first-class engine.
 
 ### 5.7 Coordinate conventions inside core
 
-- Core always holds coordinates in **x/y (easting/longitude first)** order, in a named CRS.
-- Axis swapping happens _only_ at the source-provider boundary, driven by `CrsRef.axisOrder`.
-- View centres in config are written as `{ crs, coordinates }`. This removes the `[lat, lng]` versus `[lng, lat]` inconsistency in the architecture diagram.
+- Core always holds coordinates in **x/y (easting/longitude first)** order, in a
+  named CRS.
+- Axis swapping happens _only_ at the source-provider boundary, driven by
+  `CrsRef.axisOrder`.
+- View centres in config are written as `{ crs, coordinates }`. This removes the
+  `[lat, lng]` versus `[lng, lat]` inconsistency in the architecture diagram.
 
 ---
 
 ## 6. Engine adapter contract
 
-The adapter is the only code that touches an engine API. The Svelte components and the core use only this contract.
+The adapter is the only code that touches an engine API. The Svelte components
+and the core use only this contract.
 
 ```ts
 // @cii/maps-core/engine/types.ts
@@ -501,7 +696,9 @@ export interface InteractionSurface {
 
 ### 6.1 Factory and dynamic import
 
-The architecture diagram's factory pattern is kept, but the factory reads from the engine registry rather than a hard-coded switch. This makes new engines pluggable (R4).
+The architecture diagram's factory pattern is kept, but the factory reads from
+the engine registry rather than a hard-coded switch. This makes new engines
+pluggable (R4).
 
 ```ts
 // @cii/maps-core/engine/registry.ts
@@ -531,68 +728,114 @@ engineRegistry.register(
 );
 ```
 
-Vite code-splits each `import()` into its own chunk. Each engine is a **peer dependency** of its adapter package.
+Vite code-splits each `import()` into its own chunk. Each engine is a **peer
+dependency** of its adapter package.
 
 ### 6.2 Per-engine implementation notes
 
 **Leaflet adapter** (production target: 1.9.4; 2.0 tracked in CI — see §6.3)
 
-- Use constructors and named ESM imports (`new Map(...)`, `new TileLayer(...)`), never the factory functions (`L.map`). Leaflet 2.0 removes the factory methods and the global `L`, so this keeps the migration to a version bump.
-- For a custom display CRS, write first-party code: a `CRS` object with a projection object whose `project` and `unproject` call the core CRS service (proj4), plus a `transformation`, resolutions and origin taken from the tile matrix set.
-  - This is roughly what Proj4Leaflet does. Owning the code removes a plugin that targets Leaflet 1.0.3.
-  - Spike S2 must prove it works on both 1.9.4 and 2.0-alpha. This code is the part most exposed to 2.0 changes (§6.3).
-- Leaflet takes `LatLng` input, so core transforms features to the geographic base of the display CRS before passing them to Leaflet.
-- The sketch renderer uses a dedicated `Pane` with `Polyline`, `Polygon` and `CircleMarker` on a Canvas renderer.
-- `hitTest` uses a layer-level spatial index in core, because Leaflet has no rendered-feature query.
+- Use constructors and named ESM imports (`new Map(...)`, `new TileLayer(...)`),
+  never the factory functions (`L.map`). Leaflet 2.0 removes the factory methods
+  and the global `L`, so this keeps the migration to a version bump.
+- For a custom display CRS, write first-party code: a `CRS` object with a
+  projection object whose `project` and `unproject` call the core CRS service
+  (proj4), plus a `transformation`, resolutions and origin taken from the tile
+  matrix set.
+  - This is roughly what Proj4Leaflet does. Owning the code removes a plugin
+    that targets Leaflet 1.0.3.
+  - Spike S2 must prove it works on both 1.9.4 and 2.0-alpha. This code is the
+    part most exposed to 2.0 changes (§6.3).
+- Leaflet takes `LatLng` input, so core transforms features to the geographic
+  base of the display CRS before passing them to Leaflet.
+- The sketch renderer uses a dedicated `Pane` with `Polyline`, `Polygon` and
+  `CircleMarker` on a Canvas renderer.
+- `hitTest` uses a layer-level spatial index in core, because Leaflet has no
+  rendered-feature query.
 - No vector tiles in 1.0 (see F4).
 
 **MapLibre adapter** (target: 6.x)
 
-- v6 is ESM-only and requires WebGL2. Document the WebGL2 requirement as a browser baseline.
-- Wait for `load` before adding sources. Generate stable source and layer IDs (`${mapId}:${layerId}`).
-- Make surgical updates through `setPaintProperty`, `setLayoutProperty`, `setFilter` and `GeoJSONSource.setData`. Never rebuild the style for prop changes.
+- v6 is ESM-only and requires WebGL2. Document the WebGL2 requirement as a
+  browser baseline.
+- Wait for `load` before adding sources. Generate stable source and layer IDs
+  (`${mapId}:${layerId}`).
+- Make surgical updates through `setPaintProperty`, `setLayoutProperty`,
+  `setFilter` and `GeoJSONSource.setData`. Never rebuild the style for prop
+  changes.
 - The portable style compiles to style-spec layers (fill, line, circle, symbol).
 - For a custom display CRS:
   - Gate it behind `allowExperimental`.
-  - Register the CRS with `maplibregl.addProjection()` using a proj4 converter, before any map is created.
+  - Register the CRS with `maplibregl.addProjection()` using a proj4 converter,
+    before any map is created.
   - Install the worker handler (`setProjectionHandler`).
   - Rebuild the map on CRS change.
-- The sketch renderer uses a dedicated GeoJSON source with three layers (lines, fills, vertices) at the top of the stack. `hitTest` uses `queryRenderedFeatures`.
+- The sketch renderer uses a dedicated GeoJSON source with three layers (lines,
+  fills, vertices) at the top of the stack. `hitTest` uses
+  `queryRenderedFeatures`.
 
 **OpenLayers adapter** (target: 10.x)
 
-- Register proj4 with `ol/proj/proj4.register`, and route definition lookups to the core registry with `setProjectionCodeLookup`.
-- Import granular modules only (`ol/Map`, `ol/View`, `ol/layer/Tile`, and so on) so tree-shaking works.
+- Register proj4 with `ol/proj/proj4.register`, and route definition lookups to
+  the core registry with `setProjectionCodeLookup`.
+- Import granular modules only (`ol/Map`, `ol/View`, `ol/layer/Tile`, and so on)
+  so tree-shaking works.
 - On CRS change, swap the `View`. Raster reprojection is native.
-- The sketch renderer uses a dedicated `VectorLayer` with a style function. `hitTest` uses `forEachFeatureAtPixel` with `hitTolerance`.
-- OL's built-in `Draw`, `Modify` and `Snap` interactions are core OL, not plugins, so R3 would allow them. They are **not** used by default, so that capture behaves the same on all engines. They may be added later as an alternative capture backend behind the same `CaptureMode` contract (open decision D3).
+- The sketch renderer uses a dedicated `VectorLayer` with a style function.
+  `hitTest` uses `forEachFeatureAtPixel` with `hitTolerance`.
+- OL's built-in `Draw`, `Modify` and `Snap` interactions are core OL, not
+  plugins, so R3 would allow them. They are **not** used by default, so that
+  capture behaves the same on all engines. They may be added later as an
+  alternative capture backend behind the same `CaptureMode` contract (open
+  decision D3).
 
 ### 6.3 Leaflet version policy (production)
 
-**Decision.** Production releases of `maps-engine-leaflet` target **Leaflet 1.9.4**, with the peer range `>=1.9.4 <2`. Leaflet **2.0 is not a production target** until it meets the switch criteria below. It is tested in CI from Phase 0 onwards.
+**Decision.** Production releases of `maps-engine-leaflet` target **Leaflet
+1.9.4**, with the peer range `>=1.9.4 <2`. Leaflet **2.0 is not a production
+target** until it meets the switch criteria below. It is tested in CI from Phase
+0 onwards.
 
 #### Why 2.0 is not the production target
 
-- **The alpha has stalled.** 2.0.0-alpha.1 was released in August 2025, and there has been no beta or release candidate since. The API can still change before 2.0 is final, and there is no published release date.
-- **The custom-CRS code is the most exposed.** The first-party custom CRS (MGA, NSW Lambert) builds on Leaflet's `CRS`, `Projection` and `Transformation` objects. Few people use these, so breaking changes there are less likely to be noticed and reported by the wider community.
-- **Less support material.** Documentation, examples and community answers are almost all for 1.x.
-- **No gain to offset the risk.** This library uses no Leaflet plugins, so 1.9.4 already provides everything the adapter needs. 2.0 adds nothing that the requirements depend on.
+- **The alpha has stalled.** 2.0.0-alpha.1 was released in August 2025, and
+  there has been no beta or release candidate since. The API can still change
+  before 2.0 is final, and there is no published release date.
+- **The custom-CRS code is the most exposed.** The first-party custom CRS (MGA,
+  NSW Lambert) builds on Leaflet's `CRS`, `Projection` and `Transformation`
+  objects. Few people use these, so breaking changes there are less likely to be
+  noticed and reported by the wider community.
+- **Less support material.** Documentation, examples and community answers are
+  almost all for 1.x.
+- **No gain to offset the risk.** This library uses no Leaflet plugins, so 1.9.4
+  already provides everything the adapter needs. 2.0 adds nothing that the
+  requirements depend on.
 
 #### Why the migration should be cheap
 
-- **No plugins.** Most 2.0 migration pain comes from plugins that rely on the global `L` and the factory methods. R3 avoids that whole class of breakage.
-- **One file touches Leaflet.** Components, capture, CRS handling and persistence go through core, so a Leaflet change is contained in the adapter (§6).
+- **No plugins.** Most 2.0 migration pain comes from plugins that rely on the
+  global `L` and the factory methods. R3 avoids that whole class of breakage.
+- **One file touches Leaflet.** Components, capture, CRS handling and
+  persistence go through core, so a Leaflet change is contained in the adapter
+  (§6).
 
 #### Coding rules for the Leaflet adapter
 
 These rules keep 1.9.4 code close to 2.0:
 
-1. Use constructors only (`new Marker(...)`), never factory functions (`L.marker(...)`).
-2. Import Leaflet from the ESM build using named imports. Never rely on the global `L`.
-3. Route every Leaflet import through one internal module (`leaflet-api.ts`). It is the single seam to change when moving to 2.0.
-4. Keep custom-CRS construction in one module (`crs-factory.ts`). If 2.0 changes how CRS objects are built, version-specific implementations can sit behind this one function.
-5. Do not use private or undocumented members (anything prefixed `_`). Do not monkey-patch Leaflet prototypes.
-6. Keep Leaflet types inside the adapter. Never expose them in the adapter's public API.
+1. Use constructors only (`new Marker(...)`), never factory functions
+   (`L.marker(...)`).
+2. Import Leaflet from the ESM build using named imports. Never rely on the
+   global `L`.
+3. Route every Leaflet import through one internal module (`leaflet-api.ts`). It
+   is the single seam to change when moving to 2.0.
+4. Keep custom-CRS construction in one module (`crs-factory.ts`). If 2.0 changes
+   how CRS objects are built, version-specific implementations can sit behind
+   this one function.
+5. Do not use private or undocumented members (anything prefixed `_`). Do not
+   monkey-patch Leaflet prototypes.
+6. Keep Leaflet types inside the adapter. Never expose them in the adapter's
+   public API.
 
 #### CI matrix
 
@@ -602,32 +845,53 @@ These rules keep 1.9.4 code close to 2.0:
 | `leaflet-next-pinned` | 2.0.0-alpha.1, or the latest tagged 2.0 prerelease | No        | Shows the current migration gap; failures are logged in a "Leaflet 2 readiness" issue |
 | `leaflet-next-dev`    | Leaflet development snapshot, weekly               | No        | Early warning of upcoming breaking changes                                            |
 
-**Switch criteria.** All of these must hold before 2.0 becomes the production target:
+**Switch criteria.** All of these must hold before 2.0 becomes the production
+target:
 
 1. Leaflet 2.0 is published as a **release candidate or stable** release.
-2. The full conformance suite (§14) passes on 2.0 as a **blocking** job for four consecutive weeks.
+2. The full conformance suite (§14) passes on 2.0 as a **blocking** job for four
+   consecutive weeks.
 3. Spike S2 (the custom CRS) and the capture parity tests pass on 2.0.
 4. The "Leaflet 2 readiness" log has no open items marked breaking.
 
 #### Switching
 
-- Release a new **major version** of `maps-engine-leaflet` with the peer range `^2`.
-- Keep the 1.9.4-based major on fixes-only support for a defined window, for example six months, so applications can move at their own pace.
-- No other package changes. Core, the Svelte components and the persistence adapters are unaffected.
+- Release a new **major version** of `maps-engine-leaflet` with the peer range
+  `^2`.
+- Keep the 1.9.4-based major on fixes-only support for a defined window, for
+  example six months, so applications can move at their own pace.
+- No other package changes. Core, the Svelte components and the persistence
+  adapters are unaffected.
 
-**Revisit early if** 1.9.4 hits a blocking defect or a security advisory that has no 1.x fix. In that case, review the readiness log to decide whether to move to the 2.0 prerelease or to patch around the problem within the adapter.
+**Revisit early if** 1.9.4 hits a blocking defect or a security advisory that
+has no 1.x fix. In that case, review the readiness log to decide whether to move
+to the 2.0 prerelease or to patch around the problem within the adapter.
 
 ### 6.4 View contract
 
-`ViewState` must mean the same thing on every engine, so the conformance suite can compare engines.
+`ViewState` must mean the same thing on every engine, so the conformance suite
+can compare engines.
 
-- **Resolution is canonical.** `resolution` is display-CRS units per CSS pixel. Engines are compared on resolution, not zoom.
-- **Zoom is derived.** `zoom` is defined against the **zoom-to-resolution table of the display CRS**:
-  - For EPSG:3857, the table is the 256 px tile convention used by Leaflet and OpenLayers (zoom 0 = 156 543.03 m per pixel at the equator). MapLibre uses 512 px tiles, so its adapter converts with `mapLibreZoom = zoom − 1` at the boundary.
-  - For any other display CRS, the table comes from the CRS's configured tile matrix set (resolutions and origin), and fractional zooms interpolate logarithmically between levels. A display CRS with no tile matrix set exposes `resolution` only, and `zoom` is `undefined`.
-- **Precedence.** If a `setView` call or config gives both `zoom` and `resolution`, `resolution` wins, and a development warning is logged when they disagree by more than 1%.
-- **Limits.** `minZoom`, `maxZoom` and layer zoom ranges use the same table. Each can also be given as a resolution.
-- **Tests.** The zoom conversion and the round trip through every adapter are unit-tested. The conformance suite checks that `setView` and `fitExtent` give the same resolution and centre on every engine, within a stated tolerance.
+- **Resolution is canonical.** `resolution` is display-CRS units per CSS pixel.
+  Engines are compared on resolution, not zoom.
+- **Zoom is derived.** `zoom` is defined against the **zoom-to-resolution table
+  of the display CRS**:
+  - For EPSG:3857, the table is the 256 px tile convention used by Leaflet and
+    OpenLayers (zoom 0 = 156 543.03 m per pixel at the equator). MapLibre uses
+    512 px tiles, so its adapter converts with `mapLibreZoom = zoom − 1` at the
+    boundary.
+  - For any other display CRS, the table comes from the CRS's configured tile
+    matrix set (resolutions and origin), and fractional zooms interpolate
+    logarithmically between levels. A display CRS with no tile matrix set
+    exposes `resolution` only, and `zoom` is `undefined`.
+- **Precedence.** If a `setView` call or config gives both `zoom` and
+  `resolution`, `resolution` wins, and a development warning is logged when they
+  disagree by more than 1%.
+- **Limits.** `minZoom`, `maxZoom` and layer zoom ranges use the same table.
+  Each can also be given as a resolution.
+- **Tests.** The zoom conversion and the round trip through every adapter are
+  unit-tested. The conformance suite checks that `setView` and `fitExtent` give
+  the same resolution and centre on every engine, within a stated tolerance.
 
 ---
 
@@ -637,7 +901,8 @@ These rules keep 1.9.4 code close to 2.0:
 
 Sources and rendering are separate concerns, which is what makes R4.3 possible:
 
-- A **SourceProvider** knows a data type: how to probe it, read its CRS, and load it.
+- A **SourceProvider** knows a data type: how to probe it, read its CRS, and
+  load it.
 - A **LayerRenderer** knows how to draw one **render kind** on one engine.
 
 | Render kind    | Produced by                                                                                                      | Engine renderers needed                              |
@@ -647,7 +912,8 @@ Sources and rendering are separate concerns, which is what makes R4.3 possible:
 | `vector-tiles` | MVT from PostGIS `ST_AsMVT`, Martin, pg_tileserv, PMTiles                                                        | MapLibre and OL built-in; Leaflet unsupported in 1.0 |
 | `features`     | GeoJSON, WFS, OAPIF, ArcGIS FeatureServer, PostGIS, GeoPackage, SpatiaLite, Shapefile, KML, GPX, CSV, FlatGeobuf | 3 (built-in)                                         |
 
-A new data type that produces `features` (for example FlatGeobuf, or a CSV variant) needs only a `SourceProvider`.
+A new data type that produces `features` (for example FlatGeobuf, or a CSV
+variant) needs only a `SourceProvider`.
 
 ```ts
 export interface SourceProvider<I = unknown> {
@@ -659,7 +925,9 @@ export interface SourceProvider<I = unknown> {
 }
 ```
 
-`ProbeResult` carries, for each sub-layer or table, either `crs: ConfirmedCrs` (when it comes from service or database metadata) or `crsHint: CrsHint` (everything else). `open()` cannot be called without a `ConfirmedCrs` (R1.1).
+`ProbeResult` carries, for each sub-layer or table, either `crs: ConfirmedCrs`
+(when it comes from service or database metadata) or `crsHint: CrsHint`
+(everything else). `open()` cannot be called without a `ConfirmedCrs` (R1.1).
 
 ### 7.2 Provider catalogue
 
@@ -680,11 +948,18 @@ export interface SourceProvider<I = unknown> {
 | PMTiles                                             | browser                                   | first-party range-request reader (phase 4)                                                                               | none planned                                       |
 | COG (phase 4)                                       | browser (OL only)                         | OL's built-in GeoTIFF source                                                                                             | OL's internal geotiff.js (F5)                      |
 
-KML `<description>` and `<ExtendedData>` often hold HTML. Like other feature properties, it is treated as untrusted text (§15.6).
+KML `<description>` and `<ExtendedData>` often hold HTML. Like other feature
+properties, it is treated as untrusted text (§15.6).
 
-**Large-file routing.** Browser readers declare a size limit. Above that limit, `probe()` returns `route: 'server'`, and the file is uploaded to the server reader. The CRS confirmation step is the same in both cases.
+**Large-file routing.** Browser readers declare a size limit. Above that limit,
+`probe()` returns `route: 'server'`, and the file is uploaded to the server
+reader. The CRS confirmation step is the same in both cases.
 
-**Workers.** All browser parsers (Shapefile, GeoPackage, large GeoJSON) run in a Web Worker, and features are passed back in batches. Worker entry points are authored as `.ts` modules and loaded with Vite's `new Worker(new URL('./parser.worker.ts', import.meta.url), { type: 'module' })`, as `AGENTS.md` requires.
+**Workers.** All browser parsers (Shapefile, GeoPackage, large GeoJSON) run in a
+Web Worker, and features are passed back in batches. Worker entry points are
+authored as `.ts` modules and loaded with Vite's
+`new Worker(new URL('./parser.worker.ts', import.meta.url), { type: 'module' })`,
+as `AGENTS.md` requires.
 
 ### 7.3 Feature identity for editable inputs
 
@@ -698,11 +973,14 @@ interface FeatureIdentity {
 }
 ```
 
-Features from files or services have no PostGIS identity. They can be **copied into** a PostGIS target (an "import as insert" change set), but they cannot be edited in place. This keeps R5 strict: the only editable store is PostGIS.
+Features from files or services have no PostGIS identity. They can be **copied
+into** a PostGIS target (an "import as insert" change set), but they cannot be
+edited in place. This keeps R5 strict: the only editable store is PostGIS.
 
 ### 7.4 Portable style model
 
-The style model is a small, serialisable language that compiles to Leaflet path options, the MapLibre style spec and OL `Style`:
+The style model is a small, serialisable language that compiles to Leaflet path
+options, the MapLibre style spec and OL `Style`:
 
 ```ts
 type Colour = string; // CSS colour, or a token reference such as 'token:--cii-brand-primary' (§15.5)
@@ -726,16 +1004,28 @@ interface PortableStyle {
 
 #### Rule evaluation
 
-- Rules are evaluated **in order, and the first matching rule wins**. Its `style` is merged over the base style. A feature that matches no rule uses the base style.
-- Every rule has a required `label`, so the legend can be generated from the style (§8.2). Legend entries combine colour with shape or pattern and the label, never colour alone.
-- Evaluation lives in core. Leaflet and OpenLayers call it per feature. MapLibre compiles it to `case` expressions. The conformance suite checks that both paths give the same result.
+- Rules are evaluated **in order, and the first matching rule wins**. Its
+  `style` is merged over the base style. A feature that matches no rule uses the
+  base style.
+- Every rule has a required `label`, so the legend can be generated from the
+  style (§8.2). Legend entries combine colour with shape or pattern and the
+  label, never colour alone.
+- Evaluation lives in core. Leaflet and OpenLayers call it per feature. MapLibre
+  compiles it to `case` expressions. The conformance suite checks that both
+  paths give the same result.
 
-**Unsupported style features.** Each engine lists what it can render in `capabilities.styleFeatures`. When a style uses a feature the engine cannot render:
+**Unsupported style features.** Each engine lists what it can render in
+`capabilities.styleFeatures`. When a style uses a feature the engine cannot
+render:
 
-- if a **documented fallback** exists (for example, `pattern-fill` falls back to a solid fill at reduced opacity), the fallback is applied and reported as a validation warning;
-- otherwise, adding the layer fails with `STYLE_UNSUPPORTED`, naming the feature and the engines that support it.
+- if a **documented fallback** exists (for example, `pattern-fill` falls back to
+  a solid fill at reduced opacity), the fallback is applied and reported as a
+  validation warning;
+- otherwise, adding the layer fails with `STYLE_UNSUPPORTED`, naming the feature
+  and the engines that support it.
 
-This follows the §1.1 principle: refuse, never silently degrade. `x-*` keys are outside the guarantees, and are ignored by engines that do not recognise them.
+This follows the §1.1 principle: refuse, never silently degrade. `x-*` keys are
+outside the guarantees, and are ignored by engines that do not recognise them.
 
 ---
 
@@ -743,10 +1033,16 @@ This follows the §1.1 principle: refuse, never silently degrade. `x-*` keys are
 
 ### 8.1 Approach
 
-- Every control is a **first-party Svelte component**. It is rendered in an overlay that `MapContainer` owns: `<div class="map-controls" data-position="top-right">`.
-- Controls are **not** placed in the engine's own control container. Positioning, theming, focus order and accessibility are therefore the same on all engines.
+- Every control is a **first-party Svelte component**. It is rendered in an
+  overlay that `MapContainer` owns:
+  `<div class="map-controls" data-position="top-right">`.
+- Controls are **not** placed in the engine's own control container.
+  Positioning, theming, focus order and accessibility are therefore the same on
+  all engines.
 - Controls talk only to `IMapEngine` and to core state, never to engine APIs.
-- The engines' own built-in controls are switched off by default. For example, MapLibre's `NavigationControl` and Leaflet's `Control.Zoom` are disabled, though they can be enabled through `native()`.
+- The engines' own built-in controls are switched off by default. For example,
+  MapLibre's `NavigationControl` and Leaflet's `Control.Zoom` are disabled,
+  though they can be enabled through `native()`.
 
 ### 8.2 Control catalogue
 
@@ -777,7 +1073,8 @@ This follows the §1.1 principle: refuse, never silently degrade. `x-*` keys are
 | Measure (length and area)                              | 3     | live value from geodesic formulas in core; an authoritative value from PostGIS `ST_Length` / `ST_Area` on `geography` on request                                                                                                                                                  |
 | Import data (file drop)                                | 2     | source providers plus `<CrsConfirm>`                                                                                                                                                                                                                                              |
 
-Each control is also registered in the control registry, so config-driven maps can place controls by ID (§11).
+Each control is also registered in the control registry, so config-driven maps
+can place controls by ID (§11).
 
 ---
 
@@ -785,11 +1082,14 @@ Each control is also registered in the control registry, so config-driven maps c
 
 ### 9.1 Why a first-party capture engine
 
-Only OpenLayers ships drawing and editing in its core. Leaflet and MapLibre rely on plugins (Geoman, Leaflet.draw, Terra Draw, Mapbox GL Draw forks), and R3 excludes those. A capture engine written once, in core, also gives:
+Only OpenLayers ships drawing and editing in its core. Leaflet and MapLibre rely
+on plugins (Geoman, Leaflet.draw, Terra Draw, Mapbox GL Draw forks), and R3
+excludes those. A capture engine written once, in core, also gives:
 
 - identical behaviour, keyboard shortcuts and output on all three engines;
 - the same events and the same change sets in every case;
-- no exposure to plugin release cycles. Terra Draw's adapters, for instance, list MapLibre v4/5 and Leaflet v1 only.
+- no exposure to plugin release cycles. Terra Draw's adapters, for instance,
+  list MapLibre v4/5 and Leaflet v1 only.
 
 ### 9.2 Structure
 
@@ -802,10 +1102,17 @@ InteractionSurface (adapter) ──pointer/key events in display CRS──▶ Ca
                                                                      └─ EditBuffer (core) ──▶ PersistenceAdapter
 ```
 
-- **CaptureMode**: a pure state machine with no engine code. It takes `MapPointerEvent` and `KeyboardEvent` and produces a `SketchState`. Modes are registered (R4).
-- **SketchRenderer**: an adapter-provided overlay. It draws the draft geometry, vertex and midpoint handles, the snap indicator and the measurement label.
-- **SnapIndex**: a first-party uniform-grid index in display-CRS units, built from features in snap-enabled layers that are in view. Grid indexes are simple and fast enough for capture-sized data sets. `rbush` is an allowed later substitute (F6).
-- **Validators**: client-side checks for fast feedback. PostGIS repeats the authoritative checks (§10.4).
+- **CaptureMode**: a pure state machine with no engine code. It takes
+  `MapPointerEvent` and `KeyboardEvent` and produces a `SketchState`. Modes are
+  registered (R4).
+- **SketchRenderer**: an adapter-provided overlay. It draws the draft geometry,
+  vertex and midpoint handles, the snap indicator and the measurement label.
+- **SnapIndex**: a first-party uniform-grid index in display-CRS units, built
+  from features in snap-enabled layers that are in view. Grid indexes are simple
+  and fast enough for capture-sized data sets. `rbush` is an allowed later
+  substitute (F6).
+- **Validators**: client-side checks for fast feedback. PostGIS repeats the
+  authoritative checks (§10.4).
 
 ### 9.3 Modes for 1.0
 
@@ -820,9 +1127,15 @@ InteractionSurface (adapter) ──pointer/key events in display CRS──▶ Ca
 | `move`       | translate the selected features                                                                        |
 | `delete`     | stage deletion of the selected features                                                                |
 
-Phase 4 adds `split`, `merge`, `reshape`, `trace` (follow a snap-layer edge) and `circle` (stored as a densified polygon, since PostGIS has no circle type in simple features).
+Phase 4 adds `split`, `merge`, `reshape`, `trace` (follow a snap-layer edge) and
+`circle` (stored as a densified polygon, since PostGIS has no circle type in
+simple features).
 
-**Touch.** Pointer Events are used throughout. Long-press acts as a context action, and handles are larger on coarse pointers (`@media (pointer: coarse)`). While a mode is active, each adapter's `suspend()` turns off the navigation gestures that clash with drawing, such as double-click zoom and drag-pan when dragging a handle.
+**Touch.** Pointer Events are used throughout. Long-press acts as a context
+action, and handles are larger on coarse pointers (`@media (pointer: coarse)`).
+While a mode is active, each adapter's `suspend()` turns off the navigation
+gestures that clash with drawing, such as double-click zoom and drag-pan when
+dragging a handle.
 
 ### 9.4 Session lifecycle
 
@@ -832,29 +1145,50 @@ idle → armed(mode) → sketching → complete → attributing → validated �
 staged → committing → committed | conflict | rejected
 ```
 
-- `staged` features live in the **EditBuffer** as a list of change sets. Each one is an insert, an update (geometry and/or attributes, with `baseVersion`) or a delete (with `baseVersion`).
-- Undo and redo use a command stack over the edit buffer, so they work across features as well as within a sketch.
-- **Every staged geometry records `captureCrs`** (the display CRS at the moment of digitising) and the `captureContext` (snap source layers, their CRSs, and the original source coordinate of every snapped vertex). See §5.6.
+- `staged` features live in the **EditBuffer** as a list of change sets. Each
+  one is an insert, an update (geometry and/or attributes, with `baseVersion`)
+  or a delete (with `baseVersion`).
+- Undo and redo use a command stack over the edit buffer, so they work across
+  features as well as within a sketch.
+- **Every staged geometry records `captureCrs`** (the display CRS at the moment
+  of digitising) and the `captureContext` (snap source layers, their CRSs, and
+  the original source coordinate of every snapped vertex). See §5.6.
 - Updates that change only attributes carry no geometry (§5.6, rule 3).
-- **Navigation guard.** While the edit buffer holds staged changes, `CaptureSession` registers SvelteKit `beforeNavigate` and a `beforeunload` handler. Leaving the page asks for confirmation, and the draft (§9.6) is saved first.
+- **Navigation guard.** While the edit buffer holds staged changes,
+  `CaptureSession` registers SvelteKit `beforeNavigate` and a `beforeunload`
+  handler. Leaving the page asks for confirmation, and the draft (§9.6) is saved
+  first.
 
 ### 9.5 Client-side validators (built-in, registered)
 
-- Geometry type matches the target column type (`POINT`, `MULTIPOLYGON`, and so on). Single geometries are promoted to multi where the target is multi.
+- Geometry type matches the target column type (`POINT`, `MULTIPOLYGON`, and so
+  on). Single geometries are promoted to multi where the target is multi.
 - Minimum vertex count. Rings must be closed.
-- No self-intersection. This uses a first-party segment-intersection check, capped at N vertices with a server fallback above the cap.
-- Optional checks: inside an allowed extent, minimum area, maximum vertices, no overlap with the snap layer.
-- Attribute checks taken from `TargetDescriptor`: required columns, types, enumerated domains, length.
+- No self-intersection. This uses a first-party segment-intersection check,
+  capped at N vertices with a server fallback above the cap.
+- Optional checks: inside an allowed extent, minimum area, maximum vertices, no
+  overlap with the snap layer.
+- Attribute checks taken from `TargetDescriptor`: required columns, types,
+  enumerated domains, length.
 
-The client validators exist to make the form responsive. **They are never the final check.**
+The client validators exist to make the form responsive. **They are never the
+final check.**
 
 ### 9.6 Drafts
 
 Carried forward from the earlier spec (§8.5):
 
-- With `capture.draft.storageKey` set, the edit buffer is saved to browser storage after each change. Saves are debounced. Each draft records the target, the `TargetDescriptor` it was captured against, and the `captureCrs` of every operation. If the live descriptor has changed since then (for example, a new required column), the draft is restored for review, not committed directly.
-- Drafts use the versioned, validated approach in `apps/community-portal/src/lib/persistence.ts`. A stored draft that fails validation is kept unchanged, and the user is offered an explicit recovery. It is never silently overwritten.
-- When a draft is restored, its `baseVersion` values are kept, so the first commit detects any server changes made in the meantime (R5.5).
+- With `capture.draft.storageKey` set, the edit buffer is saved to browser
+  storage after each change. Saves are debounced. Each draft records the target,
+  the `TargetDescriptor` it was captured against, and the `captureCrs` of every
+  operation. If the live descriptor has changed since then (for example, a new
+  required column), the draft is restored for review, not committed directly.
+- Drafts use the versioned, validated approach in
+  `apps/community-portal/src/lib/persistence.ts`. A stored draft that fails
+  validation is kept unchanged, and the user is offered an explicit recovery. It
+  is never silently overwritten.
+- When a draft is restored, its `baseVersion` values are kept, so the first
+  commit detects any server changes made in the meantime (R5.5).
 - Drafts are local to one browser. Offline sync stays out of scope (§1).
 
 ---
@@ -964,20 +1298,34 @@ export interface CommitResult {
 
 - `status` summarises `results`:
   - `committed`: every op succeeded;
-  - `partial`: some ops succeeded and some did not. Only adapters with `atomicMultiFeature: false` can return this;
+  - `partial`: some ops succeeded and some did not. Only adapters with
+    `atomicMultiFeature: false` can return this;
   - `conflict`: nothing was committed, and at least one op conflicted;
   - `rejected`: nothing was committed.
 - With an atomic adapter, any failure means every other op is `not-attempted`.
-- Returned geometry is in the **same CRS as the op** (`geometryCrs`), read back from the stored row with `ST_Transform`. For an attribute-only update, the stored geometry is returned in `returnCrs`, which the edit buffer sets to the current display CRS. The edit buffer reconciles the map from these rows, including server-set attributes such as audit columns and defaults.
+- Returned geometry is in the **same CRS as the op** (`geometryCrs`), read back
+  from the stored row with `ST_Transform`. For an attribute-only update, the
+  stored geometry is returned in `returnCrs`, which the edit buffer sets to the
+  current display CRS. The edit buffer reconciles the map from these rows,
+  including server-set attributes such as audit columns and defaults.
 
 #### Retry rules
 
-- After `partial`, `conflict` or `rejected`, the edit buffer keeps every op that did not succeed, and drops the ones that did.
-- A retry sends only the remaining ops, with the **same `clientRequestId`**. Adapters with `idempotentRetry: true` must not apply an op twice. For adapters without it, the commit panel warns that a retry after a network failure may duplicate inserts.
-- A `conflict` op is never retried automatically. The user chooses to reload the server version or to overwrite it, which rebases `baseVersion`.
+- After `partial`, `conflict` or `rejected`, the edit buffer keeps every op that
+  did not succeed, and drops the ones that did.
+- A retry sends only the remaining ops, with the **same `clientRequestId`**.
+  Adapters with `idempotentRetry: true` must not apply an op twice. For adapters
+  without it, the commit panel warns that a retry after a network failure may
+  duplicate inserts.
+- A `conflict` op is never retried automatically. The user chooses to reload the
+  server version or to overwrite it, which rebases `baseVersion`.
 - A `rejected` op with `retryable: false` needs the user to change it first.
 
-GeoJSON `Geometry` is used as the **transport encoding** in the capture CRS. RFC 7946 strictly means lon/lat WGS 84, so every geometry-bearing op carries its own `geometryCrs` explicitly, and adapters never assume CRS84. A change set can therefore mix CRSs (for example, after a display CRS switch), and it is still committed atomically by adapters A and B.
+GeoJSON `Geometry` is used as the **transport encoding** in the capture CRS. RFC
+7946 strictly means lon/lat WGS 84, so every geometry-bearing op carries its own
+`geometryCrs` explicitly, and adapters never assume CRS84. A change set can
+therefore mix CRSs (for example, after a display CRS switch), and it is still
+committed atomically by adapters A and B.
 
 ### 10.2 Target descriptor (read from the database, R5.2)
 
@@ -990,12 +1338,16 @@ WHERE  f_table_schema = $1 AND f_table_name = $2;
 -- CHECK constraints / enum types for domains, and a configured version column
 ```
 
-`TargetDescriptor` = `{ pk: string[], geometryColumn, geometryType, srid, columns: ColumnInfo[], versionColumn?, writable: boolean }`.
+A `TargetDescriptor` contains `pk: string[]`, `geometryColumn`, `geometryType`,
+`srid`, `columns: ColumnInfo[]`, optional `versionColumn`, and
+`writable: boolean`.
 
 #### Rules for targets
 
-- A table is only a valid target if it has a primary key **and** a geometry column with a defined SRID (not 0).
-- An organisation-level allow-list of target tables is enforced on the server. Clients cannot name arbitrary tables.
+- A table is only a valid target if it has a primary key **and** a geometry
+  column with a defined SRID (not 0).
+- An organisation-level allow-list of target tables is enforced on the server.
+  Clients cannot name arbitrary tables.
 
 ### 10.3 Server-side write template (shared by adapters A and B)
 
@@ -1019,59 +1371,109 @@ RETURNING ...;          -- zero rows ⇒ conflict
 
 #### Notes on the template
 
-- `ST_SetSRID` is required. The incoming GeoJSON has no `crs` member, and PostGIS would otherwise assign its default.
-- `$2` is bound **per op**, so ops captured in different CRSs can share one transaction (§10.1).
-- **Vertex rebuilding.** When an op has `vertexSources`, the server replaces each `snapped` vertex with `ST_Transform` of its source coordinate, and each `stored` vertex with the matching vertex of the current stored row. This happens before the geometry is transformed to the target SRID and validated. A `stored` reference to a row whose version no longer matches `baseVersion` is a conflict. Proving this rebuild is practical in PL/pgSQL and in the adapter A helpers is spike S8.
-- **Idempotency.** Adapters A and B record `clientRequestId` and the op results in a `capture_commit_log` table inside the same transaction. A repeated request with the same id returns the stored results without applying anything again (`idempotentRetry: true`).
+- `ST_SetSRID` is required. The incoming GeoJSON has no `crs` member, and
+  PostGIS would otherwise assign its default.
+- `$2` is bound **per op**, so ops captured in different CRSs can share one
+  transaction (§10.1).
+- **Vertex rebuilding.** When an op has `vertexSources`, the server replaces
+  each `snapped` vertex with `ST_Transform` of its source coordinate, and each
+  `stored` vertex with the matching vertex of the current stored row. This
+  happens before the geometry is transformed to the target SRID and validated. A
+  `stored` reference to a row whose version no longer matches `baseVersion` is a
+  conflict. Proving this rebuild is practical in PL/pgSQL and in the adapter A
+  helpers is spike S8.
+- **Idempotency.** Adapters A and B record `clientRequestId` and the op results
+  in a `capture_commit_log` table inside the same transaction. A repeated
+  request with the same id returns the stored results without applying anything
+  again (`idempotentRetry: true`).
 - **Attribute-only updates** do not touch the geometry column.
-- `ST_Transform` uses the database's PROJ configuration. This is the authoritative transformation tier from §5.6.
+- `ST_Transform` uses the database's PROJ configuration. This is the
+  authoritative transformation tier from §5.6.
 - Validity is checked inside the same transaction:
   - `ST_IsValid` decides whether the geometry passes;
   - `ST_IsValidReason` explains why it failed;
-  - the configured policy then either **rejects** the geometry (the default) or applies `ST_MakeValid` and flags the row.
-- The whole change set runs in **one transaction** for adapters A and B. Any failure rolls the whole set back.
-- Audit columns (`created_by`, `created_at`, `updated_by`, `updated_at`) are set on the server from the authenticated session, never from the client.
+  - the configured policy then either **rejects** the geometry (the default) or
+    applies `ST_MakeValid` and flags the row.
+- The whole change set runs in **one transaction** for adapters A and B. Any
+  failure rolls the whole set back.
+- Audit columns (`created_by`, `created_at`, `updated_by`, `updated_at`) are set
+  on the server from the authenticated session, never from the client.
 
 ### 10.4 Adapters
 
 #### Adapter A — SvelteKit server endpoints + node-postgres (`sveltekit-pg`)
 
-- Endpoints: `GET /api/geo/targets/[schema].[table]` (descriptor), `GET .../features` (read), `POST .../commit` (change set).
+- Endpoints: `GET /api/geo/targets/[schema].[table]` (descriptor),
+  `GET .../features` (read), `POST .../commit` (change set).
 - One `BEGIN`…`COMMIT` per change set, so `atomicMultiFeature: true`.
-- Authentication comes from SvelteKit `locals`. Authorisation is per target, with optional Postgres RLS by setting the role or claims on the connection.
+- Authentication comes from SvelteKit `locals`. Authorisation is per target,
+  with optional Postgres RLS by setting the role or claims on the connection.
 - This is the most flexible option, and it suits a self-hosted PostGIS.
 
 #### Adapter B — Supabase / PostgREST (`postgrest`)
 
-- **Reads:** PostgREST returns a GeoJSON FeatureCollection when it receives `Accept: application/geo+json` (requires PostGIS ≥ 3.0).
-- **Writes:** go through one **RPC function**, `capture_commit(change_set jsonb)`. It implements §10.3 in PL/pgSQL with `SECURITY INVOKER`, so RLS applies.
-  - PostgREST's documented direct-insert path takes EWKT strings. Using an RPC keeps the GeoJSON-to-SRID transform and the validity policy inside one audited function.
+- **Reads:** PostgREST returns a GeoJSON FeatureCollection when it receives
+  `Accept: application/geo+json` (requires PostGIS ≥ 3.0).
+- **Writes:** go through one **RPC function**,
+  `capture_commit(change_set jsonb)`. It implements §10.3 in PL/pgSQL with
+  `SECURITY INVOKER`, so RLS applies.
+  - PostgREST's documented direct-insert path takes EWKT strings. Using an RPC
+    keeps the GeoJSON-to-SRID transform and the validity policy inside one
+    audited function.
   - PostgREST runs each request in a transaction, so `atomicMultiFeature: true`.
-- Check the PostGIS version of the Supabase project, because some functions depend on it.
+- Check the PostGIS version of the Supabase project, because some functions
+  depend on it.
 
 #### Adapter C — OGC API – Features Part 4 (`ogcapi-features`) — restricted interoperability adapter
 
-Adapter C is **not conformant** by default (R5.6). It cannot guarantee a PostGIS-side transform, it does not read the target description from the database, and concurrency control depends on the server. Its capabilities are reported per server, after probing:
+Adapter C is **not conformant** by default (R5.6). It cannot guarantee a
+PostGIS-side transform, it does not read the target description from the
+database, and concurrency control depends on the server. Its capabilities are
+reported per server, after probing:
 
-- `authoritativeTransform` is `true` only when the server accepts `Content-Crs` on writes and is known to be PostGIS-backed.
-- `targetIntrospection` is `'declared'`. The descriptor is built from the collection's schema endpoint where one exists, or from config otherwise.
-- `optimisticConcurrency` is `'etag'` when the server returns `ETag` and honours `If-Match`, and `'none'` otherwise.
+- `authoritativeTransform` is `true` only when the server accepts `Content-Crs`
+  on writes and is known to be PostGIS-backed.
+- `targetIntrospection` is `'declared'`. The descriptor is built from the
+  collection's schema endpoint where one exists, or from config otherwise.
+- `optimisticConcurrency` is `'etag'` when the server returns `ETag` and honours
+  `If-Match`, and `'none'` otherwise.
 
-Because it never satisfies R5.2, editing through adapter C always needs `allowNonConformantPersistence: true` on the target. It is intended for exchanging data with existing OGC infrastructure, not for accuracy-critical capture.
+Because it never satisfies R5.2, editing through adapter C always needs
+`allowNonConformantPersistence: true` on the target. It is intended for
+exchanging data with existing OGC infrastructure, not for accuracy-critical
+capture.
 
-- `POST /collections/{id}/items` creates a feature, `PUT` or `PATCH` on `/items/{fid}` replaces or updates it, and `DELETE` removes it.
+- `POST /collections/{id}/items` creates a feature, `PUT` or `PATCH` on
+  `/items/{fid}` replaces or updates it, and `DELETE` removes it.
 - **Implementation status, checked:**
-  - **pygeoapi:** the PostgreSQL provider is marked as supporting transactions. pygeoapi states that authentication and authorisation are outside its scope, so it must sit behind an auth proxy.
-  - **pg_featureserv:** transaction support (PR #152) is still open and unmerged, so it is not usable.
-  - **GeoServer:** GeoSolutions' training material states there is no OGC API – Features transaction implementation. GeoServer's WFS-T is the alternative; it could become a later adapter (D, below).
+  - **pygeoapi:** the PostgreSQL provider is marked as supporting transactions.
+    pygeoapi states that authentication and authorisation are outside its scope,
+    so it must sit behind an auth proxy.
+  - **pg_featureserv:** transaction support (PR #152) is still open and
+    unmerged, so it is not usable.
+  - **GeoServer:** GeoSolutions' training material states there is no OGC API –
+    Features transaction implementation. GeoServer's WFS-T is the alternative;
+    it could become a later adapter (D, below).
 - **CRS of posted geometry:**
   - Send `Content-Crs` where the server supports it.
-  - Otherwise the adapter transforms to CRS84 in the browser before posting. That step is a _non-authoritative_ client transform, so it is a flagged weakness (F11).
-- The batch and atomic part of the standard had not started when the GeoSolutions material was written, so `atomicMultiFeature: false`. The adapter commits item by item, and returns `status: 'partial'` with an `OpResult` for every op when only some succeed (§10.1). After the first failed op, the remaining ops are `not-attempted` unless the target sets `continueOnError: true`. The commit panel shows partially committed sets and lets the user retry the failures.
-- `idempotentRetry` is `false`, because Part 4 has no request-id mechanism. A retried `POST` after a network failure can create a duplicate.
-- Optimistic concurrency uses `ETag` / `If-Match` where the server provides them; otherwise `'none'`, with a visible warning.
+  - Otherwise the adapter transforms to CRS84 in the browser before posting.
+    That step is a _non-authoritative_ client transform, so it is a flagged
+    weakness (F11).
+- The batch and atomic part of the standard had not started when the
+  GeoSolutions material was written, so `atomicMultiFeature: false`. The adapter
+  commits item by item, and returns `status: 'partial'` with an `OpResult` for
+  every op when only some succeed (§10.1). After the first failed op, the
+  remaining ops are `not-attempted` unless the target sets
+  `continueOnError: true`. The commit panel shows partially committed sets and
+  lets the user retry the failures.
+- `idempotentRetry` is `false`, because Part 4 has no request-id mechanism. A
+  retried `POST` after a network failure can create a duplicate.
+- Optimistic concurrency uses `ETag` / `If-Match` where the server provides
+  them; otherwise `'none'`, with a visible warning.
 
-**Adapter D (optional, later) — WFS-T 1.1/2.0** for GeoServer-fronted PostGIS. It needs a first-party `Transaction` XML writer. OL's `ol/format/WFS` is not used, so the adapter stays engine-agnostic.
+**Adapter D (optional, later) — WFS-T 1.1/2.0** for GeoServer-fronted PostGIS.
+It needs a first-party `Transaction` XML writer. OL's `ol/format/WFS` is not
+used, so the adapter stays engine-agnostic.
 
 ### 10.5 Commit semantics summary
 
@@ -1086,7 +1488,8 @@ Because it never satisfies R5.2, editing through adapter C always needs `allowNo
 | Validity policy         | server SQL                 | server SQL (RPC)           | server-dependent                                                         |
 | Auth                    | SvelteKit session (+ RLS)  | JWT + RLS                  | external proxy                                                           |
 
-**Recommendation:** A or B for any workflow where accuracy matters. C is a restricted adapter for interoperability with existing OGC infrastructure.
+**Recommendation:** A or B for any workflow where accuracy matters. C is a
+restricted adapter for interoperability with existing OGC infrastructure.
 
 ---
 
@@ -1094,7 +1497,8 @@ Because it never satisfies R5.2, editing through adapter C always needs `allowNo
 
 ### 11.1 Registries
 
-Core exposes one `Registries` object. Built-in features register themselves through it in exactly the same way as third-party extensions (R4.2).
+Core exposes one `Registries` object. Built-in features register themselves
+through it in exactly the same way as third-party extensions (R4.2).
 
 | Registry         | Key                       | Contract                                              |
 | ---------------- | ------------------------- | ----------------------------------------------------- |
@@ -1128,15 +1532,27 @@ await installExtensions([flatgeobuf]);
 
 ### 11.3 Worked examples
 
-- **New data type (FlatGeobuf).** Implement a `SourceProvider`: `probe` reads the header CRS as a _hint_, and `open` streams features. It produces `features`, so the existing renderers on all three engines draw it with no engine code (R4.3).
-- **New render kind (heatmap).** Register `${engine}:heatmap` renderers. MapLibre has a native heatmap layer, and OL has `ol/layer/Heatmap`. For Leaflet, either write a first-party canvas renderer or leave the kind out of the Leaflet adapter's `capabilities.renderKinds`, so layer creation fails clearly there.
-- **New control (bookmark manager).** Write a Svelte component that uses `getMapContext()` and calls `setView`/`fitExtent`, then register it under `controls` so config can place it.
-- **New capture mode (offset line).** Register a `CaptureMode` state machine. Sketch rendering, snapping, validation and persistence come for free.
-- **New engine** (for example, a future WebGPU engine). Register a loader and pass the conformance suite (§14).
+- **New data type (FlatGeobuf).** Implement a `SourceProvider`: `probe` reads
+  the header CRS as a _hint_, and `open` streams features. It produces
+  `features`, so the existing renderers on all three engines draw it with no
+  engine code (R4.3).
+- **New render kind (heatmap).** Register `${engine}:heatmap` renderers.
+  MapLibre has a native heatmap layer, and OL has `ol/layer/Heatmap`. For
+  Leaflet, either write a first-party canvas renderer or leave the kind out of
+  the Leaflet adapter's `capabilities.renderKinds`, so layer creation fails
+  clearly there.
+- **New control (bookmark manager).** Write a Svelte component that uses
+  `getMapContext()` and calls `setView`/`fitExtent`, then register it under
+  `controls` so config can place it.
+- **New capture mode (offset line).** Register a `CaptureMode` state machine.
+  Sketch rendering, snapping, validation and persistence come for free.
+- **New engine** (for example, a future WebGPU engine). Register a loader and
+  pass the conformance suite (§14).
 
 ### 11.4 Stability rules
 
-- Registry contracts are versioned with core. Breaking changes need a major version, a migration note and updated conformance tests.
+- Registry contracts are versioned with core. Breaking changes need a major
+  version, a migration note and updated conformance tests.
 - Everything under `native()` and `x-*` style keys is outside the guarantees.
 
 ---
@@ -1182,7 +1598,9 @@ export class MapState {
 export const [getMapContext, setMapContext] = createContext<MapState>();
 ```
 
-The state is held in `$state` class fields that are shared through context. The architecture diagram's `mapStore`, `activeLayerStore` and `themeStore` become fields or classes of this kind. Svelte stores are not needed.
+The state is held in `$state` class fields that are shared through context. The
+architecture diagram's `mapStore`, `activeLayerStore` and `themeStore` become
+fields or classes of this kind. Svelte stores are not needed.
 
 ### 12.2 `MapContainer`
 
@@ -1295,9 +1713,13 @@ The state is held in `$state` class fields that are shared through context. The 
 
 #### Lifecycle rules
 
-- The container is sized on first render, so there is no layout shift while the engine loads. On the server, only this placeholder is rendered.
-- Child layers and controls can register before the engine is ready. Registrations are queued and applied in document order when `attach()` completes.
-- If the component unmounts while the engine is loading or attaching, the engine is destroyed and `onready` is never called.
+- The container is sized on first render, so there is no layout shift while the
+  engine loads. On the server, only this placeholder is rendered.
+- Child layers and controls can register before the engine is ready.
+  Registrations are queued and applied in document order when `attach()`
+  completes.
+- If the component unmounts while the engine is loading or attaching, the engine
+  is destroyed and `onready` is never called.
 - A `ResizeObserver` on the canvas calls `engine.resize()`.
 - `getMapContext()` outside `MapContainer` throws a clear error.
 
@@ -1357,7 +1779,9 @@ The state is held in `$state` class fields that are shared through context. The 
 </script>
 ```
 
-The convenience components `XyzLayer`, `WmsLayer`, `WmtsLayer`, `FeatureLayer`, `PostgisLayer` and `FileLayer` all wrap `Layer`. They build the `LayerSpec` from props.
+The convenience components `XyzLayer`, `WmsLayer`, `WmtsLayer`, `FeatureLayer`,
+`PostgisLayer` and `FileLayer` all wrap `Layer`. They build the `LayerSpec` from
+props.
 
 ### 12.4 Typical usage
 
@@ -1429,11 +1853,14 @@ The convenience components `XyzLayer`, `WmsLayer`, `WmtsLayer`, `FeatureLayer`, 
 </MapContainer>
 ```
 
-(The top-level `await` here assumes Svelte's async component support is enabled. Otherwise, probe in `load()` and pass the result in.)
+(The top-level `await` here assumes Svelte's async component support is enabled.
+Otherwise, probe in `load()` and pass the result in.)
 
 ### 12.5 Configuration schema (config-driven maps)
 
-`MapConfig` is defined once as a **JSON Schema**. TypeScript types are generated from it. Using JSON Schema means a server or a no-code builder can validate the same contract. Extensions merge their own schema fragments into it (§11.2).
+`MapConfig` is defined once as a **JSON Schema**. TypeScript types are generated
+from it. Using JSON Schema means a server or a no-code builder can validate the
+same contract. Extensions merge their own schema fragments into it (§11.2).
 
 ```jsonc
 {
@@ -1509,10 +1936,18 @@ The convenience components `XyzLayer`, `WmsLayer`, `WmtsLayer`, `FeatureLayer`, 
 }
 ```
 
-- Each `crs` member is a **`CrsDeclaration`** (§5.1), not a `ConfirmedCrs`. Loading a config runs `resolveSourceCrs()` on every source. Only after that does the config become a set of `SourceSpec`s that the layer manager accepts. `confirmedAt` is stamped at resolution and is never written in config.
-- `"fromMetadata": true` is only allowed for service and PostGIS providers. For file providers, the schema _requires_ `code` plus `provenance.kind = "declared"`. That makes R1 a schema rule as well as a runtime rule.
-- Every remote source must have `attribution`. The schema requires it, and validation fails with `ATTRIBUTION_REQUIRED` (§8.2).
-- Keys and tokens are never part of `MapConfig`. They are supplied at runtime (§15.6).
+- Each `crs` member is a **`CrsDeclaration`** (§5.1), not a `ConfirmedCrs`.
+  Loading a config runs `resolveSourceCrs()` on every source. Only after that
+  does the config become a set of `SourceSpec`s that the layer manager accepts.
+  `confirmedAt` is stamped at resolution and is never written in config.
+- `"fromMetadata": true` is only allowed for service and PostGIS providers. For
+  file providers, the schema _requires_ `code` plus
+  `provenance.kind = "declared"`. That makes R1 a schema rule as well as a
+  runtime rule.
+- Every remote source must have `attribution`. The schema requires it, and
+  validation fails with `ATTRIBUTION_REQUIRED` (§8.2).
+- Keys and tokens are never part of `MapConfig`. They are supplied at runtime
+  (§15.6).
 
 ---
 
@@ -1542,12 +1977,24 @@ apps/
 
 ### Build and publishing
 
-- **npm workspaces**, matching the repository (`package.json` already includes `packages/*`). No package-manager migration is planned.
-- `@sveltejs/package`, ESM only, `sideEffects: false` (except CSS entry points). Subpath exports follow the conditions already used in `packages/svelte/package.json` (`types`, `development`, `svelte`, `default`).
+- **npm workspaces**, matching the repository (`package.json` already includes
+  `packages/*`). No package-manager migration is planned.
+- `@sveltejs/package`, ESM only, `sideEffects: false` (except CSS entry points).
+  Subpath exports follow the conditions already used in
+  `packages/svelte/package.json` (`types`, `development`, `svelte`, `default`).
 - Engines are peer dependencies.
-- Each package defines `check` and `test:unit`, so the root `check` and `test:unit` scripts pick it up through `--workspaces --if-present`. Add the map packages to `build:packages` after `@cii/svelte`.
-- All authored source is TypeScript (`AGENTS.md`), including workers, server helpers and test fixtures. `scripts/check-typescript.ts` enforces this. `strict: true` and `allowJs: false` apply to every package.
-- **Package count (decision D9, §17.3).** The layout above is the eventual target shape. Phases 0–1 ship two packages: `@cii/maps` (core, Svelte components, and the engine adapters as `./leaflet`, `./maplibre` and `./openlayers` subpath exports, with each engine an optional peer dependency) and `@cii/maps-server`. They are split along the layout above later, without changing public imports.
+- Each package defines `check` and `test:unit`, so the root `check` and
+  `test:unit` scripts pick it up through `--workspaces --if-present`. Add the
+  map packages to `build:packages` after `@cii/svelte`.
+- All authored source is TypeScript (`AGENTS.md`), including workers, server
+  helpers and test fixtures. `scripts/check-typescript.ts` enforces this.
+  `strict: true` and `allowJs: false` apply to every package.
+- **Package count (decision D9, §17.3).** The layout above is the eventual
+  target shape. Phases 0–1 ship two packages: `@cii/maps` (core, Svelte
+  components, and the engine adapters as `./leaflet`, `./maplibre` and
+  `./openlayers` subpath exports, with each engine an optional peer dependency)
+  and `@cii/maps-server`. They are split along the layout above later, without
+  changing public imports.
 
 ### Verified baseline (as at 1 Nov 2026)
 
@@ -1579,7 +2026,8 @@ apps/
 | **Accessibility**           | axe + keyboard-only Playwright scripts, following `apps/community-portal/tests/accessibility.spec.ts`  | The §15.4 criteria. Required scenarios: pan and zoom by keyboard; switch basemaps and toggle layers; select a feature from the feature list and read it in the identify panel; capture a polygon in crosshair mode only, fill its attributes, fix a validation error and commit; modify an existing feature's vertex through the vertex list; check live-region messages |
 | **Security**                | Unit tests + Playwright                                                                                | Feature properties, KML descriptions and GetFeatureInfo responses containing HTML render as text; a config with an unknown member such as `apiKey` fails validation; uploads over the size limit or of a disallowed type are refused (§15.6)                                                                                                                             |
 
-The engine support matrix in the docs is **generated from conformance results**, so it cannot drift.
+The engine support matrix in the docs is **generated from conformance results**,
+so it cannot drift.
 
 ---
 
@@ -1587,87 +2035,175 @@ The engine support matrix in the docs is **generated from conformance results**,
 
 ### 15.1 SSR
 
-- Engine code runs only inside attachments and effects, which execute in the browser.
+- Engine code runs only inside attachments and effects, which execute in the
+  browser.
 - `MapContainer` renders a sized placeholder on the server.
-- Service probing _may_ run server-side in SvelteKit `load()`. This also avoids CORS problems with capabilities documents.
-- Core must not touch `window` at import time, so components can be imported by server-rendered pages. This works with `@sveltejs/adapter-static`, which both apps use.
+- Service probing _may_ run server-side in SvelteKit `load()`. This also avoids
+  CORS problems with capabilities documents.
+- Core must not touch `window` at import time, so components can be imported by
+  server-rendered pages. This works with `@sveltejs/adapter-static`, which both
+  apps use.
 
 ### 15.2 Large data and updates
 
-- `features` layers have a configurable feature budget. Above it, the layer manager recommends or switches to `vector-tiles` (PostGIS `ST_AsMVT`) or server-side bbox paging.
+- `features` layers have a configurable feature budget. Above it, the layer
+  manager recommends or switches to `vector-tiles` (PostGIS `ST_AsMVT`) or
+  server-side bbox paging.
 - Leaflet renders features with Canvas, not SVG, by default.
 - Prop changes are batched to one engine call per frame.
-- View events going back to Svelte state are throttled with `requestAnimationFrame`.
+- View events going back to Svelte state are throttled with
+  `requestAnimationFrame`.
 
 ### 15.3 Clean-up
 
 - Every handle has an idempotent `remove()`.
 - `destroy()` removes listeners, layers, workers and WebGL contexts.
-- The conformance suite includes a mount/unmount soak test, including unmounting while the engine is still loading (§12.2).
+- The conformance suite includes a mount/unmount soak test, including unmounting
+  while the engine is still loading (§12.2).
 
 ### 15.4 Accessibility
 
-Target: WCAG 2.2 AA, as in [product-design-spec.md](./product-design-spec.md) §6.4. Every task the map supports, including capture and editing existing geometry, must be possible without a pointer and without seeing the map. These are **acceptance criteria** for the phase that introduces each feature (§16), not optional extras.
+Target: WCAG 2.2 AA, as in [product-design-spec.md](./product-design-spec.md)
+§6.4. Every task the map supports, including capture and editing existing
+geometry, must be possible without a pointer and without seeing the map. These
+are **acceptance criteria** for the phase that introduces each feature (§16),
+not optional extras.
 
-1. **Landmark and name.** The map root is `role="region"` with an `aria-label` from the required `label` prop. Its `description` is linked with `aria-describedby`.
-2. **Keyboard navigation.** The map canvas is focusable. Arrow keys pan, `+` and `-` zoom, and `Shift` + arrows rotate where `capabilities.rotation` is true. Shortcuts are listed in a "Keyboard shortcuts" disclosure. Focus is never trapped in the map.
-3. **Controls.** Every control is a native `button`, `input` or `select` with a visible label or accessible name, and a visible focus state using `--cii-focus-ring`. Focus order is the map, then controls in visual order. Targets are at least 24×24 CSS px.
-4. **Non-visual equivalents.** Every layer that carries information has a non-map equivalent: the feature list (§8.2) for features, and text in the legend for styles. A page must not depend on the map alone.
-5. **Colour and contrast.** Legend entries combine colour with shape, pattern or label (§7.4). Selection is shown by a thicker outline and, for points, a ring, not only by colour. Default overlay styles meet 3:1 against the default basemaps. Text over the map has a solid background.
-6. **Motion.** With `prefers-reduced-motion: reduce`, view changes jump instead of animating, and inertia is off.
-7. **Announcements.** A polite live region announces mode changes, vertex counts, completed features, validation issues and commit results. View changes caused by search, identify or "zoom to" are announced; ordinary panning is not.
-8. **Focus management.** The identify panel and attribute form move focus into themselves when opened by keyboard, and return focus on close, following the drawer and modal behaviour in `@cii/svelte`.
-9. **Crosshair capture.** In a capture mode, pressing `C` toggles crosshair mode. A visible crosshair sits at the map centre. **While crosshair mode is on, arrow keys pan the map under the crosshair**; the crosshair itself does not move. `Enter` adds a vertex at the crosshair, `Backspace` removes the last vertex, `F` (or the Finish button) finishes a line or polygon, and `Esc` cancels. When crosshair mode is off, arrow keys pan as in item 2, and pointer capture works as in §9.3. There is no separate "nudge the vertex" key binding, so arrow keys never have two meanings at once.
-10. **Typed coordinates.** The coordinate input accepts decimal degrees, DMS and any registered projected format (for example MGA grid coordinates with a zone), with inline errors for invalid input. It can add a vertex or move the crosshair.
-11. **Editing existing geometry without a pointer.** Selecting a feature from the feature list opens it for editing. The vertex list shows every vertex as text, and lets the user add, move (by typed coordinates) and remove vertices. Each change is a normal edit-buffer operation, so undo, validation and commit work as for pointer edits.
+1. **Landmark and name.** The map root is `role="region"` with an `aria-label`
+   from the required `label` prop. Its `description` is linked with
+   `aria-describedby`.
+2. **Keyboard navigation.** The map canvas is focusable. Arrow keys pan, `+` and
+   `-` zoom, and `Shift` + arrows rotate where `capabilities.rotation` is true.
+   Shortcuts are listed in a "Keyboard shortcuts" disclosure. Focus is never
+   trapped in the map.
+3. **Controls.** Every control is a native `button`, `input` or `select` with a
+   visible label or accessible name, and a visible focus state using
+   `--cii-focus-ring`. Focus order is the map, then controls in visual order.
+   Targets are at least 24×24 CSS px.
+4. **Non-visual equivalents.** Every layer that carries information has a
+   non-map equivalent: the feature list (§8.2) for features, and text in the
+   legend for styles. A page must not depend on the map alone.
+5. **Colour and contrast.** Legend entries combine colour with shape, pattern or
+   label (§7.4). Selection is shown by a thicker outline and, for points, a
+   ring, not only by colour. Default overlay styles meet 3:1 against the default
+   basemaps. Text over the map has a solid background.
+6. **Motion.** With `prefers-reduced-motion: reduce`, view changes jump instead
+   of animating, and inertia is off.
+7. **Announcements.** A polite live region announces mode changes, vertex
+   counts, completed features, validation issues and commit results. View
+   changes caused by search, identify or "zoom to" are announced; ordinary
+   panning is not.
+8. **Focus management.** The identify panel and attribute form move focus into
+   themselves when opened by keyboard, and return focus on close, following the
+   drawer and modal behaviour in `@cii/svelte`.
+9. **Crosshair capture.** In a capture mode, pressing `C` toggles crosshair
+   mode. A visible crosshair sits at the map centre. **While crosshair mode is
+   on, arrow keys pan the map under the crosshair**; the crosshair itself does
+   not move. `Enter` adds a vertex at the crosshair, `Backspace` removes the
+   last vertex, `F` (or the Finish button) finishes a line or polygon, and `Esc`
+   cancels. When crosshair mode is off, arrow keys pan as in item 2, and pointer
+   capture works as in §9.3. There is no separate "nudge the vertex" key
+   binding, so arrow keys never have two meanings at once.
+10. **Typed coordinates.** The coordinate input accepts decimal degrees, DMS and
+    any registered projected format (for example MGA grid coordinates with a
+    zone), with inline errors for invalid input. It can add a vertex or move the
+    crosshair.
+11. **Editing existing geometry without a pointer.** Selecting a feature from
+    the feature list opens it for editing. The vertex list shows every vertex as
+    text, and lets the user add, move (by typed coordinates) and remove
+    vertices. Each change is a normal edit-buffer operation, so undo, validation
+    and commit work as for pointer edits.
 
 ### 15.5 Theming and CII integration
 
-- Controls and panels use `@cii/svelte` components (`Button`, `Alert`, form fields) and `--cii-*` tokens: `--cii-bg-card`, `--cii-border-default`, `--cii-text-primary`, `--cii-text-secondary`, `--cii-radius-button`, `--cii-space-*` and `--cii-focus-ring`.
-- Default feature styles use tokens: `--cii-map-feature` for data, `--cii-brand-secondary` for selection and `--cii-status-error` for invalid features. Capture styles (active vertex, midpoint handles, sketch line) come from tokens too.
-- `--cii-map-feature` uses light-theme navy (`#122B4D`) and dark-theme light purple (`#B39BFF`). This dedicated semantic token keeps default feature outlines distinguishable against `--cii-map-surface` without changing brand colours. `--cii-map-surface` is the map background when no basemap is shown and currently aliases `--cii-bg-subtle`. Custom colours, transparency and basemaps need their own contrast checks.
-- Map colour tokens resolve to six-digit hex colours, directly or through `var(--cii-…)` aliases, because canvas renderers cannot use `color-mix()` or relative colours. A `@cii/tokens` unit test enforces this, along with 3:1 contrast for each declared foreground/surface pair in both themes. New map tokens (selection, invalid, sketch, casing) add their pairs to that test.
-- `token:` colours in `PortableStyle` (§7.4) resolve from computed CSS custom properties when the map mounts, and again when `data-cii-theme` changes. Canvas and WebGL renderers cannot read CSS variables directly. Theme changes restyle layers through `LayerHandle.setStyle()`, without re-mounting.
-- Basemaps can be configured in light and dark pairs. The map follows `data-cii-theme` until the user picks a basemap.
-- Controls sit in the map corners and must not cover attribution. On narrow screens they collapse into a single "Map tools" menu.
+- Controls and panels use `@cii/svelte` components (`Button`, `Alert`, form
+  fields) and `--cii-*` tokens: `--cii-bg-card`, `--cii-border-default`,
+  `--cii-text-primary`, `--cii-text-secondary`, `--cii-radius-button`,
+  `--cii-space-*` and `--cii-focus-ring`.
+- Default feature styles use tokens: `--cii-map-feature` for data,
+  `--cii-brand-secondary` for selection and `--cii-status-error` for invalid
+  features. Capture styles (active vertex, midpoint handles, sketch line) come
+  from tokens too.
+- `--cii-map-feature` uses light-theme navy (`#122B4D`) and dark-theme light
+  purple (`#B39BFF`). This dedicated semantic token keeps default feature
+  outlines distinguishable against `--cii-map-surface` without changing brand
+  colours. `--cii-map-surface` is the map background when no basemap is shown
+  and currently aliases `--cii-bg-subtle`. Custom colours, transparency and
+  basemaps need their own contrast checks.
+- Map colour tokens resolve to six-digit hex colours, directly or through
+  `var(--cii-…)` aliases, because canvas renderers cannot use `color-mix()` or
+  relative colours. A `@cii/tokens` unit test enforces this, along with 3:1
+  contrast for each declared foreground/surface pair in both themes. New map
+  tokens (selection, invalid, sketch, casing) add their pairs to that test.
+- `token:` colours in `PortableStyle` (§7.4) resolve from computed CSS custom
+  properties when the map mounts, and again when `data-cii-theme` changes.
+  Canvas and WebGL renderers cannot read CSS variables directly. Theme changes
+  restyle layers through `LayerHandle.setStyle()`, without re-mounting.
+- Basemaps can be configured in light and dark pairs. The map follows
+  `data-cii-theme` until the user picks a basemap.
+- Controls sit in the map corners and must not cover attribution. On narrow
+  screens they collapse into a single "Map tools" menu.
 
 ### 15.6 Security, keys and attribution
 
 #### Keys and requests
 
-- API keys and tokens are never committed and never stored in `MapConfig`. The JSON Schema has no member for credentials, and unknown members fail validation. Applications pass credentials at runtime through a `transformRequest(url, kind)` hook or per-source `headers`, using environment variables or a server-side proxy.
-- Treat any key that reaches the browser as public, and restrict it by referrer at the provider.
+- API keys and tokens are never committed and never stored in `MapConfig`. The
+  JSON Schema has no member for credentials, and unknown members fail
+  validation. Applications pass credentials at runtime through a
+  `transformRequest(url, kind)` hook or per-source `headers`, using environment
+  variables or a server-side proxy.
+- Treat any key that reaches the browser as public, and restrict it by referrer
+  at the provider.
 
 #### Untrusted content
 
-- Feature properties, KML `<description>` and `<ExtendedData>`, WMS `GetFeatureInfo` responses, ArcGIS popup content and remote capabilities documents are untrusted.
-- Never use `{@html}` or `innerHTML` for them. Show text through Svelte expressions. If a project really needs HTML from a trusted server, it must be sanitised and enabled by an explicit per-source opt-in.
-- Validate the shape of remote data before adding it to a source. Treat invalid data as a source error, not a crash.
+- Feature properties, KML `<description>` and `<ExtendedData>`, WMS
+  `GetFeatureInfo` responses, ArcGIS popup content and remote capabilities
+  documents are untrusted.
+- Never use `{@html}` or `innerHTML` for them. Show text through Svelte
+  expressions. If a project really needs HTML from a trusted server, it must be
+  sanitised and enabled by an explicit per-source opt-in.
+- Validate the shape of remote data before adding it to a source. Treat invalid
+  data as a source error, not a crash.
 
 **Server-side readers and uploads** (large-file routing, §7.2; GDAL ingest, F7)
 
-- Upload endpoints require an authenticated session and are authorised per user and target.
-- Uploads have a configured size limit, and an allow-list of formats checked by content, not just by extension.
-- GDAL runs with a time limit and a memory limit, in a worker process separate from the web server, with network access and GDAL's virtual file systems for remote access (`/vsicurl/` and similar) disabled.
-- Uploaded files are stored outside the web root, and deleted after ingest or after a retention period.
+- Upload endpoints require an authenticated session and are authorised per user
+  and target.
+- Uploads have a configured size limit, and an allow-list of formats checked by
+  content, not just by extension.
+- GDAL runs with a time limit and a memory limit, in a worker process separate
+  from the web server, with network access and GDAL's virtual file systems for
+  remote access (`/vsicurl/` and similar) disabled.
+- Uploaded files are stored outside the web root, and deleted after ingest or
+  after a retention period.
 
 #### Attribution and licences
 
-- Every remote source must have attribution (§8.2). This is often a legal requirement of the data licence.
-- Follow each tile provider's usage policy. Do not use `tile.openstreetmap.org` for production traffic; use a commercial or self-hosted tile service.
+- Every remote source must have attribution (§8.2). This is often a legal
+  requirement of the data licence.
+- Follow each tile provider's usage policy. Do not use `tile.openstreetmap.org`
+  for production traffic; use a commercial or self-hosted tile service.
 - Record the licence of every dependency in §17.1 in the package README.
 
 #### Content Security Policy
 
-- MapLibre creates workers from `blob:` URLs, so `worker-src blob:` (and `child-src blob:` for older browsers) is needed. Alternatively, use MapLibre's CSP build and serve its worker file.
-- Tile, style, glyph, capabilities and data hosts must be listed in `img-src` and `connect-src`.
-- Add map data hosts to the deployment documentation in `README.md` when the first app uses maps.
+- MapLibre creates workers from `blob:` URLs, so `worker-src blob:` (and
+  `child-src blob:` for older browsers) is needed. Alternatively, use MapLibre's
+  CSP build and serve its worker file.
+- Tile, style, glyph, capabilities and data hosts must be listed in `img-src`
+  and `connect-src`.
+- Add map data hosts to the deployment documentation in `README.md` when the
+  first app uses maps.
 
 ---
 
 ## 16. Delivery roadmap
 
-Durations are not estimated here. They should be sized after the Phase 0 spikes, because the spikes settle the largest unknowns (custom-CRS display and capture parity).
+Durations are not estimated here. They should be sized after the Phase 0 spikes,
+because the spikes settle the largest unknowns (custom-CRS display and capture
+parity).
 
 | Phase                            | Scope                                                                                                                                                                                                                                                                                                                                           | Exit criteria                                                                                                                                                                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1677,9 +2213,11 @@ Durations are not estimated here. They should be sized after the Phase 0 spikes,
 | **3 — Capture and persistence**  | Capture engine (point, linestring, polygon, rectangle, select, modify, move, delete), crosshair mode, coordinate input, vertex list, capture status, snapping with source-coordinate retention (§5.6), validators, attribute form, edit buffer, undo/redo, drafts (§9.6), navigation guard, persistence adapters A and B, commit panel, measure | R3 and R5.1–R5.6 pass on adapters A and B, including per-op results, idempotent retry and mixed-CRS change sets. Capture parity tests pass on all three engines. §15.4 items 9–11 pass, including the keyboard-only capture and vertex-list editing scenarios. |
 | **4 — Interop and extension**    | Adapter C (OAPIF Part 4, restricted), optional WFS-T adapter D, split/merge/trace/circle modes, FlatGeobuf, PMTiles, COG (OL only), geocoder, clustering, extension SDK documentation, MapLibre custom CRS once no longer experimental                                                                                                          | R4 is shown by at least two extensions built outside the monorepo. Adapter C reports its capabilities correctly and is refused without `allowNonConformantPersistence`.                                                                                        |
 
-Every phase also requires `npm run check`, `npm run test:unit` and `npm test` to pass, and docs pages for its new components to be published.
+Every phase also requires `npm run check`, `npm run test:unit` and `npm test` to
+pass, and docs pages for its new components to be published.
 
-**Leaflet 2.0 is not tied to a phase.** The switch happens whenever the §6.3 switch criteria are met. This could fall in any phase, or after 1.0.
+**Leaflet 2.0 is not tied to a phase.** The switch happens whenever the §6.3
+switch criteria are met. This could fall in any phase, or after 1.0.
 
 ### 16.1 Scope carried over from the earlier spec
 
@@ -1717,7 +2255,10 @@ Every phase also requires `npm run check`, `npm run test:unit` and `npm test` to
 
 ### 17.1 Dependency flags (requirement R3)
 
-**No third-party library or plugin is used for any control.** The table below lists every remaining third-party dependency, why it is needed, and where a capability **cannot be delivered without a plugin**. Those capabilities are marked as gaps, and no plugin is adopted for them.
+**No third-party library or plugin is used for any control.** The table below
+lists every remaining third-party dependency, why it is needed, and where a
+capability **cannot be delivered without a plugin**. Those capabilities are
+marked as gaps, and no plugin is adopted for them.
 
 | ID  | Dependency or gap                                             | Why                                                                                                                    | Decision                                                                                                                                                                                       |
 | --- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1772,7 +2313,8 @@ Every phase also requires `npm run check`, `npm run test:unit` and `npm test` to
 
 ## Appendix A — Validation register for the reference documents
 
-**Legend:** ✅ confirmed · ⚠️ partly correct or outdated · ❌ incorrect or not acceptable under the requirements · ❓ unverified, not relied on
+**Legend:** ✅ confirmed · ⚠️ partly correct or outdated · ❌ incorrect or not
+acceptable under the requirements · ❓ unverified, not relied on
 
 | #   | Claim (source)                                                                               | Verdict                          | Finding                                                                                                                                                                                                      |
 | --- | -------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1811,22 +2353,32 @@ Every phase also requires `npm run check`, `npm run test:unit` and `npm test` to
 
 ### Engines and framework
 
-- Leaflet download page (current versions): <https://leafletjs.com/download.html>
+- Leaflet download page (current versions):
+  <https://leafletjs.com/download.html>
 - Leaflet releases: <https://github.com/Leaflet/Leaflet/releases>
-- Leaflet 2.0 alpha announcement: <https://leafletjs.com/2025/05/18/leaflet-2.0.0-alpha.html>
+- Leaflet 2.0 alpha announcement:
+  <https://leafletjs.com/2025/05/18/leaflet-2.0.0-alpha.html>
 - Leaflet API reference: <https://leafletjs.com/reference.html>
 - Proj4Leaflet: <https://github.com/kartena/Proj4Leaflet>
-- leaflet.vectorgrid package health: <https://snyk.io/advisor/npm-package/leaflet.vectorgrid>
-- MapLibre GL JS 6.0 overview: <https://latlong.blog/2026/07/maplibre-gl-js-60-esm-only-webgl2-required-and-finally-mapbox-free.html>
-- MapLibre multi-CRS issue #168 (closed Oct 2026, 6.15 `addProjection`): <https://github.com/maplibre/maplibre-gl-js/issues/168>
+- leaflet.vectorgrid package health:
+  <https://snyk.io/advisor/npm-package/leaflet.vectorgrid>
+- MapLibre GL JS 6.0 overview:
+  <https://latlong.blog/2026/07/maplibre-gl-js-60-esm-only-webgl2-required-and-finally-mapbox-free.html>
+- MapLibre multi-CRS issue #168 (closed Oct 2026, 6.15 `addProjection`):
+  <https://github.com/maplibre/maplibre-gl-js/issues/168>
 - MapLibre custom projections guide: <https://makewithmaplibre.com/projections/>
-- MapLibre projection (style spec): <https://maplibre.org/maplibre-style-spec/projection/>
-- MapLibre WMS example: <https://maplibre.org/maplibre-gl-js/docs/examples/add-a-wms-source/>
+- MapLibre projection (style spec):
+  <https://maplibre.org/maplibre-style-spec/projection/>
+- MapLibre WMS example:
+  <https://maplibre.org/maplibre-gl-js/docs/examples/add-a-wms-source/>
 - MapLibre API (controls): <https://maplibre.org/maplibre-gl-js/docs/API/>
-- MapLibre newsletter, June 2026: <https://maplibre.org/news/2026-07-04-maplibre-newsletter-jun-2026/>
+- MapLibre newsletter, June 2026:
+  <https://maplibre.org/news/2026-07-04-maplibre-newsletter-jun-2026/>
 - OpenLayers releases: <https://github.com/openlayers/openlayers/releases>
-- OpenLayers `ol/proj/proj4`: <https://openlayers.org/en/latest/apidoc/module-ol_proj_proj4.html>
-- OpenLayers draw/modify/trace/snap example: <https://openlayers.org/en/latest/examples/draw-modify-trace-snap.html>
+- OpenLayers `ol/proj/proj4`:
+  <https://openlayers.org/en/latest/apidoc/module-ol_proj_proj4.html>
+- OpenLayers draw/modify/trace/snap example:
+  <https://openlayers.org/en/latest/examples/draw-modify-trace-snap.html>
 - Svelte context (`createContext`): <https://svelte.dev/docs/svelte/context>
 - Svelte attachments: <https://svelte.dev/docs/svelte/@attach>
 - Svelte releases: <https://releases.sh/svelte/svelte-releases.md>
@@ -1834,25 +2386,33 @@ Every phase also requires `npm run check`, `npm run test:unit` and `npm test` to
 
 ### Data formats and readers
 
-- GeoPackage getting started: <https://www.geopackage.org/guidance/getting-started>
+- GeoPackage getting started:
+  <https://www.geopackage.org/guidance/getting-started>
 - spl.js (SpatiaLite WASM): <https://github.com/jvail/spl.js>
 - gdal3.js: <https://github.com/bugra9/gdal3.js>
 - shpjs: <https://www.npmjs.com/package/shpjs>
 
 ### PostGIS write paths and OGC APIs
 
-- PostgREST + PostGIS: <https://docs.postgrest.org/en/v14/integrations/postgis.html>
-- pg_featureserv transactions PR #152: <https://github.com/CrunchyData/pg_featureserv/pull/152>
+- PostgREST + PostGIS:
+  <https://docs.postgrest.org/en/v14/integrations/postgis.html>
+- pg_featureserv transactions PR #152:
+  <https://github.com/CrunchyData/pg_featureserv/pull/152>
 - pygeoapi transactions: <https://docs.pygeoapi.io/en/0.23.3/transactions.html>
-- pygeoapi OGC API – Features providers: <https://docs.pygeoapi.io/en/0.23.3/publishing/ogcapi-features.html>
+- pygeoapi OGC API – Features providers:
+  <https://docs.pygeoapi.io/en/0.23.3/publishing/ogcapi-features.html>
 - pygeoapi CRS support: <https://docs.pygeoapi.io/en/0.23.3/crs.html>
-- GeoServer OGC API – Features transactions (GeoSolutions training): <https://geoserver.geosolutionsgroup.com/edu/en/ogcapi/features/transactions.html>
+- GeoServer OGC API – Features transactions (GeoSolutions training):
+  <https://geoserver.geosolutionsgroup.com/edu/en/ogcapi/features/transactions.html>
 
 ### Datum
 
-- NSW Spatial Services, "WGS84 Misaligned" information sheet (Oct 2022): <https://www.spatial.nsw.gov.au/__data/assets/pdf_file/0004/229819/Information_Sheet_WGS84_Misaligned_Oct_2022.pdf>
+- NSW Spatial Services, "WGS84 Misaligned" information sheet (Oct 2022):
+  <https://www.spatial.nsw.gov.au/__data/assets/pdf_file/0004/229819/Information_Sheet_WGS84_Misaligned_Oct_2022.pdf>
 
-_The standard OGC specifications (WMS 1.3.0 axis order, WMTS, WFS, KML) and IETF RFC 7946 are cited from the specifications themselves. Their exact wording should be re-checked during Phase 0 alongside spikes S1–S7._
+_The standard OGC specifications (WMS 1.3.0 axis order, WMTS, WFS, KML) and IETF
+RFC 7946 are cited from the specifications themselves. Their exact wording
+should be re-checked during Phase 0 alongside spikes S1–S7._
 
 ---
 

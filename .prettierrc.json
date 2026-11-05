@@ -8,6 +8,18 @@
       "options": {
         "parser": "svelte"
       }
+    },
+    {
+      "files": "*.md",
+      "options": {
+        "proseWrap": "always"
+      }
+    },
+    {
+      "files": "packages/maps/tests/fixtures/accuracy-report.md",
+      "options": {
+        "proseWrap": "preserve"
+      }
     }
   ]
 }

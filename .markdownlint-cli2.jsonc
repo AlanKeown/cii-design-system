@@ -1,0 +1,38 @@
+{
+  // Follow the repository's exclusions, including generated docs and test output.
+  "gitignore": true,
+  "globs": ["**/*.md"],
+  "config": {
+    "MD013": {
+      // Prose wraps at Prettier's 80 columns; tables, examples and headings may be wider.
+      "code_blocks": false,
+      "tables": false,
+      "headings": false
+    }
+  },
+  "overrides": [
+    {
+      // This report must match the oracle generator byte for byte.
+      "filter": ["packages/maps/tests/fixtures/accuracy-report.md"],
+      "combine": "merge",
+      "config": { "MD013": false }
+    },
+    {
+      "filter": ["apps/docs/src/routes/**/*.md"],
+      "combine": "merge",
+      "config": {
+        "MD033": {
+          // SveltePress pages use imports and live examples outside code fences.
+          "allowed_elements": [
+            "script",
+            "AlertExample",
+            "ButtonExample",
+            "MapExample",
+            "StatusChipExample",
+            "TextFieldExample"
+          ]
+        }
+      }
+    }
+  ]
+}

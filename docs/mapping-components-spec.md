@@ -1,14 +1,33 @@
 # CII Mapping Components — Development Specification (v0.1)
 
-> **Superseded.** This specification is replaced by [svelte-mapping-components-development-plan.md](./svelte-mapping-components-development-plan.md) (v0.3). Where the two disagree, the plan wins. The parts of this document that still apply have been folded into the plan; see its "Status of the earlier specification" section. This document is kept for reference only.
+> **Superseded.** This specification is replaced by
+> [svelte-mapping-components-development-plan.md](./svelte-mapping-components-development-plan.md)
+> (v0.3). Where the two disagree, the plan wins. The parts of this document that
+> still apply have been folded into the plan; see its "Status of the earlier
+> specification" section. This document is kept for reference only.
 >
-> **API names have changed.** The container component described here as `<CiiMap>`, imported from `@cii/maps`, is implemented as `MapContainer` and imported from `@cii/maps/svelte`. Its props follow the plan (§12.2), not §7 of this document. Review the implementation against the plan and the Map component page on the documentation site (`/components/map/`), not against the examples here.
+> **API names have changed.** The container component described here as
+> `<CiiMap>`, imported from `@cii/maps`, is implemented as `MapContainer` and
+> imported from `@cii/maps/svelte`. Its props follow the plan (§12.2), not §7 of
+> this document. Review the implementation against the plan and the Map
+> component page on the documentation site (`/components/map/`), not against the
+> examples here.
 
-This specification describes how to build the CII mapping components. It covers simple maps that combine several data sources, through to capturing and editing spatial data. The components run on three open-source map engines, **Leaflet**, **MapLibre GL JS** and **OpenLayers**, behind one typed Svelte 5 API.
+This specification describes how to build the CII mapping components. It covers
+simple maps that combine several data sources, through to capturing and editing
+spatial data. The components run on three open-source map engines, **Leaflet**,
+**MapLibre GL JS** and **OpenLayers**, behind one typed Svelte 5 API.
 
-It is written for the engineers who will build the `@cii/maps` package and for the designers and reviewers who accept it. It sits alongside [product-design-spec.md](./product-design-spec.md); where that document sets rules (accessibility, tokens, feedback states, audit), this one applies them to maps rather than repeating them.
+It is written for the engineers who will build the `@cii/maps` package and for
+the designers and reviewers who accept it. It sits alongside
+[product-design-spec.md](./product-design-spec.md); where that document sets
+rules (accessibility, tokens, feedback states, audit), this one applies them to
+maps rather than repeating them.
 
-Repository rules in `AGENTS.md` apply throughout. All authored code, including the snippets in this document, is TypeScript: `<script lang="ts">`, `.ts` modules, `.svelte.ts` for shared reactive state, `strict: true`, `allowJs: false`.
+Repository rules in `AGENTS.md` apply throughout. All authored code, including
+the snippets in this document, is TypeScript: `<script lang="ts">`, `.ts`
+modules, `.svelte.ts` for shared reactive state, `strict: true`,
+`allowJs: false`.
 
 ---
 
@@ -16,11 +35,15 @@ Repository rules in `AGENTS.md` apply throughout. All authored code, including t
 
 ### 1.1 Goal
 
-Product teams should be able to put a map in an application by writing configuration, not engine code. They should be able to switch the engine without rewriting the application, and grow from a read-only map to a data capture form using the same components.
+Product teams should be able to put a map in an application by writing
+configuration, not engine code. They should be able to switch the engine without
+rewriting the application, and grow from a read-only map to a data capture form
+using the same components.
 
 ### 1.2 Capability tiers
 
-Work is organised into four tiers. Each tier builds on the one before and has its own acceptance criteria (§16).
+Work is organised into four tiers. Each tier builds on the one before and has
+its own acceptance criteria (§16).
 
 | Tier | Name                 | What it delivers                                                                                                        |
 | ---- | -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -40,19 +63,38 @@ Work is organised into four tiers. Each tier builds on the one before and has it
 
 ## 2) Design principles
 
-1. **Configuration first.** Every map can be described by a `MapConfig` object that is plain, JSON-serialisable data. The config can be stored, versioned, validated and sent from a server. Svelte children are a convenient way to write the same config, not a separate system.
-2. **Engine-neutral public API.** Application code never imports `leaflet`, `maplibre-gl` or `ol`. Engine types never appear in public props, events or bindings. Engine-specific needs go through typed escape hatches (§5.4) that are visibly marked as non-portable.
-3. **Progressive capability, never silent failure.** Engines do not support the same features. Each adapter declares its capabilities (§6.3). When a config asks for something an engine cannot do, the component either uses a documented fallback or reports a typed `unsupported` error. It never quietly drops a layer.
-4. **Browser-only engines behind SSR-safe boundaries.** All three engines need `window` and the DOM. They load only in the browser, through dynamic imports, so SvelteKit server rendering and prerendering keep working (§11).
-5. **Pay only for the engine you use.** Each engine and its plugins are optional peer dependencies. An application using MapLibre does not download Leaflet or OpenLayers.
-6. **Tokens for styling.** Controls, panels and default feature styles use `--cii-*` tokens and follow `data-cii-theme`, like the rest of `@cii/svelte`.
-7. **Accessibility is a release gate.** WCAG 2.2 AA (product spec §6.4) applies to maps too. Every task the map supports, including data capture, must be possible without a pointer and without seeing the map (§10).
+1. **Configuration first.** Every map can be described by a `MapConfig` object
+   that is plain, JSON-serialisable data. The config can be stored, versioned,
+   validated and sent from a server. Svelte children are a convenient way to
+   write the same config, not a separate system.
+2. **Engine-neutral public API.** Application code never imports `leaflet`,
+   `maplibre-gl` or `ol`. Engine types never appear in public props, events or
+   bindings. Engine-specific needs go through typed escape hatches (§5.4) that
+   are visibly marked as non-portable.
+3. **Progressive capability, never silent failure.** Engines do not support the
+   same features. Each adapter declares its capabilities (§6.3). When a config
+   asks for something an engine cannot do, the component either uses a
+   documented fallback or reports a typed `unsupported` error. It never quietly
+   drops a layer.
+4. **Browser-only engines behind SSR-safe boundaries.** All three engines need
+   `window` and the DOM. They load only in the browser, through dynamic imports,
+   so SvelteKit server rendering and prerendering keep working (§11).
+5. **Pay only for the engine you use.** Each engine and its plugins are optional
+   peer dependencies. An application using MapLibre does not download Leaflet or
+   OpenLayers.
+6. **Tokens for styling.** Controls, panels and default feature styles use
+   `--cii-*` tokens and follow `data-cii-theme`, like the rest of `@cii/svelte`.
+7. **Accessibility is a release gate.** WCAG 2.2 AA (product spec §6.4) applies
+   to maps too. Every task the map supports, including data capture, must be
+   possible without a pointer and without seeing the map (§10).
 
 ---
 
 ## 3) Package structure
 
-Create a new workspace package, `packages/maps`, published as `@cii/maps`. It is built with `svelte-package` like `@cii/svelte` and uses its components (`Button`, `TextField`, `Alert`) for controls and forms.
+Create a new workspace package, `packages/maps`, published as `@cii/maps`. It is
+built with `svelte-package` like `@cii/svelte` and uses its components
+(`Button`, `TextField`, `Alert`) for controls and forms.
 
 ```text
 packages/maps/
@@ -84,9 +126,16 @@ packages/maps/
 
 ### 3.1 Dependencies and exports
 
-- `svelte` and `@cii/svelte` are peer dependencies. `@cii/tokens` and `@types/geojson` (for the `GeoJSON` namespace used in public types) are dependencies.
-- `leaflet`, `maplibre-gl`, `ol`, `terra-draw` and the Terra Draw engine adapters are **optional peer dependencies** (`peerDependenciesMeta: { "x": { "optional": true } }`). Engine plugins (for example PMTiles support or `proj4`) are optional peers of the adapter that needs them.
-- Subpath exports, following the conditions already used in `packages/svelte/package.json`:
+- `svelte` and `@cii/svelte` are peer dependencies. `@cii/tokens` and
+  `@types/geojson` (for the `GeoJSON` namespace used in public types) are
+  dependencies.
+- `leaflet`, `maplibre-gl`, `ol`, `terra-draw` and the Terra Draw engine
+  adapters are **optional peer dependencies**
+  (`peerDependenciesMeta: { "x": { "optional": true } }`). Engine plugins (for
+  example PMTiles support or `proj4`) are optional peers of the adapter that
+  needs them.
+- Subpath exports, following the conditions already used in
+  `packages/svelte/package.json`:
 
 ```ts
 // packages/maps/package.json "exports" (shown as a typed object for readability)
@@ -125,23 +174,33 @@ export const engineLoaders: Record<
 };
 ```
 
-Because each loader is a separate dynamic import, the bundler puts each engine in its own chunk. Applications that want only one engine in the build can call `registerEngine('maplibre', createAdapter)` and pass `engines="registered"` to `<CiiMap>`, which removes the other loaders from the graph.
+Because each loader is a separate dynamic import, the bundler puts each engine
+in its own chunk. Applications that want only one engine in the build can call
+`registerEngine('maplibre', createAdapter)` and pass `engines="registered"` to
+`<CiiMap>`, which removes the other loaders from the graph.
 
 ### 3.3 Root scripts
 
-Add `@cii/maps` to `build:packages` after `@cii/svelte`. The existing `check` and `test:unit` scripts pick it up through `--workspaces --if-present` once the package defines `check` and `test:unit`.
+Add `@cii/maps` to `build:packages` after `@cii/svelte`. The existing `check`
+and `test:unit` scripts pick it up through `--workspaces --if-present` once the
+package defines `check` and `test:unit`.
 
 ---
 
 ## 4) Canonical domain model
 
-These types live in `core/types.ts`. They are the only geometry and view types used in public APIs.
+These types live in `core/types.ts`. They are the only geometry and view types
+used in public APIs.
 
 ### 4.1 Coordinates and projection
 
-- Public coordinates are always **WGS 84 (EPSG:4326) in GeoJSON order: `[longitude, latitude]`**. Leaflet's `[lat, lng]` order and OpenLayers' projected coordinates stay inside their adapters.
-- The display projection defaults to Web Mercator (EPSG:3857). Other display projections are a capability (§6.3), not a default.
-- Feature geometry follows [RFC 7946](https://www.rfc-editor.org/rfc/rfc7946) GeoJSON.
+- Public coordinates are always **WGS 84 (EPSG:4326) in GeoJSON order:
+  `[longitude, latitude]`**. Leaflet's `[lat, lng]` order and OpenLayers'
+  projected coordinates stay inside their adapters.
+- The display projection defaults to Web Mercator (EPSG:3857). Other display
+  projections are a capability (§6.3), not a default.
+- Feature geometry follows [RFC 7946](https://www.rfc-editor.org/rfc/rfc7946)
+  GeoJSON.
 
 ```ts
 export type LngLat = readonly [lng: number, lat: number];
@@ -181,18 +240,22 @@ export interface MapFeatureCollection<
 
 ### 4.2 Zoom normalisation
 
-Leaflet and OpenLayers use 256px tile zoom levels. MapLibre uses 512px tiles, so the same ground scale is **one zoom level lower** in MapLibre. The public API uses the 256px convention. The MapLibre adapter converts at its boundary:
+Leaflet and OpenLayers use 256px tile zoom levels. MapLibre uses 512px tiles, so
+the same ground scale is **one zoom level lower** in MapLibre. The public API
+uses the 256px convention. The MapLibre adapter converts at its boundary:
 
 ```ts
 export const toMapLibreZoom = (zoom: number): number => zoom - 1;
 export const fromMapLibreZoom = (zoom: number): number => zoom + 1;
 ```
 
-Both functions, and the round trip through every adapter, must be unit-tested. `minZoom`, `maxZoom` and layer zoom ranges use the same convention.
+Both functions, and the round trip through every adapter, must be unit-tested.
+`minZoom`, `maxZoom` and layer zoom ranges use the same convention.
 
 ### 4.3 Events
 
-Components expose callback props (Svelte 5 style), not DOM events. Every payload uses canonical types.
+Components expose callback props (Svelte 5 style), not DOM events. Every payload
+uses canonical types.
 
 | Callback          | Payload                                                        |
 | ----------------- | -------------------------------------------------------------- |
@@ -204,7 +267,8 @@ Components expose callback props (Svelte 5 style), not DOM events. Every payload
 | `onfeaturedelete` | `{ id: FeatureId }`                                            |
 | `onerror`         | `{ error: MapError }`                                          |
 
-`onviewchange` fires at most once per animation frame while the view is moving and once more when movement ends (`settled: true`).
+`onviewchange` fires at most once per animation frame while the view is moving
+and once more when movement ends (`settled: true`).
 
 ---
 
@@ -272,13 +336,17 @@ export interface LayerConfig {
 | `wfs`            | `url`, `typeName`, `attribution`                       | Read only in v1. Prefer `ogc-features` where the server offers it       |
 | `maplibre-style` | `url` to a MapLibre style JSON                         | Capability `nativeStyleJson`. MapLibre native; OL via `ol-mapbox-style` |
 
-Every remote source has an `attribution` string. Validation fails without it (§13).
+Every remote source has an `attribution` string. Validation fails without it
+(§13).
 
-Authentication uses `headers` or a `transformRequest` function supplied at runtime, not stored in config (§13.1).
+Authentication uses `headers` or a `transformRequest` function supplied at
+runtime, not stored in config (§13.1).
 
 ### 5.3 Engine-neutral styles
 
-Styles use a small common subset that all three engines can draw. Adapters translate it to Leaflet path options, MapLibre `paint`/`layout` properties and OpenLayers `Style` objects.
+Styles use a small common subset that all three engines can draw. Adapters
+translate it to Leaflet path options, MapLibre `paint`/`layout` properties and
+OpenLayers `Style` objects.
 
 ```ts
 export type Colour = string; // CSS colour or a token reference such as 'token:--cii-brand-primary'
@@ -309,9 +377,14 @@ export type StyleRule =
     };
 ```
 
-- `token:` colours resolve from computed CSS custom properties when the map mounts and again when `data-cii-theme` changes. Canvas and WebGL renderers cannot read CSS variables directly.
-- Each rule has a `label`, so the legend can be generated from the style. Legends never rely on colour alone (§10).
-- Rule evaluation lives in `core/style.ts`. For Leaflet and OpenLayers the adapter calls it for each feature. For MapLibre it compiles to `match`/`step` expressions. Both paths must produce the same result in tests.
+- `token:` colours resolve from computed CSS custom properties when the map
+  mounts and again when `data-cii-theme` changes. Canvas and WebGL renderers
+  cannot read CSS variables directly.
+- Each rule has a `label`, so the legend can be generated from the style.
+  Legends never rely on colour alone (§10).
+- Rule evaluation lives in `core/style.ts`. For Leaflet and OpenLayers the
+  adapter calls it for each feature. For MapLibre it compiles to `match`/`step`
+  expressions. Both paths must produce the same result in tests.
 
 ### 5.4 Escape hatches
 
@@ -328,11 +401,15 @@ export interface EngineStyleOverrides {
 }
 ```
 
-They are applied only by the matching adapter. Documentation marks any example using them as non-portable. Type imports are type-only, so they do not pull the engine into other bundles.
+They are applied only by the matching adapter. Documentation marks any example
+using them as non-portable. Type imports are type-only, so they do not pull the
+engine into other bundles.
 
 ### 5.5 Validation
 
-`validateMapConfig(input: unknown)` follows the explicit-result pattern used in `apps/community-portal/src/lib/persistence.ts` and `records.ts`. It is hand-written and typed; no schema library is added.
+`validateMapConfig(input: unknown)` follows the explicit-result pattern used in
+`apps/community-portal/src/lib/persistence.ts` and `records.ts`. It is
+hand-written and typed; no schema library is added.
 
 ```ts
 export type ConfigErrorCode =
@@ -360,9 +437,14 @@ export function validateMapConfig(
 ): ConfigResult;
 ```
 
-- Without `engine`, it checks structure only. With an engine's capabilities it also reports `unsupported` items. Items that have a fallback are warnings; items that do not are errors.
-- `<CiiMap>` validates before mounting. Errors show in an `Alert` (variant `error`) in place of the map, with the message, the path and what to change. The map does not mount with a partial config.
-- Config has a `version` field so stored configs can be upgraded, as stored workspaces are in the portal.
+- Without `engine`, it checks structure only. With an engine's capabilities it
+  also reports `unsupported` items. Items that have a fallback are warnings;
+  items that do not are errors.
+- `<CiiMap>` validates before mounting. Errors show in an `Alert` (variant
+  `error`) in place of the map, with the message, the path and what to change.
+  The map does not mount with a partial config.
+- Config has a `version` field so stored configs can be upgraded, as stored
+  workspaces are in the portal.
 
 ---
 
@@ -434,18 +516,22 @@ export interface MapEngineAdapter {
 }
 ```
 
-`queryAt` is asynchronous because some sources (WMS `GetFeatureInfo`, OGC Features by point) need a network request.
+`queryAt` is asynchronous because some sources (WMS `GetFeatureInfo`, OGC
+Features by point) need a network request.
 
 ### 6.2 Reconciliation
 
-Components never re-create the map when props change. `CiiMap` keeps the last applied config and, on each change, computes a diff in `core`:
+Components never re-create the map when props change. `CiiMap` keeps the last
+applied config and, on each change, computes a diff in `core`:
 
 1. Sources added, changed or removed.
 2. Layers added, changed (with only the changed properties) or removed.
 3. Layer order.
 4. View changes that came from props, not from the user (§7.2).
 
-The adapter applies these as small operations. The diff function is pure and unit-tested without an engine. Changing `engine` is the one exception: it destroys the adapter and mounts the new one with the current view and features.
+The adapter applies these as small operations. The diff function is pure and
+unit-tested without an engine. Changing `engine` is the one exception: it
+destroys the adapter and mounts the new one with the current view and features.
 
 ### 6.3 Capabilities
 
@@ -463,9 +549,12 @@ export interface EngineCapabilities {
 }
 ```
 
-`'core'` means `@cii/maps` implements the feature itself above the engine (for example, building a WMS `GetFeatureInfo` URL from the view, or clustering points with a shared algorithm).
+`'core'` means `@cii/maps` implements the feature itself above the engine (for
+example, building a WMS `GetFeatureInfo` URL from the view, or clustering points
+with a shared algorithm).
 
-Expected starting matrix. Each entry must be confirmed by the adapter contract tests (§14.2) before release.
+Expected starting matrix. Each entry must be confirmed by the adapter contract
+tests (§14.2) before release.
 
 | Capability          | Leaflet                                         | MapLibre GL JS                                       | OpenLayers                      |
 | ------------------- | ----------------------------------------------- | ---------------------------------------------------- | ------------------------------- |
@@ -482,24 +571,35 @@ Expected starting matrix. Each entry must be confirmed by the adapter contract t
 | Clustering          | Plugin or core                                  | Native (GeoJSON source)                              | Native                          |
 | Keyboard pan/zoom   | Native                                          | Native                                               | Native (map must be focusable)  |
 
-Adapters wrap native features first. Plugins are added only when they are maintained and their licence is compatible (§13.3). Prefer `'core'` over an unmaintained plugin.
+Adapters wrap native features first. Plugins are added only when they are
+maintained and their licence is compatible (§13.3). Prefer `'core'` over an
+unmaintained plugin.
 
 ### 6.4 Adapter rules
 
-- Import the engine's CSS inside the adapter module, so it loads with the engine chunk.
-- Convert all coordinates, zooms and events at the boundary. No engine object escapes the adapter.
-- Every listener, interaction and object an adapter creates is released in `destroy()`. MapLibre must call `map.remove()` so the WebGL context is freed.
-- Adapters do not render controls. Controls are Svelte components (§7) that call the adapter, so they look and behave the same on every engine. Engine default controls are disabled.
+- Import the engine's CSS inside the adapter module, so it loads with the engine
+  chunk.
+- Convert all coordinates, zooms and events at the boundary. No engine object
+  escapes the adapter.
+- Every listener, interaction and object an adapter creates is released in
+  `destroy()`. MapLibre must call `map.remove()` so the WebGL context is freed.
+- Adapters do not render controls. Controls are Svelte components (§7) that call
+  the adapter, so they look and behave the same on every engine. Engine default
+  controls are disabled.
 
 ---
 
 ## 7) Component catalogue
 
-All components follow the conventions in `packages/svelte/src/TextField.svelte`: a `Props` type, `$props()`, `$bindable()` for two-way values, remaining attributes forwarded to the root element, and scoped styles using `--cii-*` tokens.
+All components follow the conventions in `packages/svelte/src/TextField.svelte`:
+a `Props` type, `$props()`, `$bindable()` for two-way values, remaining
+attributes forwarded to the root element, and scoped styles using `--cii-*`
+tokens.
 
 ### 7.1 Usage modes
 
-The same map can be written in two ways, and both produce the same internal state.
+The same map can be written in two ways, and both produce the same internal
+state.
 
 **Declarative children:**
 
@@ -554,11 +654,13 @@ The same map can be written in two ways, and both produce the same internal stat
 <CiiMap {config} label="Service coverage" />
 ```
 
-When both are given, children are merged over `config` by `id`, and a duplicate-id warning is reported.
+When both are given, children are merged over `config` by `id`, and a
+duplicate-id warning is reported.
 
 ### 7.2 `<CiiMap>`
 
-The root component. It validates config, loads the adapter, owns its lifecycle and provides context to children.
+The root component. It validates config, loads the adapter, owns its lifecycle
+and provides context to children.
 
 | Property      | Type                                                           | Default           |
 | ------------- | -------------------------------------------------------------- | ----------------- |
@@ -577,10 +679,18 @@ The root component. It validates config, loads the adapter, owns its lifecycle a
 
 Behaviour:
 
-- Renders a sized container immediately, so there is no layout shift while the engine loads.
-- `view` is controlled. A prop change moves the map (`source: 'api'`). User movement updates the bound value (`source: 'user'`). The component ignores the echo of its own update to avoid loops.
-- Exposes context through `setMapContext()` and `getMapContext()` in `components/context.ts`. Context holds the adapter (once ready), a register/unregister API for sources, layers and controls, and the current capabilities. Calling `getMapContext()` outside `<CiiMap>` throws a clear error.
-- Child registration works before the adapter is ready. Registrations are queued and applied on mount.
+- Renders a sized container immediately, so there is no layout shift while the
+  engine loads.
+- `view` is controlled. A prop change moves the map (`source: 'api'`). User
+  movement updates the bound value (`source: 'user'`). The component ignores the
+  echo of its own update to avoid loops.
+- Exposes context through `setMapContext()` and `getMapContext()` in
+  `components/context.ts`. Context holds the adapter (once ready), a
+  register/unregister API for sources, layers and controls, and the current
+  capabilities. Calling `getMapContext()` outside `<CiiMap>` throws a clear
+  error.
+- Child registration works before the adapter is ready. Registrations are queued
+  and applied on mount.
 - Watches the container with `ResizeObserver` and calls `adapter.resize()`.
 
 ### 7.3 Display and layer components (T0–T1)
@@ -628,7 +738,9 @@ export interface GeocoderResult {
 }
 ```
 
-`<FeatureInfo>` never inserts HTML from feature properties or `GetFeatureInfo` responses. Properties are shown as text through Svelte snippets or the `fields` schema (§13.2).
+`<FeatureInfo>` never inserts HTML from feature properties or `GetFeatureInfo`
+responses. Properties are shown as text through Svelte snippets or the `fields`
+schema (§13.2).
 
 ### 7.5 Capture components (T3)
 
@@ -647,12 +759,22 @@ export interface GeocoderResult {
 
 ### 8.1 Drawing engine
 
-Use **[Terra Draw](https://github.com/JamesLMilner/terra-draw)** for drawing and editing on all three engines. It is MIT-licensed and engine-agnostic, with adapters for Leaflet, MapLibre and OpenLayers. Using one drawing library keeps modes, gestures, validation and output the same on every engine, which is the main point of this component set.
+Use **[Terra Draw](https://github.com/JamesLMilner/terra-draw)** for drawing and
+editing on all three engines. It is MIT-licensed and engine-agnostic, with
+adapters for Leaflet, MapLibre and OpenLayers. Using one drawing library keeps
+modes, gestures, validation and output the same on every engine, which is the
+main point of this component set.
 
-- Each `@cii/maps` adapter wraps the matching Terra Draw adapter and exposes it as `adapter.capture`.
-- Terra Draw types do not appear in the public API. Its features are converted to `MapFeature` with stable ids.
-- Fallback: if a needed capability is missing in a Terra Draw adapter, the OpenLayers adapter may use native `ol/interaction` `Draw`, `Modify` and `Snap` instead. This must be declared in `capabilities` and must pass the same contract tests.
-- Pin the Terra Draw version and its adapter versions together. Check upstream package names and adapter support when Phase 3 starts (§17).
+- Each `@cii/maps` adapter wraps the matching Terra Draw adapter and exposes it
+  as `adapter.capture`.
+- Terra Draw types do not appear in the public API. Its features are converted
+  to `MapFeature` with stable ids.
+- Fallback: if a needed capability is missing in a Terra Draw adapter, the
+  OpenLayers adapter may use native `ol/interaction` `Draw`, `Modify` and `Snap`
+  instead. This must be declared in `capabilities` and must pass the same
+  contract tests.
+- Pin the Terra Draw version and its adapter versions together. Check upstream
+  package names and adapter support when Phase 3 starts (§17).
 
 ### 8.2 Capture configuration
 
@@ -717,19 +839,23 @@ export type FieldSchema =
     };
 ```
 
-Circles are stored as polygons, because GeoJSON has no circle type. The centre and radius go in `properties._circle` so the shape can be edited again.
+Circles are stored as polygons, because GeoJSON has no circle type. The centre
+and radius go in `properties._circle` so the shape can be edited again.
 
 ### 8.3 Capture session state
 
-Session state is a reactive class in `core/capture.svelte.ts`, so it can be tested without an engine:
+Session state is a reactive class in `core/capture.svelte.ts`, so it can be
+tested without an engine:
 
 - `features`: the current `MapFeatureCollection`.
-- `history`: a bounded undo/redo stack (default 50 steps) of operations, not snapshots. A drag records one step when it ends.
+- `history`: a bounded undo/redo stack (default 50 steps) of operations, not
+  snapshots. A drag records one step when it ends.
 - `dirty`: true when `features` differs from the last saved or loaded state.
 - `issues`: validation results for each feature (§8.4).
 - `mode` and `selectedId`.
 
-`<CaptureLayer bind:features>` connects this state to the adapter. Loading features into the layer (for editing existing data) resets history and `dirty`.
+`<CaptureLayer bind:features>` connects this state to the adapter. Loading
+features into the layer (for editing existing data) resets history and `dirty`.
 
 ### 8.4 Validation
 
@@ -744,11 +870,17 @@ Validation runs in `core/geometry.ts` after every change and before saving.
 | Required attributes | A required field is empty                                   |
 | Application rules   | `validate(feature)` callback returns issues                 |
 
-Issues are shown in three places: on the map (highlighted feature or vertex), in `<CaptureStatus>`, and next to the field in `<FeatureEditor>` using the existing `TextField` error pattern. Each issue has text, not only colour.
+Issues are shown in three places: on the map (highlighted feature or vertex), in
+`<CaptureStatus>`, and next to the field in `<FeatureEditor>` using the existing
+`TextField` error pattern. Each issue has text, not only colour.
 
 ### 8.5 Drafts and saving
 
-- **Drafts.** With `draft.storageKey`, the session saves to browser storage after changes (debounced). It uses the versioned, validated approach in `apps/community-portal/src/lib/persistence.ts`: a stored draft that fails validation is kept unchanged and the user is offered an explicit recovery, never a silent overwrite.
+- **Drafts.** With `draft.storageKey`, the session saves to browser storage
+  after changes (debounced). It uses the versioned, validated approach in
+  `apps/community-portal/src/lib/persistence.ts`: a stored draft that fails
+  validation is kept unchanged and the user is offered an explicit recovery,
+  never a silent overwrite.
 - **Saving.** Applications supply a `CaptureSink`:
 
 ```ts
@@ -778,32 +910,57 @@ export type SaveResult =
     };
 ```
 
-- Sinks are provided for a generic JSON endpoint and for OGC API – Features transactions (Phase 4). WFS-T is out of scope unless a project needs it.
-- `revision` supports optimistic concurrency (product spec §13). On a `conflict`, the user's changes are kept and the UI offers to reload or compare.
+- Sinks are provided for a generic JSON endpoint and for OGC API – Features
+  transactions (Phase 4). WFS-T is out of scope unless a project needs it.
+- `revision` supports optimistic concurrency (product spec §13). On a
+  `conflict`, the user's changes are kept and the UI offers to reload or
+  compare.
 - `idMap` replaces client ids with server ids after a create.
-- Saving follows the product spec feedback rules (§6.3): a success toast, and on failure an actionable message that keeps the user's work.
+- Saving follows the product spec feedback rules (§6.3): a success toast, and on
+  failure an actionable message that keeps the user's work.
 
 ### 8.6 Accessible capture
 
-Capture must be possible with a keyboard and a screen reader. These features are required for T3, not optional extras:
+Capture must be possible with a keyboard and a screen reader. These features are
+required for T3, not optional extras:
 
-- **Crosshair mode.** A visible crosshair at the map centre. The user pans with the arrow keys and presses Enter to add a vertex at the centre, Backspace to remove the last vertex, and Escape to cancel. Finishing a line or polygon is a button and a key (`F`).
-- **Typed coordinates.** `<CoordinateInput>` accepts decimal degrees and DMS, plus any projected format the application registers (for example British National Grid). Invalid input shows an inline error.
-- **Vertex list.** `<VertexList>` lets users review and edit every vertex as text.
-- **Announcements.** A polite live region announces mode changes, vertex counts, completed features, validation issues and save results.
-- **Search to start.** `<Geocoder>` can move the crosshair to an address before capture.
+- **Crosshair mode.** A visible crosshair at the map centre. The user pans with
+  the arrow keys and presses Enter to add a vertex at the centre, Backspace to
+  remove the last vertex, and Escape to cancel. Finishing a line or polygon is a
+  button and a key (`F`).
+- **Typed coordinates.** `<CoordinateInput>` accepts decimal degrees and DMS,
+  plus any projected format the application registers (for example British
+  National Grid). Invalid input shows an inline error.
+- **Vertex list.** `<VertexList>` lets users review and edit every vertex as
+  text.
+- **Announcements.** A polite live region announces mode changes, vertex counts,
+  completed features, validation issues and save results.
+- **Search to start.** `<Geocoder>` can move the crosshair to an address before
+  capture.
 
 ---
 
 ## 9) Theming and styling
 
-- Controls and panels use tokens: `--cii-bg-card`, `--cii-border-default`, `--cii-text-primary`, `--cii-text-secondary`, `--cii-radius-button`, `--cii-space-*`, and `--cii-focus-ring` for focus outlines.
-- Default feature styles: `--cii-map-feature` for data, `--cii-brand-secondary` for selection and `--cii-status-error` for invalid features. Capture styles (active vertex, midpoint handles, drawing line) come from tokens too.
-- `--cii-map-feature` uses light-theme navy (`#122B4D`) and dark-theme light purple (`#B39BFF`). This dedicated semantic token keeps default feature outlines distinguishable against `--cii-bg-subtle` without changing brand colours. Custom colours, transparency and basemaps need their own contrast checks.
-- Selection is shown by more than colour: a thicker outline and, for points, a ring.
-- Basemaps can come in light and dark pairs (`BasemapConfig.theme`). The map follows `data-cii-theme` until the user picks a basemap.
-- Theme changes re-resolve `token:` colours and update layer styles through reconciliation, without re-mounting.
-- Map controls sit in the map corners and must not cover attribution. On narrow screens they collapse into a single "Map tools" menu.
+- Controls and panels use tokens: `--cii-bg-card`, `--cii-border-default`,
+  `--cii-text-primary`, `--cii-text-secondary`, `--cii-radius-button`,
+  `--cii-space-*`, and `--cii-focus-ring` for focus outlines.
+- Default feature styles: `--cii-map-feature` for data, `--cii-brand-secondary`
+  for selection and `--cii-status-error` for invalid features. Capture styles
+  (active vertex, midpoint handles, drawing line) come from tokens too.
+- `--cii-map-feature` uses light-theme navy (`#122B4D`) and dark-theme light
+  purple (`#B39BFF`). This dedicated semantic token keeps default feature
+  outlines distinguishable against `--cii-bg-subtle` without changing brand
+  colours. Custom colours, transparency and basemaps need their own contrast
+  checks.
+- Selection is shown by more than colour: a thicker outline and, for points, a
+  ring.
+- Basemaps can come in light and dark pairs (`BasemapConfig.theme`). The map
+  follows `data-cii-theme` until the user picks a basemap.
+- Theme changes re-resolve `token:` colours and update layer styles through
+  reconciliation, without re-mounting.
+- Map controls sit in the map corners and must not cover attribution. On narrow
+  screens they collapse into a single "Map tools" menu.
 
 ---
 
@@ -811,39 +968,71 @@ Capture must be possible with a keyboard and a screen reader. These features are
 
 Target: WCAG 2.2 AA (product spec §6.4). Requirements specific to maps:
 
-1. **Landmark and name.** The map container is `role="region"` with `aria-label` from the required `label` prop. Its `description` is linked with `aria-describedby`.
-2. **Keyboard.** The map is focusable. Arrow keys pan, `+` and `-` zoom, and `Shift` + arrows rotate where supported. Shortcuts are listed in a "Keyboard shortcuts" disclosure. Focus never gets trapped in the map.
-3. **Controls.** Every control is a native `button`, `input` or `select` with a visible label or accessible name. Focus order: map, then controls in visual order. Targets are at least 24×24 CSS px.
-4. **Non-visual equivalents.** Every layer that carries information has a non-map equivalent: `<FeatureList>` for features, and text in `<Legend>` for styles. A page must not depend on the map alone.
-5. **Colour and contrast.** Legend entries combine colour with shape, pattern or label. Default overlay styles meet 3:1 against the default basemaps. Text over the map has a solid background.
-6. **Motion.** With `prefers-reduced-motion: reduce`, view changes jump instead of animating, and inertia is off.
-7. **Announcements.** View changes caused by search or "zoom to" are announced ("Showing Leeds city centre"). Ordinary panning is not announced.
-8. **Popups.** `<FeatureInfo>` moves focus into the panel when opened by keyboard and returns focus on close, following the drawer and modal behaviour in `@cii/svelte`.
+1. **Landmark and name.** The map container is `role="region"` with `aria-label`
+   from the required `label` prop. Its `description` is linked with
+   `aria-describedby`.
+2. **Keyboard.** The map is focusable. Arrow keys pan, `+` and `-` zoom, and
+   `Shift` + arrows rotate where supported. Shortcuts are listed in a "Keyboard
+   shortcuts" disclosure. Focus never gets trapped in the map.
+3. **Controls.** Every control is a native `button`, `input` or `select` with a
+   visible label or accessible name. Focus order: map, then controls in visual
+   order. Targets are at least 24×24 CSS px.
+4. **Non-visual equivalents.** Every layer that carries information has a
+   non-map equivalent: `<FeatureList>` for features, and text in `<Legend>` for
+   styles. A page must not depend on the map alone.
+5. **Colour and contrast.** Legend entries combine colour with shape, pattern or
+   label. Default overlay styles meet 3:1 against the default basemaps. Text
+   over the map has a solid background.
+6. **Motion.** With `prefers-reduced-motion: reduce`, view changes jump instead
+   of animating, and inertia is off.
+7. **Announcements.** View changes caused by search or "zoom to" are announced
+   ("Showing Leeds city centre"). Ordinary panning is not announced.
+8. **Popups.** `<FeatureInfo>` moves focus into the panel when opened by
+   keyboard and returns focus on close, following the drawer and modal behaviour
+   in `@cii/svelte`.
 
 ---
 
 ## 11) SvelteKit and SSR integration
 
-- Engines load only in the browser. `<CiiMap>` imports the adapter inside `onMount` (or an `$effect`), so server rendering outputs only the sized placeholder. This works with `@sveltejs/adapter-static`, which both apps use.
-- `@cii/maps` components can be imported in server-rendered pages. The core module must not touch `window` at import time.
-- Destroying `<CiiMap>` calls `adapter.destroy()`. A test mounts and unmounts the map repeatedly and checks that WebGL contexts and listeners are released (§14).
+- Engines load only in the browser. `<CiiMap>` imports the adapter inside
+  `onMount` (or an `$effect`), so server rendering outputs only the sized
+  placeholder. This works with `@sveltejs/adapter-static`, which both apps use.
+- `@cii/maps` components can be imported in server-rendered pages. The core
+  module must not touch `window` at import time.
+- Destroying `<CiiMap>` calls `adapter.destroy()`. A test mounts and unmounts
+  the map repeatedly and checks that WebGL contexts and listeners are released
+  (§14).
 - Content Security Policy notes for deployment:
-  - MapLibre creates workers from `blob:` URLs, so `worker-src blob:` (and `child-src blob:` for older browsers) is needed. Alternatively, use MapLibre's CSP build and serve its worker file.
-  - Tile, style, glyph and data hosts must be listed in `img-src` and `connect-src`.
-- Add map data hosts to the deployment documentation in `README.md` when the first app uses maps.
+  - MapLibre creates workers from `blob:` URLs, so `worker-src blob:` (and
+    `child-src blob:` for older browsers) is needed. Alternatively, use
+    MapLibre's CSP build and serve its worker file.
+  - Tile, style, glyph and data hosts must be listed in `img-src` and
+    `connect-src`.
+- Add map data hosts to the deployment documentation in `README.md` when the
+  first app uses maps.
 
 ---
 
 ## 12) Performance
 
-- **Bundle budgets.** Measure each engine chunk (gzip) when Phase 1 lands and set budgets from that baseline. Core and components without an engine should stay under 25 kB gzip. CI fails if a budget grows by more than 10% without an explicit update.
-- **Lazy loading.** Engines, Terra Draw and plugins load only when used. Capture code loads when a `<CaptureLayer>` is present.
+- **Bundle budgets.** Measure each engine chunk (gzip) when Phase 1 lands and
+  set budgets from that baseline. Core and components without an engine should
+  stay under 25 kB gzip. CI fails if a budget grows by more than 10% without an
+  explicit update.
+- **Lazy loading.** Engines, Terra Draw and plugins load only when used. Capture
+  code loads when a `<CaptureLayer>` is present.
 - **Large data.**
-  - Inline or URL GeoJSON over about 5 MB or 20,000 features triggers a development warning that recommends vector tiles or PMTiles.
+  - Inline or URL GeoJSON over about 5 MB or 20,000 features triggers a
+    development warning that recommends vector tiles or PMTiles.
   - Point layers over about 2,000 features should cluster.
-  - `ogc-features` and `wfs` sources load by viewport with `bbox` and `limit`, debounced, and cancel stale requests with `AbortController`.
-- **Events.** `onviewchange` is limited to one call per animation frame. Feature queries on hover are off by default.
-- **Workers.** Heavy core work (for example, validating large polygons) can move to a Web Worker in later phases. The core API is designed so this does not change public types.
+  - `ogc-features` and `wfs` sources load by viewport with `bbox` and `limit`,
+    debounced, and cancel stale requests with `AbortController`.
+- **Events.** `onviewchange` is limited to one call per animation frame. Feature
+  queries on hover are off by default.
+- **Workers.** Heavy core work (for example, validating large polygons) can move
+  to a Web Worker in later phases. The core API is designed so this does not
+  change public types.
 
 ---
 
@@ -851,20 +1040,31 @@ Target: WCAG 2.2 AA (product spec §6.4). Requirements specific to maps:
 
 ### 13.1 Keys and requests
 
-- API keys and tokens are never committed and never stored in `MapConfig`. Applications pass them at runtime through `transformRequest` or source `headers`, using environment variables or a server-side proxy.
-- Treat any key that reaches the browser as public. Restrict it by referrer at the provider.
+- API keys and tokens are never committed and never stored in `MapConfig`.
+  Applications pass them at runtime through `transformRequest` or source
+  `headers`, using environment variables or a server-side proxy.
+- Treat any key that reaches the browser as public. Restrict it by referrer at
+  the provider.
 
 ### 13.2 Untrusted content
 
-- Feature properties, WMS `GetFeatureInfo` responses, geocoder results and remote style JSON are untrusted.
-- Never use `{@html}` or `innerHTML` for them. Show text through Svelte expressions. If a project really needs HTML from a trusted server, it must be sanitised and enabled by explicit opt-in.
-- Validate remote GeoJSON shape before adding it to a source. Treat invalid data as a source error, not a crash.
+- Feature properties, WMS `GetFeatureInfo` responses, geocoder results and
+  remote style JSON are untrusted.
+- Never use `{@html}` or `innerHTML` for them. Show text through Svelte
+  expressions. If a project really needs HTML from a trusted server, it must be
+  sanitised and enabled by explicit opt-in.
+- Validate remote GeoJSON shape before adding it to a source. Treat invalid data
+  as a source error, not a crash.
 
 ### 13.3 Attribution and licences
 
-- Every remote source must have attribution, and `<Attribution>` always shows it. This is often a legal requirement of the data licence.
-- Follow each tile provider's usage policy. Do not use `tile.openstreetmap.org` for production traffic; use a commercial or self-hosted tile service.
-- Library licences: Leaflet (BSD-2-Clause), MapLibre GL JS (BSD-3-Clause), OpenLayers (BSD-2-Clause), Terra Draw (MIT). Check the licence of every plugin before adding it, and record it in the package README.
+- Every remote source must have attribution, and `<Attribution>` always shows
+  it. This is often a legal requirement of the data licence.
+- Follow each tile provider's usage policy. Do not use `tile.openstreetmap.org`
+  for production traffic; use a commercial or self-hosted tile service.
+- Library licences: Leaflet (BSD-2-Clause), MapLibre GL JS (BSD-3-Clause),
+  OpenLayers (BSD-2-Clause), Terra Draw (MIT). Check the licence of every plugin
+  before adding it, and record it in the package README.
 
 ---
 
@@ -872,68 +1072,93 @@ Target: WCAG 2.2 AA (product spec §6.4). Requirements specific to maps:
 
 ### 14.1 Unit tests (Node)
 
-Run with `node --experimental-strip-types --test tests/unit/*.test.ts`, as the portal does. Cover everything in `core/`:
+Run with `node --experimental-strip-types --test tests/unit/*.test.ts`, as the
+portal does. Cover everything in `core/`:
 
-- `validateMapConfig`: each error code, warnings with capabilities, version upgrades.
+- `validateMapConfig`: each error code, warnings with capabilities, version
+  upgrades.
 - Zoom conversion and view clamping.
 - Config diffing and reconciliation output.
-- Style rule evaluation, and the MapLibre expression compiler matching the per-feature evaluator.
+- Style rule evaluation, and the MapLibre expression compiler matching the
+  per-feature evaluator.
 - Geometry validation, precision rounding, geodesic area and length.
 - Capture history: undo, redo, drag coalescing, `dirty` tracking.
 - Draft persistence: valid, invalid and legacy stored drafts.
 
 ### 14.2 Adapter contract suite (Playwright)
 
-One set of browser tests runs against **all three engines**. Add a test-harness route to the docs app (for example `/test/maps?engine=leaflet&fixture=multi-source`) that renders fixtures from config. Tests run against the production preview, like the existing suites.
+One set of browser tests runs against **all three engines**. Add a test-harness
+route to the docs app (for example
+`/test/maps?engine=leaflet&fixture=multi-source`) that renders fixtures from
+config. Tests run against the production preview, like the existing suites.
 
 Each fixture checks the same results on each engine:
 
 - The view after `setView` and `fitBounds`, within a tolerance.
 - Sources and layers appear, change, reorder and disappear.
 - `queryAt` returns the expected feature ids.
-- Capture: draw each geometry type, modify, delete, undo and redo, and check the output GeoJSON.
+- Capture: draw each geometry type, modify, delete, undo and redo, and check the
+  output GeoJSON.
 - Capabilities: an `unsupported` config shows the expected error.
 
-Tests use local fixture tiles and data served by the preview, not live tile services, so they are reliable and offline.
+Tests use local fixture tiles and data served by the preview, not live tile
+services, so they are reliable and offline.
 
-MapLibre needs WebGL. In headless Chromium, enable software rendering in `playwright.config.ts` (for example `--use-angle=swiftshader` or `--enable-unsafe-swiftshader`, depending on the Chromium version) and check it in CI.
+MapLibre needs WebGL. In headless Chromium, enable software rendering in
+`playwright.config.ts` (for example `--use-angle=swiftshader` or
+`--enable-unsafe-swiftshader`, depending on the Chromium version) and check it
+in CI.
 
 ### 14.3 Accessibility tests
 
-Follow `apps/community-portal/tests/accessibility.spec.ts`: reach every control with the keyboard only, never with the mouse. Required scenarios:
+Follow `apps/community-portal/tests/accessibility.spec.ts`: reach every control
+with the keyboard only, never with the mouse. Required scenarios:
 
 - Pan and zoom with the keyboard.
 - Switch basemaps and toggle layers.
 - Select a feature from `<FeatureList>` and read it in `<FeatureInfo>`.
-- Capture a polygon with crosshair mode only, fill its attributes, fix a validation error, and save.
+- Capture a polygon with crosshair mode only, fill its attributes, fix a
+  validation error, and save.
 - Check live-region messages.
 
 ### 14.4 Visual and leak tests
 
-- Screenshot each fixture per engine and theme. Allow per-engine baselines, because the engines render slightly differently.
-- Mount and unmount each engine 20 times and check for leaked listeners and WebGL contexts.
+- Screenshot each fixture per engine and theme. Allow per-engine baselines,
+  because the engines render slightly differently.
+- Mount and unmount each engine 20 times and check for leaked listeners and
+  WebGL contexts.
 
 ---
 
 ## 15) Documentation
 
-- Add a **Maps** section to the docs site under `apps/docs/src/routes/components/map/`, with one page per component. Use the existing page format: introduction, live example, Usage, Properties, Behaviour and accessibility, Variants and states.
-- Live examples live in `apps/docs/src/lib/examples/` and include an **engine switcher**, so readers can compare the same config on all three engines.
-- Add pages for the configuration reference, the capability matrix (generated from adapter `capabilities`), capture, and accessible capture.
-- Add a patterns page for "Record location" (a single point on a record form) and "Area of interest" (a polygon with attributes).
-- Add a map to the community portal as a reference use, for example event venues on a map and a location field on the case form.
+- Add a **Maps** section to the docs site under
+  `apps/docs/src/routes/components/map/`, with one page per component. Use the
+  existing page format: introduction, live example, Usage, Properties, Behaviour
+  and accessibility, Variants and states.
+- Live examples live in `apps/docs/src/lib/examples/` and include an **engine
+  switcher**, so readers can compare the same config on all three engines.
+- Add pages for the configuration reference, the capability matrix (generated
+  from adapter `capabilities`), capture, and accessible capture.
+- Add a patterns page for "Record location" (a single point on a record form)
+  and "Area of interest" (a polygon with attributes).
+- Add a map to the community portal as a reference use, for example event venues
+  on a map and a location field on the case form.
 - All snippets use TypeScript (`AGENTS.md`).
 
 ---
 
 ## 16) Delivery roadmap and acceptance criteria
 
-Each phase is complete only when its checklist and the shared criteria below are met.
+Each phase is complete only when its checklist and the shared criteria below are
+met.
 
-**Shared criteria for every phase**
+### Shared criteria for every phase
 
 - `npm run check`, `npm run test:unit` and `npm test` pass.
-- The adapter contract suite passes on all three engines for that phase's features. Any accepted gap is recorded in `capabilities` with a fallback or error.
+- The adapter contract suite passes on all three engines for that phase's
+  features. Any accepted gap is recorded in `capabilities` with a fallback or
+  error.
 - Keyboard-only accessibility tests for the phase pass.
 - Docs pages for new components are published.
 - Bundle budgets are met.
@@ -1053,4 +1278,6 @@ Each phase is complete only when its checklist and the shared criteria below are
 <Button onclick={save} loading={saving}>Save sites</Button>
 ```
 
-Changing `engine="openlayers"` to `"leaflet"` or `"maplibre"` must give the same behaviour and the same `features` output. The contract suite (§14.2) checks this.
+Changing `engine="openlayers"` to `"leaflet"` or `"maplibre"` must give the same
+behaviour and the same `features` output. The contract suite (§14.2) checks
+this.

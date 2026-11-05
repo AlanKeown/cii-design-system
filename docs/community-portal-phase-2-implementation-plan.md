@@ -1,14 +1,24 @@
 # Community portal backend: Phase 2 implementation plan
 
-Status: Phase 2 complete — implementation, deployment and production smoke validation finished on 3 November 2026. Early CPU spikes remain a monitoring follow-up. Prepared 3 November 2026 against the current repository and Phase 2 of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
+Status: Phase 2 complete — implementation, deployment and production smoke
+validation finished on 3 November 2026. Early CPU spikes remain a monitoring
+follow-up. Prepared 3 November 2026 against the current repository and Phase 2
+of `docs/community-portal-backend-plan.md` (§7.1–7.5, §8.2–8.4 and §10.4).
 
-The outcome is the existing local demo running through Cloudflare Pages Functions, with browser operations behind `PortalBackend` and database enum drift checked at compile time. Browser data, drafts, recovery, permissions preview and reporting must continue to work.
+The outcome is the existing local demo running through Cloudflare Pages
+Functions, with browser operations behind `PortalBackend` and database enum
+drift checked at compile time. Browser data, drafts, recovery, permissions
+preview and reporting must continue to work.
 
-This document records the implementation sequence and completion evidence. The user committed and deployed the implementation; the Phase 2 closure notes remain uncommitted for review. Commit and push authorization still follow AGENTS.md.
+This document records the implementation sequence and completion evidence. The
+user committed and deployed the implementation; the Phase 2 closure notes remain
+uncommitted for review. Commit and push authorization still follow AGENTS.md.
 
 ## Scope and current state
 
-Phase 1 supplies six migrations, the local Supabase configuration and the database CI job. Phase 2 consumes that schema to generate types; it needs no production Supabase credentials or further database migrations.
+Phase 1 supplies six migrations, the local Supabase configuration and the
+database CI job. Phase 2 consumes that schema to generate types; it needs no
+production Supabase credentials or further database migrations.
 
 | Area         | Current implementation                                                        | Phase 2 change                                                                                |
 | ------------ | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -20,86 +30,221 @@ Phase 1 supplies six migrations, the local Supabase configuration and the databa
 | Types        | No generated database types or enum parity assertions                         | Checked-in generated types, root generation script, compile-time tests and CI freshness check |
 | Deployment   | Workflow uploads `apps/community-portal/build`                                | Upload `.svelte-kit/cloudflare` from the portal workspace                                     |
 
-Authentication, Supabase clients, live APIs, invitations, account deletion, production variables and keep-alive remain in their later phases. Implement the shared reset method, but leave the new Administration reset UI for Phase 4. Keep this supporting plan outside the published design-document collection unless publication is requested.
+Authentication, Supabase clients, live APIs, invitations, account deletion,
+production variables and keep-alive remain in their later phases. Implement the
+shared reset method, but leave the new Administration reset UI for Phase 4. Keep
+this supporting plan outside the published design-document collection unless
+publication is requested.
 
 ## 1. Establish the baseline
 
-- [x] Run the existing checks, build and tests; record any unrelated failures before changing behavior.
-- [x] Confirm the existing local Supabase stack is running, then run `npm run db:reset`, `npm run db:test` and `npm run db:lint`. The stack was already running before this task and remains running.
-- [x] Record existing storage behavior: empty storage is initialized; valid legacy snapshots are upgraded; unreadable snapshots survive until replacement is confirmed; unavailable storage permits in-memory use with a warning; drafts remain independent of workspace saving.
-- [x] Capture the existing portal test coverage for CRUD, drawer actions, bulk archive, saved views, reports, theme, navigation, role preview and accessibility. Use it as the regression baseline.
+- [x] Run the existing checks, build and tests; record any unrelated failures
+      before changing behavior.
+- [x] Confirm the existing local Supabase stack is running, then run
+      `npm run db:reset`, `npm run db:test` and `npm run db:lint`. The stack was
+      already running before this task and remains running.
+- [x] Record existing storage behavior: empty storage is initialized; valid
+      legacy snapshots are upgraded; unreadable snapshots survive until
+      replacement is confirmed; unavailable storage permits in-memory use with a
+      warning; drafts remain independent of workspace saving.
+- [x] Capture the existing portal test coverage for CRUD, drawer actions, bulk
+      archive, saved views, reports, theme, navigation, role preview and
+      accessibility. Use it as the regression baseline.
 
 ## 2. Switch the portal runtime and prepare deployment
 
-Files: `apps/community-portal/package.json`, `vite.config.ts`, `wrangler.jsonc`, `src/routes/+layout.ts`, root `package-lock.json`, `.gitignore`, `playwright.config.ts` and `.github/workflows/deploy-portal.yml`.
+Files: `apps/community-portal/package.json`, `vite.config.ts`, `wrangler.jsonc`,
+`src/routes/+layout.ts`, root `package-lock.json`, `.gitignore`,
+`playwright.config.ts` and `.github/workflows/deploy-portal.yml`.
 
-- [x] Replace the portal's static adapter dependency with a Cloudflare adapter release compatible with the installed SvelteKit 3 version. Resolve and lock the actual release during implementation rather than assuming the parent plan's adapter major is still correct. The docs workspace keeps its static adapter.
-- [x] Add portal devDependency `wrangler` pinned to `4.156.0`, matching the deployment workflow. Update the lockfile through npm.
-- [x] Configure `adapter-cloudflare` through the existing `sveltekit({ adapter })` call in `vite.config.ts`.
-- [x] Remove the root layout's `prerender = true`; delete the file if that leaves it empty. Keep SSR enabled so this phase exercises the future server runtime.
-- [x] Add a Pages configuration with project name `cii-community-portal`, `pages_build_output_dir: '.svelte-kit/cloudflare'` and the parent plan's compatibility date `2026-10-01`. Check the build and Wrangler runtime for required compatibility support. The current application runs without `nodejs_compat`, so no compatibility flags are retained. Add no Supabase or Turnstile bindings, including production overrides.
-- [x] Ignore `.dev.vars`, `.dev.vars.*` and Wrangler's local `.wrangler/` state. If an example vars file is introduced, explicitly keep it trackable.
-- [x] Set portal preview to `wrangler pages dev .svelte-kit/cloudflare --port 4187 --ip 0.0.0.0`. Leave the shared sirv script and docs preview unchanged.
-- [x] Update the portal Playwright server readiness check to match the pinned Wrangler's actual ready output; keep port 4187 and the existing portal project. Disable dotenv loading for the local-mode preview. The Phase 2 page load always returns local mode and uses no runtime Supabase settings.
-- [x] Update the deploy action's working directory to `apps/community-portal` and its command to `pages deploy .svelte-kit/cloudflare --project-name=cii-community-portal --branch=main`. Preserve the successful-Verify gate, exact verified SHA checkout and existing concurrency protection. Add no migration step in this phase.
+- [x] Replace the portal's static adapter dependency with a Cloudflare adapter
+      release compatible with the installed SvelteKit 3 version. Resolve and
+      lock the actual release during implementation rather than assuming the
+      parent plan's adapter major is still correct. The docs workspace keeps its
+      static adapter.
+- [x] Add portal devDependency `wrangler` pinned to `4.156.0`, matching the
+      deployment workflow. Update the lockfile through npm.
+- [x] Configure `adapter-cloudflare` through the existing
+      `sveltekit({ adapter })` call in `vite.config.ts`.
+- [x] Remove the root layout's `prerender = true`; delete the file if that
+      leaves it empty. Keep SSR enabled so this phase exercises the future
+      server runtime.
+- [x] Add a Pages configuration with project name `cii-community-portal`,
+      `pages_build_output_dir: '.svelte-kit/cloudflare'` and the parent plan's
+      compatibility date `2026-10-01`. Check the build and Wrangler runtime for
+      required compatibility support. The current application runs without
+      `nodejs_compat`, so no compatibility flags are retained. Add no Supabase
+      or Turnstile bindings, including production overrides.
+- [x] Ignore `.dev.vars`, `.dev.vars.*` and Wrangler's local `.wrangler/` state.
+      If an example vars file is introduced, explicitly keep it trackable.
+- [x] Set portal preview to
+      `wrangler pages dev .svelte-kit/cloudflare --port 4187 --ip 0.0.0.0`.
+      Leave the shared sirv script and docs preview unchanged.
+- [x] Update the portal Playwright server readiness check to match the pinned
+      Wrangler's actual ready output; keep port 4187 and the existing portal
+      project. Disable dotenv loading for the local-mode preview. The Phase 2
+      page load always returns local mode and uses no runtime Supabase settings.
+- [x] Update the deploy action's working directory to `apps/community-portal`
+      and its command to
+      `pages deploy .svelte-kit/cloudflare --project-name=cii-community-portal --branch=main`.
+      Preserve the successful-Verify gate, exact verified SHA checkout and
+      existing concurrency protection. Add no migration step in this phase.
 
-Checkpoint: the production build contains the Worker and generated `_routes.json`; `/` goes through SSR, static assets bypass the Function, and existing portal browser tests run under Wrangler. Changing the adapter without changing the deploy path is an incomplete change.
+Checkpoint: the production build contains the Worker and generated
+`_routes.json`; `/` goes through SSR, static assets bypass the Function, and
+existing portal browser tests run under Wrangler. Changing the adapter without
+changing the deploy path is an incomplete change.
 
-The adapter output, routing exclusions and Wrangler preview approach follow the [SvelteKit Cloudflare adapter documentation](https://svelte.dev/docs/kit/adapter-cloudflare). Pages uses the committed Wrangler configuration when `pages_build_output_dir` is present; review its settings before release. See [Pages configuration](https://developers.cloudflare.com/pages/functions/wrangler-configuration/).
+The adapter output, routing exclusions and Wrangler preview approach follow the
+[SvelteKit Cloudflare adapter documentation](https://svelte.dev/docs/kit/adapter-cloudflare).
+Pages uses the committed Wrangler configuration when `pages_build_output_dir` is
+present; review its settings before release. See
+[Pages configuration](https://developers.cloudflare.com/pages/functions/wrangler-configuration/).
 
 ## 3. Add generated types and enforce parity
 
-Files: root `package.json`, a TypeScript generation helper if needed, `src/lib/backend/database.types.ts`, `tests/unit/database-parity.test.ts` and `.github/workflows/ci.yml`.
+Files: root `package.json`, a TypeScript generation helper if needed,
+`src/lib/backend/database.types.ts`, `tests/unit/database-parity.test.ts` and
+`.github/workflows/ci.yml`.
 
-- [x] Add root `db:types` using the pinned CLI to run `supabase gen types typescript --local --schema public`. Generate from the freshly migrated local database, never from handwritten interfaces or production.
-- [x] Write successful output to `apps/community-portal/src/lib/backend/database.types.ts`. Prefer a small TypeScript helper that captures output and writes only after generation succeeds, so a CLI failure cannot truncate the checked-in file.
-- [x] Establish one formatting convention for the generated file. Either format generation and CI identically or exclude this generated artifact from Prettier and compare raw CLI output. Do not let the generation check and `format:check` fight each other.
-- [x] Use type-only imports for `Database`. Keep this phase free of Supabase runtime dependencies.
-- [x] Add bidirectional type equality assertions for every database enum: `app_role` ↔ `Role`, `app_module` ↔ `Module`, all five record-status enums ↔ their corresponding `statuses` unions, and `case_priority` ↔ `priorities[number]`.
-- [x] Keep the test in `tests/unit/`, which the portal tsconfig already includes. Ensure a mismatch fails `npm run check`; Node execution alone does not validate types. Verify this once with a temporary mismatch, then restore it.
-- [x] Do not claim enum parity for Administration status or saved-view sort: these are SQL text/check constraints, not generated enums. Their database validation remains covered by Phase 1 tests.
-- [x] Extend the existing `database` CI job after reset/lint to regenerate types and fail on a diff against the checked-in file. Preserve cleanup with `if: always()`. Keep the main verify job independent of a running database by consuming checked-in types.
+- [x] Add root `db:types` using the pinned CLI to run
+      `supabase gen types typescript --local --schema public`. Generate from the
+      freshly migrated local database, never from handwritten interfaces or
+      production.
+- [x] Write successful output to
+      `apps/community-portal/src/lib/backend/database.types.ts`. Prefer a small
+      TypeScript helper that captures output and writes only after generation
+      succeeds, so a CLI failure cannot truncate the checked-in file.
+- [x] Establish one formatting convention for the generated file. Either format
+      generation and CI identically or exclude this generated artifact from
+      Prettier and compare raw CLI output. Do not let the generation check and
+      `format:check` fight each other.
+- [x] Use type-only imports for `Database`. Keep this phase free of Supabase
+      runtime dependencies.
+- [x] Add bidirectional type equality assertions for every database enum:
+      `app_role` ↔ `Role`, `app_module` ↔ `Module`, all five record-status enums
+      ↔ their corresponding `statuses` unions, and `case_priority` ↔
+      `priorities[number]`.
+- [x] Keep the test in `tests/unit/`, which the portal tsconfig already
+      includes. Ensure a mismatch fails `npm run check`; Node execution alone
+      does not validate types. Verify this once with a temporary mismatch, then
+      restore it.
+- [x] Do not claim enum parity for Administration status or saved-view sort:
+      these are SQL text/check constraints, not generated enums. Their database
+      validation remains covered by Phase 1 tests.
+- [x] Extend the existing `database` CI job after reset/lint to regenerate types
+      and fail on a diff against the checked-in file. Preserve cleanup with
+      `if: always()`. Keep the main verify job independent of a running database
+      by consuming checked-in types.
 
-Checkpoint: generating twice yields no diff, clean CI detects stale types, and a deliberate enum mismatch fails type checking. Local generation is supported by the [Supabase type-generation documentation](https://supabase.com/docs/guides/api/rest/generating-types).
+Checkpoint: generating twice yields no diff, clean CI detects stale types, and a
+deliberate enum mismatch fails type checking. Local generation is supported by
+the
+[Supabase type-generation documentation](https://supabase.com/docs/guides/api/rest/generating-types).
 
 ## 4. Implement the local backend and persistence lifecycle
 
-Files: `src/lib/backend/types.ts`, `src/lib/backend/local.ts`, `src/lib/records.ts` and focused unit tests. Retain `persistence.ts` as the validated storage boundary.
+Files: `src/lib/backend/types.ts`, `src/lib/backend/local.ts`,
+`src/lib/records.ts` and focused unit tests. Retain `persistence.ts` as the
+validated storage boundary.
 
-- [x] Define `SessionInfo`, `Workspace`, `PortalBackend` and `BackendError` as specified in §7.3, using existing model types and Promise-based operations. Do not invent a signed-in organisation or session for local mode.
-- [x] Add an instance factory for the local backend. Inject storage access, the demo actor, clock and ID generator so it can be tested in plain Node without `$env`, `$app` or DOM globals.
-- [x] Keep workspace state per browser instance. Never put a mutable workspace in a server module singleton. Acquire `localStorage` only after mount and handle access itself throwing.
-- [x] Give the local implementation an explicit lifecycle separate from the shared contract: initialize/load, read a cloned snapshot, set the theme, inspect persistence status and replace unreadable storage after UI confirmation. These local concerns must not force future live implementations to expose browser storage.
-- [x] Preserve `community-portal-v1`, the version-2 snapshot envelope, legacy decoding, draft keys and all validation. On initialization, explicitly persist empty/valid migrated workspaces where the current effect would do so.
-- [x] Implement create, update, bulk archive and saved-view saving with existing validators and helpers. The adapter assigns IDs/timestamps/actor metadata and owns audit updates; page code must not add duplicate entries. Preserve user-visible activity descriptions for drawer actions through local orchestration without adding browser-specific requirements to `PortalBackend`.
-- [x] Pass the actor explicitly to `buildRecord`, `changeRecord` and the record archive helper; update every caller and existing helper test. Continue to use Sarah Mitchell for local attribution.
-- [x] Implement `reportRows` with `selectReportRows`, retaining inclusive date bounds, open-ended dates and empty results for reversed ranges. Implement `resetDemoData` using a fresh clone of seed records, clearing workspace audit and saved views while retaining theme and independent drafts.
-- [x] Persist explicitly after each successful mutation and theme change. Serialize operations or guard overlapping writes so two awaited operations cannot overwrite each other's changes.
-- [x] Preserve in-memory use when saving is paused or storage fails. Keep corrupt bytes untouched until replacement is confirmed; warn that changes are unsaved. Storage failures must not silently discard the in-memory update or falsely announce durable saving. Domain/validation failures reject with the shared error shape and leave records unchanged.
-- [x] Return copies or otherwise prevent callers from mutating adapter-owned state outside an operation. Keep reactive proxies out of serialized snapshots.
+- [x] Define `SessionInfo`, `Workspace`, `PortalBackend` and `BackendError` as
+      specified in §7.3, using existing model types and Promise-based
+      operations. Do not invent a signed-in organisation or session for local
+      mode.
+- [x] Add an instance factory for the local backend. Inject storage access, the
+      demo actor, clock and ID generator so it can be tested in plain Node
+      without `$env`, `$app` or DOM globals.
+- [x] Keep workspace state per browser instance. Never put a mutable workspace
+      in a server module singleton. Acquire `localStorage` only after mount and
+      handle access itself throwing.
+- [x] Give the local implementation an explicit lifecycle separate from the
+      shared contract: initialize/load, read a cloned snapshot, set the theme,
+      inspect persistence status and replace unreadable storage after UI
+      confirmation. These local concerns must not force future live
+      implementations to expose browser storage.
+- [x] Preserve `community-portal-v1`, the version-2 snapshot envelope, legacy
+      decoding, draft keys and all validation. On initialization, explicitly
+      persist empty/valid migrated workspaces where the current effect would do
+      so.
+- [x] Implement create, update, bulk archive and saved-view saving with existing
+      validators and helpers. The adapter assigns IDs/timestamps/actor metadata
+      and owns audit updates; page code must not add duplicate entries. Preserve
+      user-visible activity descriptions for drawer actions through local
+      orchestration without adding browser-specific requirements to
+      `PortalBackend`.
+- [x] Pass the actor explicitly to `buildRecord`, `changeRecord` and the record
+      archive helper; update every caller and existing helper test. Continue to
+      use Sarah Mitchell for local attribution.
+- [x] Implement `reportRows` with `selectReportRows`, retaining inclusive date
+      bounds, open-ended dates and empty results for reversed ranges. Implement
+      `resetDemoData` using a fresh clone of seed records, clearing workspace
+      audit and saved views while retaining theme and independent drafts.
+- [x] Persist explicitly after each successful mutation and theme change.
+      Serialize operations or guard overlapping writes so two awaited operations
+      cannot overwrite each other's changes.
+- [x] Preserve in-memory use when saving is paused or storage fails. Keep
+      corrupt bytes untouched until replacement is confirmed; warn that changes
+      are unsaved. Storage failures must not silently discard the in-memory
+      update or falsely announce durable saving. Domain/validation failures
+      reject with the shared error shape and leave records unchanged.
+- [x] Return copies or otherwise prevent callers from mutating adapter-owned
+      state outside an operation. Keep reactive proxies out of serialized
+      snapshots.
 
-Checkpoint: the adapter can load legacy data, mutate records, produce activity, reload a valid snapshot and recover from storage failures without a browser or database.
+Checkpoint: the adapter can load legacy data, mutate records, produce activity,
+reload a valid snapshot and recover from storage failures without a browser or
+database.
 
 ## 5. Route the UI through the asynchronous interface
 
-Files: `src/routes/+page.ts`, `+page.svelte`, `src/lib/components/RecordFormDialog.svelte`, `Reports.svelte` and, where needed, `RecordDrawer.svelte`.
+Files: `src/routes/+page.ts`, `+page.svelte`,
+`src/lib/components/RecordFormDialog.svelte`, `Reports.svelte` and, where
+needed, `RecordDrawer.svelte`.
 
-- [x] Add a minimal typed page load returning `{ mode: 'local' }`. It is a stable discriminator for the current phase; runtime live-mode detection and authenticated loading belong to later phases.
-- [x] Initialize the local adapter after mount, preserving `data-ready`, query/hash navigation and deterministic SSR seed content. Keep the actor/profile unchanged for visitors.
-- [x] Replace page-level workspace loading, direct mutation and the broad auto-save effect with backend operations and explicit local snapshot synchronization. The page owns view state; the adapter owns workspace data, audit and persistence status.
-- [x] Change the dialog callback to submit form values plus the editing context and return a Promise. Create through `createRecord`; edit through `updateRecord`, preserving the original `updatedAt` for the optional expected timestamp. Keep client validation and focus behavior; the backend validates again.
-- [x] Await successful operations before closing dialogs, clearing selections or displaying success toasts. Keep entries and selection available on rejection. Map `fieldErrors` onto the existing error summary and fields.
-- [x] Add pending states to form and drawer/bulk operations, preventing duplicate submissions and stale completions after navigation. Ensure a rejected operation releases its pending state.
-- [x] Route status changes, notes, assignments, attendance and bulk archive through backend methods. Apply returned records and refreshed local audit/views; preserve selection and detail behavior.
-- [x] Route saved views through `saveView`; persist theme changes explicitly through the local lifecycle. Keep draft save/restore in the existing persistence helpers.
-- [x] Route report loading through `reportRows`, preserving filters, summary and CSV content. Guard stale asynchronous results when users change module/date range quickly; keep the existing invalid-range message.
-- [x] Keep role preview client-side and retain the existing permission matrix. Do not add live-mode role switching or a reset button yet.
+- [x] Add a minimal typed page load returning `{ mode: 'local' }`. It is a
+      stable discriminator for the current phase; runtime live-mode detection
+      and authenticated loading belong to later phases.
+- [x] Initialize the local adapter after mount, preserving `data-ready`,
+      query/hash navigation and deterministic SSR seed content. Keep the
+      actor/profile unchanged for visitors.
+- [x] Replace page-level workspace loading, direct mutation and the broad
+      auto-save effect with backend operations and explicit local snapshot
+      synchronization. The page owns view state; the adapter owns workspace
+      data, audit and persistence status.
+- [x] Change the dialog callback to submit form values plus the editing context
+      and return a Promise. Create through `createRecord`; edit through
+      `updateRecord`, preserving the original `updatedAt` for the optional
+      expected timestamp. Keep client validation and focus behavior; the backend
+      validates again.
+- [x] Await successful operations before closing dialogs, clearing selections or
+      displaying success toasts. Keep entries and selection available on
+      rejection. Map `fieldErrors` onto the existing error summary and fields.
+- [x] Add pending states to form and drawer/bulk operations, preventing
+      duplicate submissions and stale completions after navigation. Ensure a
+      rejected operation releases its pending state.
+- [x] Route status changes, notes, assignments, attendance and bulk archive
+      through backend methods. Apply returned records and refreshed local
+      audit/views; preserve selection and detail behavior.
+- [x] Route saved views through `saveView`; persist theme changes explicitly
+      through the local lifecycle. Keep draft save/restore in the existing
+      persistence helpers.
+- [x] Route report loading through `reportRows`, preserving filters, summary and
+      CSV content. Guard stale asynchronous results when users change
+      module/date range quickly; keep the existing invalid-range message.
+- [x] Keep role preview client-side and retain the existing permission matrix.
+      Do not add live-mode role switching or a reset button yet.
 
-Checkpoint: create/edit/archive, drawer actions, saved views and theme survive reload; reporting and CSV remain equivalent; corrupt-storage recovery and drafts still pass existing tests. All authored scripts remain TypeScript with strict checking. Validate changed Svelte components with the Svelte MCP tools during implementation.
+Checkpoint: create/edit/archive, drawer actions, saved views and theme survive
+reload; reporting and CSV remain equivalent; corrupt-storage recovery and drafts
+still pass existing tests. All authored scripts remain TypeScript with strict
+checking. Validate changed Svelte components with the Svelte MCP tools during
+implementation.
 
 ## 6. Validate the integrated change
 
-Add tests at the boundaries being changed rather than duplicating existing low-level persistence tests.
+Add tests at the boundaries being changed rather than duplicating existing
+low-level persistence tests.
 
 | Layer                             | Required evidence                                                                                                                                                                                                             |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -126,43 +271,100 @@ npm test
 git diff --check
 ```
 
-The build precedes browser tests because Playwright starts the production preview. Confirm the portal server is Wrangler and the docs server remains sirv. Stop the local database after validation if it was started for this task. Review the generated types and lockfile alongside authored changes.
+The build precedes browser tests because Playwright starts the production
+preview. Confirm the portal server is Wrangler and the docs server remains sirv.
+Stop the local database after validation if it was started for this task. Review
+the generated types and lockfile alongside authored changes.
 
 ## 7. Release separately and measure CPU
 
-Complete all local work and present the tested diff before requesting any release action. Preserve the repository's separate commit and push authorizations. This planning request does not authorize release.
+Complete all local work and present the tested diff before requesting any
+release action. Preserve the repository's separate commit and push
+authorizations. This planning request does not authorize release.
 
-- [x] Record available rollback targets and inspect current Pages settings. Deployment history and runtime configuration were verified at closure; the production environment has no runtime variables and remains local mode. This closure inspection was retrospective, not a claim that it happened before the first deployment.
-- [x] Release Phase 2 on its own using the existing verified-commit workflow. The implementation and optimization were deployed by the user; the final commit's Verify and Deploy community portal runs were both confirmed successful. No authentication or live data was included.
-- [x] On the existing production origin, verify fresh contexts, saved-data reloads and legacy/corrupt-workspace fixtures: create/edit/archive, notes, assignments, activity, saved views, theme, drafts, reports/CSV, role preview and recovery. This used isolated automated contexts, not access to the user's personal browser profile. The origin and storage keys remain unchanged.
-- [x] Exercise a modest batch of full document requests for `/`, with a few initial requests and repeated warm requests. Record deployment ID, UTC window, request count, CPU quantiles exposed by Cloudflare and any invocation errors. Use Pages **Functions Metrics → CPU time per execution**, not response duration or browser navigation timing. Separate static-asset traffic from Function requests. See [Pages metrics](https://developers.cloudflare.com/pages/functions/metrics/).
-- [x] Complete CPU smoke acceptance against the planned p95 target: combined p95 is 7.934 ms, below the 8 ms engineering target and the 10 ms free-plan budget, with zero invocation errors across 66 requests. Early p99 spikes remain documented as a monitoring follow-up; this does not assert that every execution stays below 10 ms. Reassess after auth/live-data changes. See [Workers runtime limits](https://developers.cloudflare.com/workers/platform/limits/).
-- [x] Record the important measurement limit: Phase 2 SSR renders the existing seed workspace; saved browser data is loaded after hydration. This validates local-mode SSR only. Repeat measurement after Phase 4 introduces server-loaded workspaces and auth overhead; a large localStorage snapshot cannot simulate that server cost.
-      Rollback was not needed: the production smoke checks passed with no invocation failures. Recorded rollback targets are listed in the closure evidence below.
+- [x] Record available rollback targets and inspect current Pages settings.
+      Deployment history and runtime configuration were verified at closure; the
+      production environment has no runtime variables and remains local mode.
+      This closure inspection was retrospective, not a claim that it happened
+      before the first deployment.
+- [x] Release Phase 2 on its own using the existing verified-commit workflow.
+      The implementation and optimization were deployed by the user; the final
+      commit's Verify and Deploy community portal runs were both confirmed
+      successful. No authentication or live data was included.
+- [x] On the existing production origin, verify fresh contexts, saved-data
+      reloads and legacy/corrupt-workspace fixtures: create/edit/archive, notes,
+      assignments, activity, saved views, theme, drafts, reports/CSV, role
+      preview and recovery. This used isolated automated contexts, not access to
+      the user's personal browser profile. The origin and storage keys remain
+      unchanged.
+- [x] Exercise a modest batch of full document requests for `/`, with a few
+      initial requests and repeated warm requests. Record deployment ID, UTC
+      window, request count, CPU quantiles exposed by Cloudflare and any
+      invocation errors. Use Pages **Functions Metrics → CPU time per
+      execution**, not response duration or browser navigation timing. Separate
+      static-asset traffic from Function requests. See
+      [Pages metrics](https://developers.cloudflare.com/pages/functions/metrics/).
+- [x] Complete CPU smoke acceptance against the planned p95 target: combined p95
+      is 7.934 ms, below the 8 ms engineering target and the 10 ms free-plan
+      budget, with zero invocation errors across 66 requests. Early p99 spikes
+      remain documented as a monitoring follow-up; this does not assert that
+      every execution stays below 10 ms. Reassess after auth/live-data changes.
+      See
+      [Workers runtime limits](https://developers.cloudflare.com/workers/platform/limits/).
+- [x] Record the important measurement limit: Phase 2 SSR renders the existing
+      seed workspace; saved browser data is loaded after hydration. This
+      validates local-mode SSR only. Repeat measurement after Phase 4 introduces
+      server-loaded workspaces and auth overhead; a large localStorage snapshot
+      cannot simulate that server cost. Rollback was not needed: the production
+      smoke checks passed with no invocation failures. Recorded rollback targets
+      are listed in the closure evidence below.
 
 ## Completion criteria
 
-- [x] Repository checks, the full build and all existing tests pass; portal browser tests use Wrangler.
-- [x] Generated database types are checked in, reproducible and guarded by compile-time parity and CI freshness checks.
-- [x] Every workspace mutation uses the local backend; storage compatibility, recovery, theme, drafts and activity are preserved.
-- [x] Deployment workflow points to the Cloudflare build and still deploys only verified commits.
-- [x] Reviewable implementation is left uncommitted unless separately authorized.
-- [x] Production smoke checks and recorded CPU measurements meet the Phase 2 smoke acceptance criteria. Complete, with early CPU spikes retained as a monitoring follow-up rather than a claim of universal per-request compliance.
+- [x] Repository checks, the full build and all existing tests pass; portal
+      browser tests use Wrangler.
+- [x] Generated database types are checked in, reproducible and guarded by
+      compile-time parity and CI freshness checks.
+- [x] Every workspace mutation uses the local backend; storage compatibility,
+      recovery, theme, drafts and activity are preserved.
+- [x] Deployment workflow points to the Cloudflare build and still deploys only
+      verified commits.
+- [x] Reviewable implementation is left uncommitted unless separately
+      authorized.
+- [x] Production smoke checks and recorded CPU measurements meet the Phase 2
+      smoke acceptance criteria. Complete, with early CPU spikes retained as a
+      monitoring follow-up rather than a claim of universal per-request
+      compliance.
 
-Validation recorded on 3 November 2026: database reset, all 106 pgTAP tests and lint passed; public type regeneration was byte-for-byte reproducible; a temporary role mismatch failed the portal type check and was then restored. Formatting, full workspace checks, the full build and all 36 browser tests passed. Browser coverage includes three isolated async component tests plus new production SSR/asset/404 and archive/saved-view reload checks. The Svelte MCP autofixer reported no issues in all changed components; optional suggestions for existing class directives and DOM references were reviewed and left unchanged. Production deployment and CPU smoke results are recorded below.
+Validation recorded on 3 November 2026: database reset, all 106 pgTAP tests and
+lint passed; public type regeneration was byte-for-byte reproducible; a
+temporary role mismatch failed the portal type check and was then restored.
+Formatting, full workspace checks, the full build and all 36 browser tests
+passed. Browser coverage includes three isolated async component tests plus new
+production SSR/asset/404 and archive/saved-view reload checks. The Svelte MCP
+autofixer reported no issues in all changed components; optional suggestions for
+existing class directives and DOM references were reviewed and left unchanged.
+Production deployment and CPU smoke results are recorded below.
 
 ## Production CPU smoke test — 3 November 2026
 
-The existing production deployment was inspected through the Cloudflare API; no deployment or runtime configuration was changed during this test.
+The existing production deployment was inspected through the Cloudflare API; no
+deployment or runtime configuration was changed during this test.
 
 - Deployment: `4ca5cc00-e909-4204-878a-efe724e0596c`, production branch `main`.
 - Commit: `0ddad43fa9faa9e1bd2c58564149460e34b9d73c`.
 - Target: `https://cii-community-portal.pages.dev/`.
-- Request window: `2026-11-02T23:47:37.761800Z`–`2026-11-02T23:47:45.373457Z` (3 November, 10:47:37–10:47:45 AEDT).
-- Requests: 33 sequential document GETs, comprising three initial requests and 30 subsequent requests. All returned HTTP 200. These labels do not establish which requests used a cold isolate.
-- Additional smoke checks: SSR HTML contains the seeded dashboard, an immutable JavaScript asset returns 200, and a nonexistent route returns 404. These additional requests are outside the CPU measurement window.
+- Request window: `2026-11-02T23:47:37.761800Z`–`2026-11-02T23:47:45.373457Z` (3
+  November, 10:47:37–10:47:45 AEDT).
+- Requests: 33 sequential document GETs, comprising three initial requests and
+  30 subsequent requests. All returned HTTP 200. These labels do not establish
+  which requests used a cold isolate.
+- Additional smoke checks: SSR HTML contains the seeded dashboard, an immutable
+  JavaScript asset returns 200, and a nonexistent route returns 404. These
+  additional requests are outside the CPU measurement window.
 
-Cloudflare GraphQL `pagesFunctionsInvocationsAdaptiveGroups`, filtered to `2026-11-02T23:47:37Z`–`2026-11-02T23:47:46Z`, returned:
+Cloudflare GraphQL `pagesFunctionsInvocationsAdaptiveGroups`, filtered to
+`2026-11-02T23:47:37Z`–`2026-11-02T23:47:46Z`, returned:
 
 | Measurement       | Result    |
 | ----------------- | --------- |
@@ -173,17 +375,46 @@ Cloudflare GraphQL `pagesFunctionsInvocationsAdaptiveGroups`, filtered to `2026-
 | p95 CPU           | 11.100 ms |
 | p99 CPU           | 12.903 ms |
 
-The GraphQL schema identifies CPU quantiles as microseconds; the values above are converted to milliseconds. The query was repeated and returned the same values. The canonical deployment was unchanged when checked again after the measurement.
+The GraphQL schema identifies CPU quantiles as microseconds; the values above
+are converted to milliseconds. The query was repeated and returned the same
+values. The canonical deployment was unchanged when checked again after the
+measurement.
 
-**Result: availability passed; CPU acceptance remains open.** The observed p95 exceeds both the proposed 8 ms engineering target and the 10 ms free-plan CPU budget. There were no CPU-limit invocation failures in this sample. Occasional over-budget executions can succeed because the runtime allows some flexibility; successful responses alone do not establish adequate headroom. Profile and reduce SSR work, then repeat the production measurement before accepting Phase 2. No paid-plan change, rollback or code optimization was performed as part of this test. See [Cloudflare CPU limits](https://developers.cloudflare.com/workers/platform/limits/).
+**Result: availability passed; CPU acceptance remains open.** The observed p95
+exceeds both the proposed 8 ms engineering target and the 10 ms free-plan CPU
+budget. There were no CPU-limit invocation failures in this sample. Occasional
+over-budget executions can succeed because the runtime allows some flexibility;
+successful responses alone do not establish adequate headroom. Profile and
+reduce SSR work, then repeat the production measurement before accepting
+Phase 2. No paid-plan change, rollback or code optimization was performed as
+part of this test. See
+[Cloudflare CPU limits](https://developers.cloudflare.com/workers/platform/limits/).
 
-Attribution limit: the Pages analytics dataset exposes this traffic under `scriptName: "__unknown__"`, with no project or deployment dimension in its exposed schema. The account-level result matches all 33 test requests in the narrow window, but it is not an independently project-filtered sample. The general Workers dataset returned no results; the reported CPU values come from the Pages-specific dataset. This is a small smoke sample, not a load benchmark or proof of future live-mode performance. Full browser-profile production checks remain separate from this CPU-only test.
+Attribution limit: the Pages analytics dataset exposes this traffic under
+`scriptName: "__unknown__"`, with no project or deployment dimension in its
+exposed schema. The account-level result matches all 33 test requests in the
+narrow window, but it is not an independently project-filtered sample. The
+general Workers dataset returned no results; the reported CPU values come from
+the Pages-specific dataset. This is a small smoke sample, not a load benchmark
+or proof of future live-mode performance. Full browser-profile production checks
+remain separate from this CPU-only test.
 
 ## SSR profiling and optimization — 3 November 2026
 
-The production server was profiled locally before and after the optimization using Node `v24.17.0`, process CPU accounting and V8 CPU profiles. The harness imports the built Cloudflare server entry, renders real `/` responses and verifies the dashboard is present in the HTML. It uses one initial render, 20 warm-up requests and 100 measured sequential renders, without network waits.
+The production server was profiled locally before and after the optimization
+using Node `v24.17.0`, process CPU accounting and V8 CPU profiles. The harness
+imports the built Cloudflare server entry, renders real `/` responses and
+verifies the dashboard is present in the HTML. It uses one initial render, 20
+warm-up requests and 100 measured sequential renders, without network waits.
 
-Instrumentation of the baseline measured 1,700 `Date.toLocaleDateString` calls, 500 `Intl.DateTimeFormat` constructions and 200 `Intl.NumberFormat` constructions across 100 warm renders. The dashboard repeatedly formats today's Sydney date, dates, currency and event months. The optimization lazily reuses four locale formatters, containing no user or workspace data, and routes event-month formatting through the shared helper. The optimized warm sample performed none of those constructor or `toLocaleDateString` operations. Values continue to be formatted on each call; the current day itself is not cached.
+Instrumentation of the baseline measured 1,700 `Date.toLocaleDateString` calls,
+500 `Intl.DateTimeFormat` constructions and 200 `Intl.NumberFormat`
+constructions across 100 warm renders. The dashboard repeatedly formats today's
+Sydney date, dates, currency and event months. The optimization lazily reuses
+four locale formatters, containing no user or workspace data, and routes
+event-month formatting through the shared helper. The optimized warm sample
+performed none of those constructor or `toLocaleDateString` operations. Values
+continue to be formatted on each call; the current day itself is not cached.
 
 Uninstrumented local results:
 
@@ -194,7 +425,11 @@ Uninstrumented local results:
 | Warm p99 CPU per render                   | 4.625 ms  | 1.136 ms  |
 | First render, including lazy page loading | 41.123 ms | 39.733 ms |
 
-Warm p95 improved by about 78%. The first-render figures include Node module initialization and show no comparable startup improvement. These local Node results compare the code paths; they do not replace Cloudflare CPU measurements or establish compliance with its free-plan limit. SSR and the full dashboard content remain enabled.
+Warm p95 improved by about 78%. The first-render figures include Node module
+initialization and show no comparable startup improvement. These local Node
+results compare the code paths; they do not replace Cloudflare CPU measurements
+or establish compliance with its free-plan limit. SSR and the full dashboard
+content remain enabled.
 
 Reproduce after building the portal:
 
@@ -210,9 +445,15 @@ For a V8 CPU profile:
 node --cpu-prof --cpu-prof-dir=/tmp --experimental-strip-types scripts/profile-portal-ssr.ts --instrument
 ```
 
-Validation passed: formatting, full workspace checks, the complete build, unit tests and all 36 browser tests, including the Wrangler production preview. New formatting regressions check stable Australian date/currency/month output and Sydney midnight rollover in both summer and winter. The Svelte MCP autofixer reported no issues in the updated dashboard.
+Validation passed: formatting, full workspace checks, the complete build, unit
+tests and all 36 browser tests, including the Wrangler production preview. New
+formatting regressions check stable Australian date/currency/month output and
+Sydney midnight rollover in both summer and winter. The Svelte MCP autofixer
+reported no issues in the updated dashboard.
 
-The optimization was subsequently committed as `fad72e8` and deployed. Production retest results follow; the initial baseline above is retained for comparison.
+The optimization was subsequently committed as `fad72e8` and deployed.
+Production retest results follow; the initial baseline above is retained for
+comparison.
 
 ## Optimized production retest — 3 November 2026
 
@@ -221,10 +462,16 @@ The canonical production deployment was confirmed before and after testing:
 - Deployment: `4797357f-56c6-4064-adf1-0be91ec27224`.
 - Commit: `fad72e8ca8129ecbeacfe49e161a135f12730f09`.
 - Target: `https://cii-community-portal.pages.dev/`.
-- Batch 1: 33 sequential GETs during `2026-11-03T02:18:49.779567Z`–`2026-11-03T02:18:57.616282Z` (13:18:49–13:18:57 AEDT).
-- Batch 2: 33 sequential GETs during `2026-11-03T02:21:14.101494Z`–`2026-11-03T02:21:21.460995Z` (13:21:14–13:21:21 AEDT).
+- Batch 1: 33 sequential GETs during
+  `2026-11-03T02:18:49.779567Z`–`2026-11-03T02:18:57.616282Z` (13:18:49–13:18:57
+  AEDT).
+- Batch 2: 33 sequential GETs during
+  `2026-11-03T02:21:14.101494Z`–`2026-11-03T02:21:21.460995Z` (13:21:14–13:21:21
+  AEDT).
 
-Every request returned HTTP 200. Cloudflare's Pages-specific analytics, filtered to script `pages-worker--22880205-production` and the individual request windows, reported:
+Every request returned HTTP 200. Cloudflare's Pages-specific analytics, filtered
+to script `pages-worker--22880205-production` and the individual request
+windows, reported:
 
 | Sample                       | Requests | Errors | Median CPU | p95 CPU   | p99 CPU   |
 | ---------------------------- | -------- | ------ | ---------- | --------- | --------- |
@@ -233,31 +480,67 @@ Every request returned HTTP 200. Cloudflare's Pages-specific analytics, filtered
 | Optimized batch 2            | 33       | 0      | 2.054 ms   | 4.002 ms  | 5.253 ms  |
 | Optimized combined sample    | 66       | 0      | 2.279 ms   | 7.934 ms  | 20.966 ms |
 
-The combined sample was queried directly using the union of the two time windows; it is not an average of batch percentiles. The original baseline was re-queried with the explicit script name and returned the same 33 requests and CPU quantiles, resolving the earlier `__unknown__` attribution limitation for these comparisons.
+The combined sample was queried directly using the union of the two time
+windows; it is not an average of batch percentiles. The original baseline was
+re-queried with the explicit script name and returned the same 33 requests and
+CPU quantiles, resolving the earlier `__unknown__` attribution limitation for
+these comparisons.
 
-The first batch had CPU spikes in its early seconds; subsequent requests were lower. This pattern is consistent with initialization or warm-up costs, but the analytics do not identify cold isolates or establish the cause. The second batch was added to check subsequent behavior, not to replace the first batch's result. Both samples are retained.
+The first batch had CPU spikes in its early seconds; subsequent requests were
+lower. This pattern is consistent with initialization or warm-up costs, but the
+analytics do not identify cold isolates or establish the cause. The second batch
+was added to check subsequent behavior, not to replace the first batch's result.
+Both samples are retained.
 
-**Result:** production CPU improved in steady use, and the combined sample's p95 falls below the proposed 8 ms target and the 10 ms free-plan budget. All 66 measured invocations succeeded. The p99 still exceeds 10 ms, so this does not establish that every request stays within budget. Keep early-request spikes as a follow-up and repeat observations over normal traffic and after introducing live-mode auth/data loading. Do not treat this small, sequential, single-location smoke test as a load or geographic benchmark.
+**Result:** production CPU improved in steady use, and the combined sample's p95
+falls below the proposed 8 ms target and the 10 ms free-plan budget. All 66
+measured invocations succeeded. The p99 still exceeds 10 ms, so this does not
+establish that every request stays within budget. Keep early-request spikes as a
+follow-up and repeat observations over normal traffic and after introducing
+live-mode auth/data loading. Do not treat this small, sequential,
+single-location smoke test as a load or geographic benchmark.
 
-Additional checks outside the measured windows passed: SSR dashboard content was present; the referenced immutable JavaScript asset returned 200; a missing route returned 404. A fresh Chromium context hydrated with no page errors, retained dark theme after reload, and opened `/?module=Members` directly. Full production CRUD/draft/report smoke coverage was subsequently completed in the closure checks below. No application code, runtime settings or paid-plan changes were made during this retest.
+Additional checks outside the measured windows passed: SSR dashboard content was
+present; the referenced immutable JavaScript asset returned 200; a missing route
+returned 404. A fresh Chromium context hydrated with no page errors, retained
+dark theme after reload, and opened `/?module=Members` directly. Full production
+CRUD/draft/report smoke coverage was subsequently completed in the closure
+checks below. No application code, runtime settings or paid-plan changes were
+made during this retest.
 
 ## Phase 2 closure — 3 November 2026
 
-**Phase 2 is complete for local mode.** Server-side authentication and live database operations remain in Phases 3 and 4.
+**Phase 2 is complete for local mode.** Server-side authentication and live
+database operations remain in Phases 3 and 4.
 
 ### Release identity and verification
 
 - Current production deployment: `ff925232-1a7e-47f8-a1aa-3bd5de469814`.
 - Current production commit: `6d15674aec99f6304b9e4cb3922b31a480ae879f`.
-- [Verify run](https://github.com/AlanKeown/cii-design-system/actions/runs/41571947282): completed successfully.
-- [Deploy community portal run](https://github.com/AlanKeown/cii-design-system/actions/runs/41572138304): completed successfully for that same commit.
-- The difference between `fad72e8` (the CPU-tested application) and `6d15674` is limited to the two backend plan documents; application code and runtime configuration are unchanged. The production CPU evidence above therefore applies to the same application implementation.
-- Current Pages output is `.svelte-kit/cloudflare`; production variables and compatibility flags are empty. No Supabase or Turnstile runtime settings were enabled.
-- Available rollback target with the optimized application: `4797357f-56c6-4064-adf1-0be91ec27224` (`fad72e8`). Pre-Phase-2 static target: `482bf52b-0689-43c8-92d8-3664c6652d03` (`24a4500`). Both are recorded successful production deployments. No rollback was executed.
+- [Verify run](https://github.com/AlanKeown/cii-design-system/actions/runs/41571947282):
+  completed successfully.
+- [Deploy community portal run](https://github.com/AlanKeown/cii-design-system/actions/runs/41572138304):
+  completed successfully for that same commit.
+- The difference between `fad72e8` (the CPU-tested application) and `6d15674` is
+  limited to the two backend plan documents; application code and runtime
+  configuration are unchanged. The production CPU evidence above therefore
+  applies to the same application implementation.
+- Current Pages output is `.svelte-kit/cloudflare`; production variables and
+  compatibility flags are empty. No Supabase or Turnstile runtime settings were
+  enabled.
+- Available rollback target with the optimized application:
+  `4797357f-56c6-4064-adf1-0be91ec27224` (`fad72e8`). Pre-Phase-2 static target:
+  `482bf52b-0689-43c8-92d8-3664c6652d03` (`24a4500`). Both are recorded
+  successful production deployments. No rollback was executed.
 
 ### Production browser smoke results
 
-The existing portal Playwright suite was run against `https://cii-community-portal.pages.dev` through a temporary production-only configuration, without starting local preview servers. It used two workers, fresh browser contexts and no retries. All **26 tests passed**, with zero failures, skips or flaky results. The run began at `2026-11-03T03:28:03.176Z` (14:28:03 AEDT) and completed in 13.3 seconds.
+The existing portal Playwright suite was run against
+`https://cii-community-portal.pages.dev` through a temporary production-only
+configuration, without starting local preview servers. It used two workers,
+fresh browser contexts and no retries. All **26 tests passed**, with zero
+failures, skips or flaky results. The run began at `2026-11-03T03:28:03.176Z`
+(14:28:03 AEDT) and completed in 13.3 seconds.
 
 | Coverage                                                                     | Result |
 | ---------------------------------------------------------------------------- | ------ |
@@ -274,21 +557,42 @@ The existing portal Playwright suite was run against `https://cii-community-port
 | Report announcements and invalid date ranges                                 | Passed |
 | SSR HTML, immutable assets and real 404 responses                            | Passed |
 
-One supplemental end-to-end test then verified the missing edit/note/report-content path against production. It began at `2026-11-03T03:28:51.194Z` (14:28:51 AEDT) and passed in 2.2 seconds:
+One supplemental end-to-end test then verified the missing
+edit/note/report-content path against production. It began at
+`2026-11-03T03:28:51.194Z` (14:28:51 AEDT) and passed in 2.2 seconds:
 
-1. Create a fictional member, edit its name/email, add a note and assign a program.
-2. Confirm one activity entry per update, note and assignment; reload and verify the edited record, note and assignment persist.
-3. Download the filtered records CSV and verify the edited name, email and note in its contents.
-4. Filter the Members report by date; verify the one matching record, download the report CSV, and confirm unrelated seed rows are excluded.
+1. Create a fictional member, edit its name/email, add a note and assign a
+   program.
+2. Confirm one activity entry per update, note and assignment; reload and verify
+   the edited record, note and assignment persist.
+3. Download the filtered records CSV and verify the edited name, email and note
+   in its contents.
+4. Filter the Members report by date; verify the one matching record, download
+   the report CSV, and confirm unrelated seed rows are excluded.
 5. Verify a reversed date range disables report export.
 6. Archive the member, reload, and confirm its archived status.
 
-The supplemental test reported zero browser page errors and no `/api/` writes. All test data stayed in isolated browser storage, using fictional names and `example.invalid` email addresses. Contexts were closed after testing. No shared production database data or runtime settings were changed.
+The supplemental test reported zero browser page errors and no `/api/` writes.
+All test data stayed in isolated browser storage, using fictional names and
+`example.invalid` email addresses. Contexts were closed after testing. No shared
+production database data or runtime settings were changed.
 
-**Total: 27 production browser tests passed.** Run output and failure-trace configuration were kept under `/tmp/phase2-production-*` and `/tmp/phase2-completion-*` for this session. No application code change was needed to close Phase 2.
+**Total: 27 production browser tests passed.** Run output and failure-trace
+configuration were kept under `/tmp/phase2-production-*` and
+`/tmp/phase2-completion-*` for this session. No application code change was
+needed to close Phase 2.
 
 ### Follow-up carried into later phases
 
-Keep observing normal-traffic CPU and invocation failures, especially first requests after idle periods or deployment. The combined optimized sample met the chosen p95 target, but its p99 was 20.966 ms. Repeat production measurements after server-side authentication and live workspace loading are introduced. This monitoring task does not assert that cold-start behavior or every free-plan execution has been proved safe by a small smoke sample.
+Keep observing normal-traffic CPU and invocation failures, especially first
+requests after idle periods or deployment. The combined optimized sample met the
+chosen p95 target, but its p99 was 20.966 ms. Repeat production measurements
+after server-side authentication and live workspace loading are introduced. This
+monitoring task does not assert that cold-start behavior or every free-plan
+execution has been proved safe by a small smoke sample.
 
-Implementation order: runtime switch → generated types and parity → local adapter and actor helpers → asynchronous UI integration → full validation → authorized standalone release and measurement. Keep runtime and application refactors independently reviewable, but ship them together as Phase 2 once verified.
+Implementation order: runtime switch → generated types and parity → local
+adapter and actor helpers → asynchronous UI integration → full validation →
+authorized standalone release and measurement. Keep runtime and application
+refactors independently reviewable, but ship them together as Phase 2 once
+verified.

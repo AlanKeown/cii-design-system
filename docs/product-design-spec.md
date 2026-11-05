@@ -1,12 +1,14 @@
-Great call. Here’s a **complete, handoff-ready product design spec** you can give directly to a designer or engineer.
+# Community Organisation Portal — Product Design Specification (v1.0)
+
+Great call. Here’s a **complete, handoff-ready product design spec** you can
+give directly to a designer or engineer.
 
 ---
-
-# Community Organisation Portal — Product Design Specification (v1.0)
 
 ## 1) Product summary
 
 A role-based web portal for community organisations to manage:
+
 - Members / people
 - Programs / services
 - Events
@@ -15,10 +17,11 @@ A role-based web portal for community organisations to manage:
 - Reporting
 - Administration (users, permissions, data settings)
 
-**Primary UX model:** Dashboard + record lists + record detail + guided workflows + reporting.
+**Primary UX model:** Dashboard + record lists + record detail + guided
+workflows + reporting.
 
-**Design style:** Modern nonprofit / civic operations  
-**Brand direction:** Deep blue primary + lilac accent  
+**Design style:** Modern nonprofit / civic operations\
+**Brand direction:** Deep blue primary + lilac accent\
 **Themes:** Light + Dark
 
 ---
@@ -26,6 +29,7 @@ A role-based web portal for community organisations to manage:
 ## 2) Users and roles
 
 ### 2.1 Primary roles
+
 1. **Admin**
    - Full system access, configuration, permissions, data fields, audit
 2. **Staff**
@@ -40,6 +44,7 @@ A role-based web portal for community organisations to manage:
    - Reporting and selected view-only modules
 
 ### 2.2 UX requirement
+
 - Navigation, actions, and visible data must be role-aware.
 - If a user lacks permission, hide unavailable actions (not just disable).
 
@@ -48,6 +53,7 @@ A role-based web portal for community organisations to manage:
 ## 3) Information architecture
 
 Top-level modules:
+
 1. Dashboard
 2. Members
 3. Programs
@@ -58,6 +64,7 @@ Top-level modules:
 8. Administration
 
 Global shell:
+
 - **Left sidebar:** primary module navigation
 - **Top bar:** search, quick add, notifications, theme toggle, profile menu
 - **Main content:** module views
@@ -76,6 +83,7 @@ Global shell:
 7. **Admin: manage users/roles/permissions**
 
 Each workflow must support:
+
 - Validation
 - Save draft (where multi-step)
 - Clear success/failure state
@@ -86,10 +94,13 @@ Each workflow must support:
 ## 5) Functional page requirements
 
 ## 5.1 Dashboard
+
 Purpose: operational overview and action prioritization.
 
 Required sections:
-- KPI cards (4–6): active members, open cases, upcoming events, donations (period)
+
+- KPI cards (4–6): active members, open cases, upcoming events, donations
+  (period)
 - My tasks/priorities
 - Alerts / needs attention
 - Recent activity feed
@@ -97,6 +108,7 @@ Required sections:
 - Quick actions (add member/event/donation/case)
 
 Acceptance:
+
 - Loads in <2s on standard org data size
 - Cards clickable to filtered module views
 - Role-specific content
@@ -104,7 +116,9 @@ Acceptance:
 ## 5.2 Members module
 
 ### List page
+
 Required:
+
 - Search (name/email/phone/tags)
 - Filters (status, role, location, membership type, date ranges)
 - Sort
@@ -113,10 +127,13 @@ Required:
 - Export CSV/XLSX
 
 Table columns (default):
+
 - Name, Status, Membership Type, Last Contact, Location, Tags, Updated At
 
 ### Detail page
+
 Tabs:
+
 - Overview
 - Activity timeline
 - Notes
@@ -124,9 +141,11 @@ Tabs:
 - Related records (programs/events/cases/donations)
 
 Header:
+
 - Name, status, key metadata, quick actions (edit, note, message)
 
 ## 5.3 Programs module
+
 - Program list + status/capacity
 - Program detail:
   - Summary
@@ -136,6 +155,7 @@ Header:
   - Outcomes/reporting snapshot
 
 ## 5.4 Events module
+
 - Calendar view + list view
 - Event detail:
   - Summary
@@ -146,6 +166,7 @@ Header:
 - Attendance import/export optional
 
 ## 5.5 Donations module
+
 - Donation transactions list
 - Donor profiles + donation history
 - Campaign performance
@@ -153,6 +174,7 @@ Header:
 - Acknowledgement status
 
 ## 5.6 Cases module
+
 - Queue view with priority/status/assignee/due date
 - Case detail:
   - Summary
@@ -162,12 +184,14 @@ Header:
 - SLA/overdue indicators
 
 ## 5.7 Reports module
+
 - Standard reports (members/programs/events/donations/cases)
 - Date range + filter controls
 - Export: CSV/XLSX/PDF
 - Optional scheduled reports (email)
 
 ## 5.8 Administration module
+
 - Users
 - Roles
 - Permissions matrix
@@ -181,6 +205,7 @@ Header:
 ## 6) UX and interaction requirements
 
 ## 6.1 General UX rules
+
 - Prefer list/table-first for operational modules
 - Keep key actions visible above fold
 - Maintain consistent page structure:
@@ -190,6 +215,7 @@ Header:
   - Pagination/footer
 
 ## 6.2 Form behavior
+
 - Labels above fields
 - Required fields clearly marked
 - Inline validation on blur + on submit
@@ -198,12 +224,14 @@ Header:
 - Confirm destructive actions
 
 ## 6.3 Feedback states
+
 - Loading: skeletons/spinners
 - Success: inline toast + persistent audit update
 - Error: actionable message (what failed + next step)
 - Empty states: explain and provide CTA
 
 ## 6.4 Accessibility (non-negotiable)
+
 - WCAG 2.2 AA target
 - Full keyboard navigation
 - Visible focus ring
@@ -216,6 +244,7 @@ Header:
 ## 7) Visual design system (tokenized)
 
 ## 7.1 Color tokens — Light
+
 - brand.primary `#122B4D`
 - brand.primary.strong `#0A1730`
 - brand.primary.soft `#DDE8F7`
@@ -233,6 +262,7 @@ Header:
 - focus.ring `#8D76F7`
 
 ## 7.2 Color tokens — Dark
+
 - brand.primary `#173A63`
 - brand.primary.strong `#0F2C4B`
 - brand.secondary `#B39BFF`
@@ -249,6 +279,7 @@ Header:
 - focus.ring `#B39BFF`
 
 ## 7.3 Typography
+
 - Font: Inter (fallback system sans-serif)
 - H1: 28/36 700
 - H2: 22/30 600
@@ -258,6 +289,7 @@ Header:
 - Caption: 11/16 500
 
 ## 7.4 Spacing and radius
+
 - Spacing scale: 4, 8, 12, 16, 24, 32, 40, 48, 64
 - Radius: 8 (inputs), 10 (buttons), 14 (cards), full (pills)
 - Grid: 8px baseline
@@ -285,6 +317,7 @@ Required components (designer + engineer must implement):
 15. Command/quick action menu
 
 Each component must include:
+
 - Light + dark variants
 - Default/hover/focus/active/disabled/error states
 - Accessibility notes
@@ -295,6 +328,7 @@ Each component must include:
 ## 9) Data table spec (critical)
 
 Minimum features:
+
 - Sticky header
 - Column sort
 - Column visibility toggle
@@ -305,10 +339,12 @@ Minimum features:
 - Empty/loading/error states
 
 Density modes:
+
 - Comfortable (default)
 - Compact (optional toggle)
 
 Row action pattern:
+
 - Primary quick action inline
 - Overflow menu for secondary actions
 
@@ -317,12 +353,14 @@ Row action pattern:
 ## 10) Responsive behavior
 
 Breakpoints:
+
 - Desktop: 1280+
 - Laptop/tablet landscape: 1024–1279
 - Tablet portrait: 768–1023
 - Mobile: <768
 
 Rules:
+
 - Sidebar collapses below 1024
 - Tables become horizontally scrollable on small screens
 - Priority actions remain visible on mobile
@@ -333,14 +371,17 @@ Rules:
 ## 11) Content design guidelines
 
 Voice:
+
 - Direct, clear, supportive, neutral
 
 Microcopy rules:
+
 - Use verb-first actions (“Add member”, “Export report”)
 - Use plain-language errors (“Couldn’t save changes. Check required fields.”)
 - Avoid jargon unless domain-required
 
 Date/time:
+
 - Display local timezone consistently
 - Relative + absolute where useful (e.g., “2 hours ago (Oct 26, 2026, 14:10)”)
 
@@ -349,12 +390,14 @@ Date/time:
 ## 12) Security, trust, and audit UX
 
 Must show in UI:
+
 - Record updated by / updated at
 - Permission-limited actions
 - Confirmation for destructive actions
 - Audit access in Administration
 
 Recommended:
+
 - Soft-lock warning for concurrent edits
 - PII visibility controls by role
 - Session timeout warning modal
@@ -364,12 +407,14 @@ Recommended:
 ## 13) Implementation architecture recommendations
 
 Frontend:
+
 - Component-based design system (tokens + primitives + composites)
 - Theme engine via CSS variables / design tokens
 - Form library with schema validation
 - Table engine supporting server-side operations
 
 Backend/API expectations:
+
 - Pagination, filtering, sorting endpoints
 - Role/permission metadata in responses
 - Audit metadata on records
@@ -380,13 +425,16 @@ Backend/API expectations:
 ## 14) Handoff deliverables checklist
 
 For Designer:
+
 - [ ] Figma library (tokens, components, patterns)
-- [ ] Key page mockups (Dashboard, Members list/detail, Case detail, Report view, Admin roles)
+- [ ] Key page mockups (Dashboard, Members list/detail, Case detail, Report
+      view, Admin roles)
 - [ ] Light and dark mode frames
 - [ ] Interaction notes and component states
 - [ ] Accessibility annotation pass
 
 For Engineer:
+
 - [ ] Token file (JSON/CSS vars)
 - [ ] Component implementation spec
 - [ ] Page-level layout specs
@@ -399,6 +447,7 @@ For Engineer:
 ## 15) MVP scope (recommended)
 
 Include in MVP:
+
 - Dashboard
 - Members (list/detail/create/edit)
 - Events (list/detail)
@@ -410,6 +459,7 @@ Include in MVP:
 - Core accessibility compliance
 
 Defer to phase 2:
+
 - Advanced automation
 - Integrations marketplace
 - Deep analytics builder
@@ -421,6 +471,7 @@ Defer to phase 2:
 ## 16) Acceptance criteria (release gate)
 
 A build is “design complete” when:
+
 1. All core modules implemented with consistent shell + navigation
 2. Token-driven light/dark themes fully functional
 3. All core components support interactive states
@@ -433,5 +484,7 @@ A build is “design complete” when:
 ---
 
 If you want, next I can generate this as:
-1) a **Markdown spec file** structure for your repo, and  
-2) a **starter token JSON + CSS variables file** your frontend team can implement immediately.
+
+1. a **Markdown spec file** structure for your repo, and
+2. a **starter token JSON + CSS variables file** your frontend team can
+   implement immediately.
