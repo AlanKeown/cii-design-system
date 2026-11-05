@@ -80,7 +80,7 @@ Write attribution as the provider's required credit in plain text. When the map 
 
 The map surface, border, controls and alerts use semantic tokens and follow `data-cii-theme`. `token:` colours in layer styles are resolved again when the theme changes, without remounting the map.
 
-Without a colour override, feature outlines use `--cii-map-feature`: navy (`#122B4D`) in light mode and light purple (`#B39BFF`) in dark mode. The token is designed for the `--cii-bg-subtle` canvas; custom colours, reduced opacity and basemaps need separate contrast checks. Import `@cii/tokens/tokens.css`; missing colour tokens produce an actionable layer error instead of a substitute palette. Do not rely on colour alone to distinguish layers.
+Without a colour override, feature outlines use `--cii-map-feature`: navy (`#122B4D`) in light mode and light purple (`#B39BFF`) in dark mode. The token is designed for the `--cii-map-surface` background, which currently matches `--cii-bg-subtle`; custom colours, reduced opacity and basemaps need separate contrast checks. Import `@cii/tokens/tokens.css`; missing colour tokens produce an actionable layer error instead of a substitute palette. Do not rely on colour alone to distinguish layers.
 
 The map fills the width of its container and resizes with it. `height` sets the viewport height, with a minimum of 12rem. On small screens, choose a height that leaves the text alternative and surrounding content easy to reach. Attribution wraps within the container.
 

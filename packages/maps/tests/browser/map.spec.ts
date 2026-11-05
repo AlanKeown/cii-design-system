@@ -528,7 +528,7 @@ test('default feature outlines meet contrast in both themes and restyle without 
       const css = getComputedStyle(node);
       return {
         feature: css.getPropertyValue('--cii-map-feature').trim(),
-        background: css.getPropertyValue('--cii-bg-subtle').trim()
+        background: css.getPropertyValue('--cii-map-surface').trim()
       };
     });
     await expect

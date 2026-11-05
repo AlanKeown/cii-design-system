@@ -11,6 +11,7 @@ Tokens provide a shared vocabulary for the documentation examples and the commun
 | --- | --- | --- |
 | `--cii-brand-primary` | #122B4D | #173A63 |
 | `--cii-map-feature` | #122B4D | #B39BFF |
+| `--cii-map-surface` | #EDF2F8 (bg-subtle) | #18283C (bg-subtle) |
 | `--cii-brand-secondary` | #A88BFF | #B39BFF |
 | `--cii-bg-page` | #F5F7FB | #0A121C |
 | `--cii-bg-card` | #FFFFFF | #101B2A |

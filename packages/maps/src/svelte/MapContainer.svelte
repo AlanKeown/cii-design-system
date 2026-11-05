@@ -227,7 +227,7 @@
   .canvas {
     width: 100%;
     height: 100%;
-    background: var(--cii-bg-subtle);
+    background: var(--cii-map-surface);
   }
   .canvas:focus-visible {
     outline: 3px solid var(--cii-focus-ring);

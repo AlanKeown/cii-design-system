@@ -15,6 +15,7 @@
   },
   "scripts": {
     "build": "node --experimental-strip-types build.ts",
+    "test:unit": "node --experimental-strip-types --test tests/*.test.ts",
     "prepack": "npm run build"
   }
 }
