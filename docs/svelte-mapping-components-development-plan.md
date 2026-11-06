@@ -2,7 +2,7 @@
 
 |                   |                                              |
 | ----------------- | -------------------------------------------- |
-| **Status**        | Phase 0 complete; Phase 1 in progress — v0.6 |
+| **Status**        | Phase 0 complete; Phase 1 in progress — v0.7 |
 | **Date**          | 6 November 2026                              |
 | **Engines**       | Leaflet, MapLibre GL JS, OpenLayers          |
 | **Framework**     | Svelte 5 (runes) / SvelteKit                 |
@@ -2391,6 +2391,39 @@ runtime display switching and production MapLibre/OpenLayers adapters remain.
 
 ---
 
+### 16.6 Phase 1 CRS confirmation UI slice — 6 November 2026
+
+Added the exported `CrsConfirm` component at `@cii/maps/svelte`. It inspects
+provider hints/metadata, requires explicit declarations for file/inline inputs,
+records the declarer and source axis order, and exposes a blocking mismatch
+warning with a separate acknowledgement. Service/database metadata shows the
+selected CRS, policy and provenance; organisation policy can force database
+declarations. WKT-only hints remain unverified and block without
+acknowledgement.
+
+Inline/GeoJSON probes now optionally return raw sample/envelope coordinates. The
+UI interprets them through the transform service with one source-boundary axis
+normalisation, displays the sample in longitude/latitude and draws a synthetic
+envelope on a native EPSG:4326 preview. That preview does not accept the source
+or certify its accuracy. Providers without preview coordinates report the
+absence rather than inventing a footprint; service-footprint parsing and
+additional file readers remain later work.
+
+Mismatch evidence is held by the shared runtime for the exact JSON source
+configuration/declaration and observed hint. Confirmation returns a new source
+plus the resolved record, leaving the input unchanged. Map reconciliation
+rechecks the current hint against that evidence; siblings and changed hints are
+not authorised. Forms reset acknowledgement on edits, cancel stale probes and
+preview results, provide labelled fields/keyboard actions and render a stable
+SSR pending state. A live docs example and unit/Chromium checks cover the
+confirmation-to-rendering path, provenance, axis order, blocking, retries and
+cleanup.
+
+Phase 1 remains in progress: scale and coordinate readouts, runtime display
+switching and production MapLibre/OpenLayers adapters remain.
+
+---
+
 ## 17. Dependency flags and risk register
 
 ### 17.1 Dependency flags (requirement R3)
@@ -2570,3 +2603,4 @@ should be re-checked during Phase 0 alongside spikes S1–S7._
 | 0.4     | 5 Nov 2026 | Closed Phase 0 for the initial Supabase/local-reference scope; accepted S1–S8 with measured limits; recorded the schema-aware read-only audit, capability gates, CI evidence and Phase 1 handoff.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 0.5     | 6 Nov 2026 | Added the Phase 1 XYZ raster basemap and first-party layer-control slice, its documented capability limits and next delivery work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 0.6     | 6 Nov 2026 | Added WMS/WMTS metadata providers, Leaflet raster request rendering, bounded XML parsing, local service examples and conformance fixtures; recorded the supported scope and remaining Phase 1 work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 0.7     | 6 Nov 2026 | Added CRS confirmation UI, optional coordinate/envelope previews, source-scoped mismatch evidence, documentation and validation coverage; recorded the remaining Phase 1 work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |

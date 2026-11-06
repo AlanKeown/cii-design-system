@@ -217,10 +217,9 @@ test('other legacy CRS names retain their own hints', async () => {
       crsRegistry: createCrsRegistry(),
       displayCrs: 'EPSG:3857'
     });
-    assert.deepEqual(result, {
-      kind: 'hint',
-      hint: { code, from: 'geojson_crs' }
-    });
+    assert.equal(result.kind, 'hint');
+    if (result.kind === 'hint')
+      assert.deepEqual(result.hint, { code, from: 'geojson_crs' });
   }
 });
 

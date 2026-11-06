@@ -10,6 +10,7 @@ import type {
   SourceInput,
   ProbeContext
 } from '../crs/resolve.ts';
+import type { SourceCoordinatePreview } from '../crs/resolve.ts';
 import type { ConfirmedCrs, CrsHint } from '../crs/types.ts';
 import type { ResolvedSource } from '../layers/types.ts';
 import { Registry } from '../registry.ts';
@@ -178,6 +179,35 @@ export interface DataSourceProvider extends SourceProvider {
   ): Promise<ResolvedSource>;
 }
 
+/** Raw-coordinate envelope for the confirmation UI; no default CRS or axis swap. */
+function coordinatePreview(
+  data: FeatureBatch
+): SourceCoordinatePreview | undefined {
+  let sample: readonly [number, number] | undefined;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  const positions = (input: unknown): void => {
+    if (!Array.isArray(input)) return;
+    if (typeof input[0] === 'number') {
+      sample ??= [input[0], input[1]];
+      minX = Math.min(minX, input[0]);
+      minY = Math.min(minY, input[1]);
+      maxX = Math.max(maxX, input[0]);
+      maxY = Math.max(maxY, input[1]);
+    } else input.forEach(positions);
+  };
+  const geometry = (item: Geometry): void => {
+    if (item.type === 'GeometryCollection') item.geometries.forEach(geometry);
+    else positions(item.coordinates);
+  };
+  data.features.forEach((feature) => {
+    if (feature.geometry) geometry(feature.geometry);
+  });
+  return sample ? { sample, extent: [minX, minY, maxX, maxY] } : undefined;
+}
+
 /** Compatibility name for the first feature-only slice. */
 export type FeatureSourceProvider = DataSourceProvider;
 
@@ -234,15 +264,23 @@ export function createFeatureSources(
           return { data, hint };
         })();
         cache.set(source, pending);
+        void pending.catch(() => {
+          if (cache.get(source) === pending) cache.delete(source);
+        });
       }
       return pending;
     };
     registry.register(provider, {
       crsMode: 'declared',
-      probe: async (source, context: ProbeContext) => ({
-        kind: 'hint',
-        hint: (await read(source, context.signal)).hint
-      }),
+      probe: async (source, context: ProbeContext) => {
+        const loaded = await read(source, context.signal);
+        context.signal?.throwIfAborted();
+        return {
+          kind: 'hint',
+          hint: loaded.hint,
+          preview: coordinatePreview(loaded.data)
+        };
+      },
       open: async (source, crs, context) => ({
         provider,
         crs,

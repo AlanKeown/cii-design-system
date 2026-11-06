@@ -5,6 +5,7 @@ description: Leaflet feature and XYZ/WMS/WMTS raster maps with explicit CRS conf
 
 <script lang="ts">
   import MapExample from '#lib/examples/MapExample.svelte';
+  import CrsConfirmExample from '#lib/examples/CrsConfirmExample.svelte';
 </script>
 
 `@cii/maps/svelte` provides an SSR-safe `MapContainer`. This first slice
@@ -191,6 +192,97 @@ unmounting cancels its requests and releases native resources.
 The implementation follows [WMS 1.3.0](https://docs.ogc.org/is/06-042/06-042.pdf)
 and [WMTS 1.0.0](https://www.ogc.org/standards/wmts/). The synthetic fixtures test
 these supported paths; they do not claim full OGC service certification.
+
+## Source CRS confirmation
+
+`CrsConfirm` is an optional input workflow before adding a layer. A hint never
+confirms a file or inline source by itself. The form requires a registered CRS,
+explicit axis order and a named declarer, followed by the confirmation button.
+It shows detected hints and their source. Current inline/GeoJSON providers also
+supply a raw sample coordinate and envelope, interpreted using the selected CRS
+and axis order. The synthetic extent map is a preview, not an acceptance or an
+accuracy certificate. Invalid coordinate previews block acceptance.
+
+<CrsConfirmExample />
+
+Use one runtime for the form and accepted map so a mismatch acknowledgement
+reaches map reconciliation without applying to other sources:
+
+```svelte
+<script lang="ts">
+  import '@cii/tokens/tokens.css';
+  import {
+    CrsConfirm, MapContainer, createLeafletRuntime
+  } from '@cii/maps/svelte';
+  import type { CrsConfirmation } from '@cii/maps/svelte';
+  import type { MapConfig } from '@cii/maps';
+
+  const runtime = createLeafletRuntime();
+  const source = {
+    provider: 'geojson' as const,
+    url: '/data/sites.geojson'
+  };
+  let config = $state.raw<MapConfig | null>(null);
+
+  function accept(result: CrsConfirmation<typeof source>) {
+    const crs = result.source.crs;
+    if (!('code' in crs)) return;
+    config = {
+      engine: 'leaflet',
+      view: {
+        center: { crs: 'OGC:CRS84', coordinates: [151.21, -33.87] },
+        zoom: 13
+      },
+      layers: [{
+        id: 'sites',
+        attribution: 'Your data attribution',
+        source: { ...result.source, crs }
+      }]
+    };
+  }
+</script>
+
+<CrsConfirm {source} {runtime} onconfirm={accept} />
+{#if config}
+  <MapContainer
+    {config} {runtime} label="Community sites"
+    description="Provide the locations in an adjacent text list as well."
+  />
+{/if}
+```
+
+`source` accepts provider inputs with an optional `crs`; the form does not
+open a
+production layer. `onconfirm` receives `{ source, confirmed }`: a new source
+with its declaration/metadata policy, plus the resolved record and provenance.
+The original input is never mutated. The returned source remains suitable for
+configuration validation; the runtime record itself is not written into JSON
+configuration.
+
+A differing hint, or WKT whose equivalence is unverified, shows a blocking
+warning and a separate acknowledgement checkbox. Acknowledgement clears when
+the source, declaration, axis order or declarer changes. The runtime records
+only the exact JSON source/declaration and hint that were accepted; a sibling
+source or changed metadata hint blocks again. These records are local to that
+runtime and are not persisted across reloads. Call
+`runtime.forgetConfirmation(result.source)` to revoke one. Do not enable the
+legacy runtime-wide `acknowledgeHintMismatch` option for this workflow.
+
+Service and database metadata inputs show advertised candidates, the selected
+CRS and axis order, document/element or database provenance, and the
+`prefer-native`/`prefer-display` selection policy. They do not offer a manual
+service declaration. `displayCrs` defaults to EPSG:3857 and informs selection;
+it does not change a mounted map's display. `requireDeclaration` lets a caller
+force database declarations under its organisation policy. Providers without
+sample/envelope metadata say that no preview is available; service footprints
+and WKT equivalence detection are not inferred.
+
+`declarer` can prefill an organisation/person name and `label` names the form.
+The form still requires explicit acceptance. `onerror` reports failed probes
+or errors applying a confirmation; field validation remains visible in the
+form. Probing and preview work are cancelled when inputs change or the form
+unmounts. Metadata failures expose a retry button. SSR renders a stable pending
+state, with no network requests or browser map creation.
 
 ## Properties
 

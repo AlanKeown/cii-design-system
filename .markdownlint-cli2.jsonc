@@ -28,6 +28,7 @@
             "AlertExample",
             "ButtonExample",
             "MapExample",
+            "CrsConfirmExample",
             "StatusChipExample",
             "TextFieldExample"
           ]

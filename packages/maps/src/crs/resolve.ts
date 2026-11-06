@@ -7,7 +7,9 @@ import type {
   CrsDeclaration,
   CrsHint,
   CrsProvenance,
-  CrsRef
+  CrsRef,
+  Coord,
+  Extent
 } from './types.ts';
 
 /** Low-level probe input, also usable by providers outside the built-in config schema. */
@@ -21,7 +23,13 @@ export interface SourceSpec extends Omit<SourceInput, 'crs'> {
   crs: ConfirmedCrs;
 }
 
-export type ProbeResult =
+export interface SourceCoordinatePreview {
+  /** Raw source-boundary values: apply the declared axis order exactly once. */
+  sample: Coord;
+  extent: Extent;
+}
+
+export type ProbeResult = (
   | { kind: 'hint'; hint?: CrsHint }
   | {
       kind: 'metadata';
@@ -30,7 +38,8 @@ export type ProbeResult =
         provenance: Exclude<CrsProvenance, { kind: 'declared' }>;
       }[];
       nativeCode?: string;
-    };
+    }
+) & { preview?: SourceCoordinatePreview };
 
 export interface SourceProvider {
   /** File/inline/tile conventions must use declared, never metadata. */
@@ -46,6 +55,8 @@ export interface ProbeContext {
   /** Organisation policy for database sources; services still use metadata. */
   requireDeclaration?: boolean;
   acknowledgeHintMismatch?: boolean;
+  /** Exact evidence approved by a creator; a changed declaration or hint blocks again. */
+  hintMismatchAcknowledgement?: { crs: CrsRef; hint: CrsHint };
   /** Used when a WKT-only hint cannot be compared by its code. */
   hintMatches?: (hint: CrsHint, declaredCode: string) => Promise<boolean>;
   now?: () => Date;
@@ -59,11 +70,41 @@ export async function resolveSourceCrs<T extends SourceInput>(
   try {
     const provider = ctx.sources.require(source.provider);
     const probe = await provider.probe(source, ctx);
+    ctx.signal?.throwIfAborted();
+    return await confirmProbedSourceCrs(source, probe, ctx);
+  } catch (error) {
+    if (error instanceof MapError) return { ok: false, error };
+    throw error;
+  }
+}
+
+export function requiresCrsDeclaration(
+  provider: SourceProvider,
+  probe: ProbeResult,
+  requireDeclaration = false
+): boolean {
+  return (
+    provider.crsMode === 'declared' ||
+    (provider.crsMode === 'database-metadata' &&
+      (requireDeclaration || probe.kind === 'hint'))
+  );
+}
+
+/** Confirm an existing probe without another request; still uses every core policy check. */
+export async function confirmProbedSourceCrs<T extends SourceInput>(
+  source: T,
+  probe: ProbeResult,
+  ctx: ProbeContext
+): Promise<Result<ConfirmedCrs>> {
+  try {
+    ctx.signal?.throwIfAborted();
+    const provider = ctx.sources.require(source.provider);
     const declaration = source.crs;
-    const needsDeclaration =
-      provider.crsMode === 'declared' ||
-      (provider.crsMode === 'database-metadata' &&
-        (ctx.requireDeclaration || probe.kind === 'hint'));
+    const needsDeclaration = requiresCrsDeclaration(
+      provider,
+      probe,
+      ctx.requireDeclaration
+    );
     let crs: CrsRef;
     let provenance: CrsProvenance;
 
@@ -87,7 +128,17 @@ export async function resolveSourceCrs<T extends SourceInput>(
       if (hint?.code) mismatch = hint.code !== declaration.code;
       else if (hint?.wkt)
         mismatch = !(await ctx.hintMatches?.(hint, declaration.code));
-      if (mismatch && !ctx.acknowledgeHintMismatch) {
+      const evidence = ctx.hintMismatchAcknowledgement;
+      const acknowledged =
+        ctx.acknowledgeHintMismatch ||
+        (evidence &&
+          hint &&
+          evidence.crs.code === declaration.code &&
+          evidence.crs.axisOrder === (declaration.axisOrder ?? 'xy') &&
+          evidence.hint.code === hint.code &&
+          evidence.hint.wkt === hint.wkt &&
+          evidence.hint.from === hint.from);
+      if (mismatch && !acknowledged) {
         throw new MapError('CRS_HINT_MISMATCH', {
           declared: declaration.code,
           hint
@@ -151,6 +202,7 @@ export async function resolveSourceCrs<T extends SourceInput>(
       throw new MapError('CRS_METADATA_INVALID', { crs });
     }
     await ctx.crsRegistry.resolve(crs.code);
+    ctx.signal?.throwIfAborted();
     return {
       ok: true,
       value: structuredClone({

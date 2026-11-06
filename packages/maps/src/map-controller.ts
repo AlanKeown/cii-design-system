@@ -4,6 +4,7 @@ import { assertXyzTileData } from './sources/xyz.ts';
 import { assertDisplayCrs } from './engine/registry.ts';
 import { createRegistries } from './extensions/registries.ts';
 import { createTransformService } from './crs/transform.ts';
+import { createCrsAcknowledgements } from './crs/acknowledgements.ts';
 import { resolveSourceCrs } from './crs/resolve.ts';
 import { LayerManager } from './layers/manager.ts';
 import { layerIdentityKey } from './layers/compatibility.ts';
@@ -110,6 +111,7 @@ export function createLeafletRuntime(
   });
   return {
     ...registries,
+    ...createCrsAcknowledgements(),
     transforms,
     acknowledgeHintMismatch: options.acknowledgeHintMismatch ?? false
   };
@@ -376,7 +378,10 @@ export class MapController {
                 crsRegistry: this.#runtime.crs,
                 displayCrs: definition.code,
                 signal: preparing.signal,
-                acknowledgeHintMismatch: this.#runtime.acknowledgeHintMismatch
+                acknowledgeHintMismatch: this.#runtime.acknowledgeHintMismatch,
+                hintMismatchAcknowledgement: this.#runtime.acknowledgementFor(
+                  item.source
+                )
               });
               if (!confirmed.ok) throw confirmed.error;
               source = await provider.open(item.source, confirmed.value, {

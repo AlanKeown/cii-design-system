@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "hub",
+      "properties": { "name": "Fictional harbour hub" },
+      "geometry": { "type": "Point", "coordinates": [151.207, -33.863] }
+    },
+    {
+      "type": "Feature",
+      "id": "garden",
+      "properties": { "name": "Fictional garden" },
+      "geometry": { "type": "Point", "coordinates": [151.216, -33.873] }
+    }
+  ]
+}

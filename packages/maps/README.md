@@ -139,10 +139,12 @@ code is absent, the first advertised candidate is used. Providers must preserve
 advertised ordering and actual delivered axis order. Unknown CRS codes always
 fail.
 
-Mismatch acknowledgement is a runtime option recorded in the confirmed
-provenance. WKT-only hints block unless a supplied `hintMatches` comparator
-confirms them or the mismatch is explicitly acknowledged. No WKT equivalence or
-datum transformation is inferred from projection strings.
+Mismatch acknowledgement is recorded in the confirmed provenance. The
+`CrsConfirm` UI stores evidence for the accepted source/declaration/hint in a
+shared runtime; low-level callers can still provide an explicit resolver option.
+WKT-only hints block unless a supplied `hintMatches` comparator confirms them or
+the mismatch is explicitly acknowledged. No WKT equivalence or datum
+transformation is inferred from projection strings.
 
 The definition file is generated with local PROJ `projinfo` using
 `npm run generate:crs -w @cii/maps`, then formatted with Prettier. PROJ is not
@@ -468,3 +470,22 @@ attached tile failures retry on hide/show. The parser uses `@xmldom/xmldom`
 rejection. No XML-controlled external resource is loaded by the parser. The
 [map docs](../../apps/docs/src/routes/components/map/+page.md) describe the full
 supported scope and include a local XYZ/WMS/WMTS example.
+
+`CrsConfirm` is exported from `@cii/maps/svelte` for a source-import workflow
+before mounting a production layer. It accepts provider inputs with an optional
+CRS, shows detected hints and provenance, requires a named declaration for
+file/inline inputs, and blocks mismatches or unverified WKT until explicitly
+acknowledged. Inline/GeoJSON probes expose optional raw sample/envelope values;
+the form decodes these using the selected axis order and draws a synthetic
+extent preview. Metadata-only providers expose their selected CRS and policy;
+missing footprints are not inferred.
+
+Share `createLeafletRuntime()` between the form and map. Its `onconfirm`
+callback receives a new source with a declaration/metadata policy and the
+resolved `ConfirmedCrs`, typed as `CrsConfirmation<T>`. The runtime remembers
+mismatch evidence for the exact JSON source configuration and current hint; it
+does not authorise siblings or changed hints. `forgetConfirmation(source)`
+revokes it. Do not combine this workflow with the legacy runtime-wide mismatch
+bypass. Evidence is not persisted in config or across runtime recreation. Probe
+errors can be retried; changing inputs or unmounting cancels stale work. See the
+live confirmation example on the map documentation page.
