@@ -2,8 +2,8 @@
 
 |                   |                                              |
 | ----------------- | -------------------------------------------- |
-| **Status**        | Phase 0 complete; Phase 1 in progress — v0.4 |
-| **Date**          | 5 November 2026                              |
+| **Status**        | Phase 0 complete; Phase 1 in progress — v0.5 |
+| **Date**          | 6 November 2026                              |
 | **Engines**       | Leaflet, MapLibre GL JS, OpenLayers          |
 | **Framework**     | Svelte 5 (runes) / SvelteKit                 |
 | **Spatial store** | PostGIS (authoritative output)               |
@@ -2328,10 +2328,35 @@ add a schema-aware read-only audit regression to CI and are locally validated;
 they remain uncommitted, so remote CI has not run on that final diff. See
 `docs/mapping-phase-0-spike-report.md` for evidence and limits.
 
-**Phase 1 handoff.** Next implement XYZ raster basemaps and first-party layer
-controls, then continue WMS/WMTS, CRS confirmation UI, display switching and the
-other production adapters. Preserve the capability refusals, source-CRS
-confirmation, attribution and accuracy reporting established in Phase 0.
+**Phase 1 handoff.** XYZ raster basemaps and first-party layer controls are
+implemented in the 6 November slice below. Next continue WMS/WMTS, CRS
+confirmation UI, display switching and the other production adapters. Preserve
+the capability refusals, source-CRS confirmation, attribution and accuracy
+reporting established in Phase 0.
+
+---
+
+### 16.4 Phase 1 XYZ and layer-control slice — 6 November 2026
+
+Added the declared-CRS XYZ provider, fixed-grid compatibility checks and Leaflet
+raster tile handles. The initial production scope is standard 256px EPSG:3857
+XYZ tiles at zooms 0–24. Nonmatching CRS/grids, unsupported URL placeholders and
+feature styles on raster layers fail explicitly. Native browser image requests
+load tiles; runtime GeoJSON fetch overrides do not intercept tile images.
+
+The config-driven first-party layer list provides visibility, opacity and
+stacking controls through existing managed layer handles, preserving the map and
+view. Changes are local to the mount and a new config reapplies application
+settings. Attribution remains mandatory plain text. Tile failures report typed
+layer errors; visibility toggles retry them. Removal/unmount releases pending
+tile images and native layer resources. Raster layer information does not report
+feature counts or imply a browser feature reprojection.
+
+The docs map now combines locally served synthetic XYZ tiles and feature
+locations. Source/grid refusal tests and Chromium coverage exercise raster and
+feature updates, keyboard controls, attribution, tile failure/retry and loading
+layer removal. WMS/WMTS, CRS confirmation UI, display switching and production
+MapLibre/OpenLayers adapters remain Phase 1 work.
 
 ---
 
@@ -2512,3 +2537,4 @@ should be re-checked during Phase 0 alongside spikes S1–S7._
 | 0.2     | 1 Nov 2026 | Added the Leaflet version policy for production (§6.3) and decision D7. Updated the decisions summary, §3, §13 baseline, §14 test matrix, §16 roadmap and spike S2, and the §17 risk register.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 0.3     | 1 Nov 2026 | Applied the review in `sources/compare.md`. Marked the earlier spec as superseded and listed what carries forward. Added R5.6 (conformant persistence) and made adapter C a restricted adapter. Replaced `CommitResult` with per-op results, retry rules and idempotency. Moved `geometryCrs` onto each op and added the display-CRS switch pre-check. Added snapping precision rules and `vertexSources` (spike S8). Split `CrsDeclaration` (config) from `ConfirmedCrs` (resolved). Rewrote the `MapContainer` and `Layer` lifecycles. Added the view contract (§6.4) and style rule precedence (§7.4). Restored accessibility, theming, security and attribution requirements (§15.4–15.6) and drafts (§9.6). Added the scope table (§16.1), allocated KML/GPX/CSV and COG to phases, kept npm workspaces and the Node test runner, renamed packages to `@cii/*`, and recorded decisions D8 (Australia as the first-class jurisdiction), D9 (two packages to start) and D10 (scope as in §16.1). |
 | 0.4     | 5 Nov 2026 | Closed Phase 0 for the initial Supabase/local-reference scope; accepted S1–S8 with measured limits; recorded the schema-aware read-only audit, capability gates, CI evidence and Phase 1 handoff.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 0.5     | 6 Nov 2026 | Added the Phase 1 XYZ raster basemap and first-party layer-control slice, its documented capability limits and next delivery work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |

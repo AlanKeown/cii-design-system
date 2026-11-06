@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { asset } from '$app/paths';
   import { MapContainer } from '@cii/maps/svelte';
   import { Button } from '@cii/svelte';
   import type { MapConfig } from '@cii/maps';
@@ -13,13 +14,28 @@
   ];
   const config = $derived<MapConfig>({
     engine: 'leaflet',
+    controls: [{ id: 'zoom' }, { id: 'layer-list' }],
     view: {
       center: { crs: 'OGC:CRS84', coordinates: [151.21, -33.87] },
       zoom: 14
     },
     layers: [
       {
+        id: 'demonstration-basemap',
+        order: 0,
+        attribution: 'CII synthetic tile grid — not geographic reference data',
+        source: {
+          provider: 'xyz',
+          url: `${asset('maps/demo-tile.svg')}?z={z}&x={x}&y={y}`,
+          crs: {
+            code: 'EPSG:3857',
+            provenance: { kind: 'declared', by: 'CII example author' }
+          }
+        }
+      },
+      {
         id: 'demonstration-sites',
+        order: 1,
         visible,
         attribution: 'CII synthetic demonstration data',
         source: {
@@ -50,8 +66,9 @@
 
 <Preview title="Community map">
   <p>
-    Illustrative sites near Sydney. These locations are synthetic; no external
-    basemap or tile service is used.
+    Illustrative sites near Sydney. The locations and repeating basemap grid are
+    synthetic. Tiles are served locally; the grid does not represent streets or
+    boundaries. Use Layers to change visibility, opacity and stacking order.
   </p>
   <div class="actions">
     <Button
@@ -71,6 +88,7 @@
   </div>
   {#if mounted}<MapContainer
       {config}
+      height="36rem"
       label="Community demonstration"
       description="Three illustrative community locations. Use the list below as a text alternative."
     />{/if}

@@ -1,4 +1,5 @@
 import type * as Leaflet from 'leaflet';
+import { assertXyzTileData } from './sources/xyz.ts';
 import { MapError } from './errors.ts';
 import { loadLeaflet } from './engine/leaflet-api.ts';
 import { assertDisplayCrs } from './engine/registry.ts';
@@ -45,7 +46,7 @@ export default class LeafletEngine implements IMapEngine {
       ['EPSG:3857', 'EPSG:4326', 'OGC:CRS84'].includes(code)
         ? 'native'
         : 'unsupported',
-    renderKinds: new Set(['features']),
+    renderKinds: new Set(['features', 'raster-tiles']),
     rasterReprojection: false,
     rotation: false,
     styleFeatures: new Set(['dash'])
@@ -56,6 +57,10 @@ export default class LeafletEngine implements IMapEngine {
   #destroyed = false;
   #mounting = false;
   #entries = new Map<string, Entry>();
+  #tiles = new Map<
+    string,
+    { layer: Leaflet.TileLayer; pane: HTMLElement; paneName: string }
+  >();
   #sequence = 0;
   #cleanups: (() => void)[] = [];
   #frame?: number;
@@ -450,7 +455,7 @@ export default class LeafletEngine implements IMapEngine {
     const map = this.#getMap();
     const L = this.#library!;
     assertLeafletStyle(input.style);
-    if (this.#entries.has(input.id))
+    if (this.#entries.has(input.id) || this.#tiles.has(input.id))
       throw new MapError('LAYER_DUPLICATE', { id: input.id });
     const data = parseGeoJson(input.data);
     const paneName = `cii-layer-${++this.#sequence}`;
@@ -540,11 +545,101 @@ export default class LeafletEngine implements IMapEngine {
       }
     };
   }
-  addLayer(layer: ResolvedLayer): LayerHandle {
+  #addTiles(input: ResolvedLayer): LayerHandle {
+    const map = this.#getMap();
+    if (this.#entries.has(input.id) || this.#tiles.has(input.id))
+      throw new MapError('LAYER_DUPLICATE', { id: input.id });
     if (
-      layer.renderKind !== 'features' ||
-      layer.displayCrs !== this.#definition?.code
+      input.displayCrs !== 'EPSG:3857' ||
+      input.sourceCrs.crs.code !== 'EPSG:3857'
     )
+      throw new MapError('LAYER_INCOMPATIBLE', { id: input.id });
+    assertXyzTileData(input.data);
+    const assertStyle = (style?: PortableStyle) => {
+      if (style && Object.keys(style).length)
+        throw new MapError('STYLE_UNSUPPORTED', {
+          renderKind: 'raster-tiles',
+          reason: 'Raster tiles support layer opacity, not feature styles.'
+        });
+    };
+    assertStyle(input.style);
+    const paneName = `cii-layer-${++this.#sequence}`;
+    const pane = map.createPane(paneName);
+    pane.style.zIndex = String(400 + input.order);
+    pane.style.pointerEvents = 'none';
+    const layer = new this.#library!.TileLayer(input.data.url, {
+      pane: paneName,
+      tileSize: 256,
+      minZoom: 0,
+      maxZoom: 24,
+      opacity: input.opacity,
+      keepBuffer: 0,
+      // Credits are always rendered as plain text by MapContainer.
+      attribution: undefined
+    });
+    const entry = { layer, pane, paneName };
+    const failed = () => {
+      if (this.#tiles.get(input.id) === entry)
+        this.#emit(
+          'error',
+          new MapError('LAYER_LOAD_FAILED', {
+            id: input.id,
+            provider: 'xyz',
+            reason:
+              'An XYZ tile could not be loaded. Check the tile service and toggle the layer to retry.'
+          })
+        );
+    };
+    layer.on('tileerror', failed);
+    this.#tiles.set(input.id, entry);
+    const remove = () => {
+      if (this.#tiles.get(input.id) !== entry) return;
+      this.#tiles.delete(input.id);
+      map.removeLayer(layer);
+      layer.off();
+      pane.remove();
+      delete map.getPanes()[paneName];
+    };
+    try {
+      if (input.visible) layer.addTo(map);
+    } catch (error) {
+      remove();
+      throw error;
+    }
+    const active = () => {
+      this.#getMap();
+      if (this.#tiles.get(input.id) !== entry)
+        throw new MapError('LAYER_REMOVED', { id: input.id });
+    };
+    return {
+      setVisible: (visible) => {
+        active();
+        if (visible) layer.addTo(map);
+        else map.removeLayer(layer);
+      },
+      setOpacity: (opacity) => {
+        active();
+        if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1)
+          throw new MapError('LAYER_INVALID');
+        layer.setOpacity(opacity);
+      },
+      setOrder: (order) => {
+        active();
+        if (!Number.isInteger(order)) throw new MapError('LAYER_INVALID');
+        pane.style.zIndex = String(400 + order);
+      },
+      setStyle: (style) => {
+        active();
+        assertStyle(style);
+      },
+      remove
+    };
+  }
+  addLayer(layer: ResolvedLayer): LayerHandle {
+    if (layer.displayCrs !== this.#definition?.code)
+      throw new MapError('LAYER_INCOMPATIBLE', { id: layer.id });
+    if (layer.renderKind === 'raster-tiles') return this.#addTiles(layer);
+    if (layer.renderKind !== 'features')
       throw new MapError('LAYER_INCOMPATIBLE', { id: layer.id });
     return this.#add(layer);
   }
@@ -673,6 +768,12 @@ export default class LeafletEngine implements IMapEngine {
       entry.group.clearLayers();
       entry.data = { type: 'FeatureCollection', features: [] };
     }
+    for (const entry of this.#tiles.values()) {
+      this.#map?.removeLayer(entry.layer);
+      entry.layer.off();
+      entry.pane.remove();
+    }
+    this.#tiles.clear();
     this.#map?.remove();
     this.#map = undefined;
     this.#entries.clear();

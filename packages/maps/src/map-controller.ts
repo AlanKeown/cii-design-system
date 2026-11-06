@@ -1,3 +1,4 @@
+import { assertXyzTileData } from './sources/xyz.ts';
 import { assertDisplayCrs } from './engine/registry.ts';
 import { createRegistries } from './extensions/registries.ts';
 import { createTransformService } from './crs/transform.ts';
@@ -70,6 +71,17 @@ export function createLeafletRuntime(
       return { data };
     }
   });
+  renderers.register('leaflet:raster-tiles', {
+    compatibility: (source) =>
+      source.provider === 'xyz'
+        ? undefined
+        : 'Only XYZ raster tiles are implemented.',
+    prepare: (source, context) => {
+      context.signal.throwIfAborted();
+      assertXyzTileData(source.data);
+      return { data: source.data };
+    }
+  });
   return {
     ...registries,
     transforms,
@@ -83,7 +95,9 @@ export interface MapLayerInfo {
   crs: ConfirmedCrs;
   accuracy: TransformAccuracy;
   visible: boolean;
-  count: number;
+  count: number | null;
+  opacity: number;
+  order: number;
 }
 export interface MapSnapshot {
   ready: boolean;
@@ -93,6 +107,7 @@ export interface MapSnapshot {
   layerErrors: readonly { id: string; error: MapError }[];
   attributions: readonly string[];
   showZoom: boolean;
+  showLayerList: boolean;
 }
 interface RecordEntry {
   key: string;
@@ -107,7 +122,7 @@ export interface MapControllerCallbacks {
   onviewchange?: (view: ViewState, source: 'api' | 'user') => void;
 }
 
-/** Browser lifecycle coordinator for the first read-only Leaflet feature slice. */
+/** Browser lifecycle coordinator for read-only Leaflet feature and XYZ layers. */
 export class MapController {
   readonly layers: LayerManager;
   #node: HTMLElement;
@@ -125,6 +140,7 @@ export class MapController {
   #ready = false;
   #notified = false;
   #offView?: () => void;
+  #offError?: () => void;
   constructor(
     node: HTMLElement,
     runtime: MapRuntime,
@@ -148,7 +164,12 @@ export class MapController {
         crs: entry.spec.source.crs,
         accuracy: entry.accuracy,
         visible: entry.spec.visible ?? true,
-        count: (entry.spec.source.data as FeatureBatch).features.length
+        opacity: entry.spec.opacity ?? 1,
+        order: entry.spec.order ?? 0,
+        count:
+          entry.spec.source.renderKind === 'features'
+            ? (entry.spec.source.data as FeatureBatch).features.length
+            : null
       })),
       layerErrors: [...this.#layerErrors].map(([id, error]) => ({ id, error })),
       attributions: [
@@ -160,6 +181,10 @@ export class MapController {
             )
         )
       ],
+      showLayerList:
+        this.#config?.controls?.some(
+          (control) => control.id === 'layer-list'
+        ) ?? false,
       showZoom:
         this.#config?.controls?.some((control) => control.id === 'zoom') ?? true
     };
@@ -196,10 +221,14 @@ export class MapController {
         config.layers.some((layer) => layer.editable) ||
         config.controls?.some(
           (control) =>
-            !['zoom', 'attribution'].includes(control.id) ||
+            !['zoom', 'attribution', 'layer-list'].includes(control.id) ||
             (control.position &&
               control.position !==
-                (control.id === 'zoom' ? 'top-left' : 'bottom-right'))
+                (control.id === 'zoom'
+                  ? 'top-left'
+                  : control.id === 'layer-list'
+                    ? 'top-right'
+                    : 'bottom-right'))
         ) ||
         [
           config.view.minZoom,
@@ -210,7 +239,7 @@ export class MapController {
       )
         throw new MapError('CONFIG_INVALID', {
           reason:
-            'The first slice supports read-only features, zoom and attribution; other controls and view limits are not yet supported.'
+            'This slice supports read-only features, XYZ tiles, zoom, attribution and layer list; other controls and view limits are not yet supported.'
         });
       if (
         this.#config &&
@@ -254,6 +283,18 @@ export class MapController {
           this.#engine = candidate;
           candidate = undefined;
           this.#mounting = undefined;
+          this.#offError = this.#engine!.on('error', (error) => {
+            const id = error.details.id;
+            if (
+              typeof id === 'string' &&
+              this.#records.has(id) &&
+              !this.#layerErrors.has(id)
+            ) {
+              this.#layerErrors.set(id, error);
+              this.#emit();
+              this.#callbacks.onlayererror?.(error);
+            }
+          });
           this.#offView = this.#engine!.on('viewchange', (event) => {
             this.#emit();
             this.#callbacks.onviewchange?.(event.view, event.source);
@@ -328,7 +369,7 @@ export class MapController {
               source,
               visible: item.visible,
               opacity: item.opacity,
-              order: item.order,
+              order: item.order ?? config.layers.indexOf(item),
               style,
               attribution: item.attribution
             };
@@ -386,6 +427,18 @@ export class MapController {
       return;
     this.#engine.setView(view);
   }
+  updateLayer(
+    id: string,
+    patch: { visible?: boolean; opacity?: number; order?: number }
+  ): void {
+    const entry = this.#records.get(id);
+    if (!entry) return;
+    const spec = { ...entry.spec, ...patch };
+    entry.managed.update(spec);
+    entry.spec = spec;
+    this.#layerErrors.delete(id);
+    this.#emit();
+  }
   zoom(delta: number): void {
     if (!this.#engine) return;
     const view = this.#engine.getView();
@@ -402,6 +455,7 @@ export class MapController {
     this.#preparing?.abort();
     this.#lifetime.abort();
     this.#offView?.();
+    this.#offError?.();
     try {
       this.layers.destroy();
     } finally {

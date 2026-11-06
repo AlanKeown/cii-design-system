@@ -1,6 +1,6 @@
 ---
 title: Map
-description: A first Leaflet feature map with explicit CRS confirmation and display accuracy reporting.
+description: Leaflet feature and XYZ tile maps with explicit CRS confirmation and first-party layer controls.
 ---
 
 <script lang="ts">
@@ -8,8 +8,9 @@ description: A first Leaflet feature map with explicit CRS confirmation and disp
 </script>
 
 `@cii/maps/svelte` provides an SSR-safe `MapContainer`. This first slice
-displays inline and fetched GeoJSON features using Leaflet 1.9.4, first-party
-zoom controls and mandatory attribution.
+displays inline and fetched GeoJSON features and standard Web Mercator XYZ
+raster tiles using Leaflet 1.9.4, first-party zoom and layer controls, and
+mandatory attribution.
 
 <MapExample />
 
@@ -42,6 +43,68 @@ Install the `leaflet` peer (`>=1.9.4 <2`) and the package's `proj4` peer.
 Leaflet code loads in the browser during mounting; its CSS is included by the
 Svelte entry point. Always provide a meaningful `label` and a non-map
 alternative for information in the map.
+
+## XYZ basemaps and layer controls
+
+Add an XYZ layer before the feature overlays and enable the layer list:
+
+```ts
+import type { MapConfig } from '@cii/maps';
+
+const config: MapConfig = {
+  engine: 'leaflet',
+  display: { crs: 'EPSG:3857' },
+  view: {
+    center: { crs: 'OGC:CRS84', coordinates: [151.21, -33.87] },
+    zoom: 14
+  },
+  controls: [{ id: 'zoom' }, { id: 'layer-list', position: 'top-right' }],
+  layers: [{
+    id: 'basemap',
+    attribution: 'Your tile provider’s required credit',
+    order: 0,
+    source: {
+      provider: 'xyz',
+      url: '/tiles/{z}/{x}/{y}.png',
+      crs: {
+        code: 'EPSG:3857',
+        provenance: { kind: 'declared', by: 'application author' }
+      }
+    }
+  }]
+};
+```
+
+Supply a real tile service at the example URL. The live example above uses a
+local repeating synthetic grid, not a street map or geographic reference.
+
+XYZ currently means 256-pixel tiles on the standard EPSG:3857 grid, zooms 0–24,
+with a top-left origin and Y increasing southward. Only `{z}`, `{x}` and `{y}`
+URL placeholders are supported. TMS, subdomain templates, retina/512-pixel
+conventions and custom grids are not implemented. A different source CRS or
+incompatible display grid is refused; tiles are never reprojected. No tiles are
+shown outside that zoom range. Use layer opacity rather than feature styles on
+raster layers.
+
+The layer list appears at the top right when enabled. It provides labelled
+checkboxes, keyboard-operable opacity sliders and move-up/move-down buttons.
+Layers are listed from top to bottom; higher order values render above lower
+ones. Omitted orders follow configuration array order. These controls patch
+existing layer handles and preserve the map view. Control changes are local to
+the mounted map; applying a new `config` restores the settings in that config.
+Use application-owned reactive configuration when settings must persist.
+
+Attribution is rendered as plain text for visible layers, including layers with
+zero opacity. Tile failures reach `onerror` as `LAYER_LOAD_FAILED` and appear in
+the map's error area; hide and show the layer to retry. A tile error does not
+remove working sibling layers. Layer readiness means attachment, not that every
+tile in the viewport has downloaded. Hiding/removing the layer or unmounting
+releases pending tile images and native resources.
+
+XYZ uses browser image requests, including normal browser cookie rules. The
+runtime `fetch` override applies to GeoJSON requests; it does not intercept tile
+images. Serve authenticated tiles through an application-owned URL when custom
+request headers are needed. Keep credentials out of configuration.
 
 ## Properties
 
@@ -137,8 +200,8 @@ wraps within the container.
 
 ## Scope and limits
 
-This slice supports base path styling, circle points and theme tokens. Labels,
-icons, data-driven rules, raster basemaps, custom projected displays and editing
-are not implemented yet; unsupported options fail explicitly. GeoJSON reads are
+This slice supports base path styling, circle points, theme tokens and standard
+Web Mercator XYZ raster basemaps. Labels, icons, data-driven rules, custom
+projected displays and editing are not implemented yet; unsupported options fail explicitly. GeoJSON reads are
 bounded to 5 MiB, 10,000 features and 100,000 positions. Properties are treated
 as data and never inserted as HTML.

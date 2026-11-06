@@ -2,8 +2,10 @@
 
 Foundations and the first read-only rendering slice for the
 [mapping development plan](../../docs/svelte-mapping-components-development-plan.md).
-This private workspace package now renders inline and fetched GeoJSON with
-Leaflet 1.9.4 through an SSR-safe Svelte component.
+This private workspace package renders inline/fetched GeoJSON and standard Web
+Mercator XYZ raster tiles with Leaflet 1.9.4 through an SSR-safe Svelte
+component. Enable `controls: [{ id: 'zoom' }, { id: 'layer-list' }]` for
+first-party visibility, opacity and stacking controls.
 
 ```svelte
 <script lang="ts">
@@ -66,11 +68,11 @@ fail instead of being clipped.
 Config updates reconcile existing layers and preserve the map and user view for
 visual-only changes. Superseded requests and unmounts cancel pending work.
 Engine/display changes require remounting in this slice. Base paths, circle
-points and CII colour tokens are supported; raster basemaps, custom projected
-displays, labels, icons, rules, capture and other controls remain pending and
-fail explicitly. GeoJSON reads are limited to 5 MiB, 10,000 features and 100,000
-positions; hit testing currently scans the bounded feature set without a spatial
-index. See the
+points, CII colour tokens and XYZ raster basemaps are supported; custom
+projected displays, labels, icons, rules, capture and other controls remain
+pending and fail explicitly. GeoJSON reads are limited to 5 MiB, 10,000 features
+and 100,000 positions; hit testing currently scans the bounded feature set
+without a spatial index. See the
 [working documentation example](../../apps/docs/src/routes/components/map/+page.md).
 
 Install Leaflet (`>=1.9.4 <2`) and Svelte 5 for the rendering entry points; they
@@ -393,8 +395,8 @@ feasibility findings are recorded in
 Measured Supabase pipeline/grid limitations are enforced by the server
 capability preflight; production named browser grids remain disabled. Spike-only
 MapLibre/OpenLayers bridges, capture and custom Leaflet CRS construction do not
-expand the production adapter's capabilities. Phase 1 continues with raster
-basemaps, layer controls and the remaining display work.
+expand the production adapter's capabilities. Phase 1 now includes XYZ raster
+basemaps and layer controls; WMS/WMTS and the remaining display work follow.
 
 `createRegistries({ australia, fetch })` exposes engines, CRS providers, data
 sources, renderers, controls, capture modes, validators, persistence adapters,
@@ -434,3 +436,13 @@ the approved 16 MiB browser-memory default. Above that, files route to the
 server unless the application explicitly supplies a fitting OPFS byte limit and
 OPFS is available. This pure selection helper does not load a GeoPackage or
 confirm its CRS; those provider features remain Phase 2 work.
+
+XYZ raster sources require a declared EPSG:3857 x/y CRS, the standard 256px Web
+Mercator grid, a URL containing `{z}`, `{x}` and `{y}`, and attribution. They
+support zooms 0–24; outside that range tiles are not shown. Other grids,
+TMS/subdomain/retina conventions and raster feature styles fail explicitly. Tile
+images use native browser requests rather than the runtime GeoJSON `fetch`
+override. See the documentation example for a complete config, request behaviour
+and retry guidance. Layer-list edits apply locally to the mounted map; a new
+config reapplies application settings. Default stacking follows config array
+order; explicit higher orders render above lower orders.

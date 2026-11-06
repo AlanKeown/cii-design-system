@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack, type Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
+  import LayerList from './LayerList.svelte';
   import MapErrorNotice from './MapErrorNotice.svelte';
   import { Alert, Button } from '@cii/svelte';
   import 'leaflet/dist/leaflet.css';
@@ -55,7 +56,8 @@
   const ready = $derived(snapshot?.ready ?? false);
   const datumDiffers = $derived(
     snapshot?.layers.some(
-      (layer) => layer.accuracy.datumRelationship !== 'same'
+      (layer) =>
+        layer.count !== null && layer.accuracy.datumRelationship !== 'same'
     ) ?? false
   );
   setMapContext({
@@ -165,6 +167,15 @@
         >
       </div>
     {/if}
+    {#if snapshot?.showLayerList}
+      <div class="layer-list">
+        <LayerList
+          layers={snapshot.layers}
+          onchange={(id, patch) =>
+            navigate(() => controller?.updateLayer(id, patch))}
+        />
+      </div>
+    {/if}
     {#if !ready && !error}<p class="loading" role="status">Loading map…</p>{/if}
   </div>
   <div class="attribution" aria-label="Map attribution">
@@ -195,8 +206,10 @@
       <summary>Layer information</summary>
       <ul>
         {#each snapshot.layers as layer (layer.id)}<li>
-            {layer.id}: {layer.count} features · {layer.crs.crs.code}{layer
-              .accuracy.datumRelationship !== 'same'
+            {layer.id}: {layer.count === null
+              ? 'raster tiles'
+              : `${layer.count} features`} · {layer.crs.crs.code}{layer.accuracy
+              .datumRelationship !== 'same' && layer.count !== null
               ? ' · datum differs from display'
               : ''}
           </li>{/each}
@@ -240,6 +253,18 @@
     z-index: 1000;
     display: grid;
     gap: var(--cii-space-1);
+  }
+  .layer-list {
+    position: absolute;
+    top: var(--cii-space-3);
+    right: var(--cii-space-3);
+    z-index: 1000;
+    width: min(17rem, calc(100% - 6rem));
+    max-height: calc(100% - 2 * var(--cii-space-3));
+    overflow: auto;
+    background: var(--cii-bg-card);
+    border-radius: var(--cii-radius-input);
+    font-size: var(--cii-font-caption);
   }
   .loading {
     position: absolute;

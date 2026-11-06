@@ -7,14 +7,20 @@ export function mapErrorMessage(error: MapError): string {
     case 'CONFIG_INVALID':
       return 'Some map settings are invalid or unsupported. Check the configuration and correct any settings listed below.';
     case 'SOURCE_INVALID':
-      return 'The layer data could not be read as GeoJSON. Check the file’s format and geometry, then load it again.';
+      return error.details.provider === 'xyz'
+        ? 'The XYZ tile address is invalid. Use an HTTP(S) or relative URL with {z}, {x} and {y} placeholders, then load it again.'
+        : 'The layer data could not be read as GeoJSON. Check the file’s format and geometry, then load it again.';
     case 'SOURCE_LOAD_FAILED':
     case 'LAYER_LOAD_FAILED':
-      return 'The layer could not be loaded. Check your connection and the data address, then try loading it again.';
+      return error.details.provider === 'xyz'
+        ? 'Some tiles could not be loaded. Check your connection and the tile address, then hide and show the layer to retry.'
+        : 'The layer could not be loaded. Check your connection and the data address, then try loading it again.';
     case 'SOURCE_TOO_LARGE':
       return 'The layer exceeds the supported data limit. Reduce it to 5 MiB, 10,000 features and 100,000 positions, then load it again.';
     case 'STYLE_UNSUPPORTED':
-      return 'The layer style could not be applied. Use supported path or circle styles, import @cii/tokens/tokens.css and check any colour token names.';
+      return error.details.renderKind === 'raster-tiles'
+        ? 'Feature styles cannot be applied to raster tiles. Remove the layer style and use layer opacity instead.'
+        : 'The layer style could not be applied. Use supported path or circle styles, import @cii/tokens/tokens.css and check any colour token names.';
     case 'VIEW_INVALID':
       return 'The map position could not be applied. Check the centre coordinates and use a supported zoom or positive resolution without rotation.';
     case 'ATTRIBUTION_REQUIRED':

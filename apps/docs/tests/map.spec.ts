@@ -19,6 +19,16 @@ test('map documentation prerenders a stable placeholder and hydrates a working f
   });
   await expect(map).toHaveAttribute('data-map-ready', 'true');
   await expect(map.locator('canvas')).toHaveCount(1);
+  await expect(map.locator('img.leaflet-tile-loaded').first()).toBeVisible();
+  const basemap = map.getByRole('checkbox', {
+    name: 'demonstration-basemap',
+    exact: true
+  });
+  await expect(basemap).toBeChecked();
+  await basemap.uncheck();
+  await expect(map.locator('img.leaflet-tile')).toHaveCount(0);
+  await basemap.check();
+  await expect(map.locator('img.leaflet-tile-loaded').first()).toBeVisible();
   await expect(
     map.getByText('Display accuracy', { exact: true })
   ).toBeVisible();

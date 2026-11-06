@@ -1,3 +1,4 @@
+import { xyzSource } from '../sources/xyz.ts';
 import { Registry } from '../registry.ts';
 import { EngineRegistry } from '../engine/registry.ts';
 import { createCrsRegistry } from '../crs/registry.ts';
@@ -35,11 +36,13 @@ export function createRegistries(
   options: { australia?: boolean; fetch?: typeof fetch } = {}
 ): Registries {
   const crs = createCrsRegistry(options);
+  const sources = createFeatureSources(options.fetch);
+  sources.register('xyz', xyzSource);
   return {
     engines: new EngineRegistry(),
     crs,
     crsProviders: crs.providers,
-    sources: createFeatureSources(options.fetch),
+    sources,
     renderers: new Registry<LayerRenderer>(),
     controls: new Registry<ControlRegistration>(),
     captureModes: new Registry<CaptureMode>(),
