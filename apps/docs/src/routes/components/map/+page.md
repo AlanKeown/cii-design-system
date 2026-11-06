@@ -9,7 +9,8 @@ description: Leaflet feature and XYZ/WMS/WMTS raster maps with explicit CRS conf
 
 `@cii/maps/svelte` provides an SSR-safe `MapContainer`. This first slice
 displays inline and fetched GeoJSON features and standard Web Mercator XYZ
-raster tiles, plus WMS and WMTS services, using Leaflet 1.9.4, first-party zoom and layer controls, and
+raster tiles, plus WMS and WMTS services, using Leaflet 1.9.4, first-party zoom
+and layer controls, and
 mandatory attribution.
 
 <MapExample />
@@ -103,7 +104,8 @@ tile in the viewport has downloaded. Hiding/removing the layer or unmounting
 releases pending tile images and native resources.
 
 XYZ uses browser image requests, including normal browser cookie rules. The
-runtime `fetch` override applies to GeoJSON and capabilities requests; it does not intercept tile
+runtime `fetch` override applies to GeoJSON and capabilities requests; it does
+not intercept tile
 images. Serve authenticated tiles through an application-owned URL when custom
 request headers are needed. Keep credentials out of configuration.
 
@@ -285,7 +287,8 @@ wraps within the container.
 ## Scope and limits
 
 This slice supports base path styling, circle points, theme tokens and standard
-Web Mercator XYZ/WMTS basemaps and WMS raster services. Labels, icons, data-driven rules, custom
-projected displays and editing are not implemented yet; unsupported options fail explicitly. GeoJSON reads are
+Web Mercator XYZ/WMTS basemaps and WMS raster services. Labels, icons,
+data-driven rules, custom projected displays and editing are not implemented
+yet; unsupported options fail explicitly. GeoJSON reads are
 bounded to 5 MiB, 10,000 features and 100,000 positions. Properties are treated
 as data and never inserted as HTML.
