@@ -20,6 +20,19 @@ test('map documentation prerenders a stable placeholder and hydrates a working f
   await expect(map).toHaveAttribute('data-map-ready', 'true');
   await expect(map.locator('canvas')).toHaveCount(1);
   await expect(map.locator('img.leaflet-tile-loaded').first()).toBeVisible();
+  const service = page.getByRole('combobox', { name: 'Basemap service' });
+  for (const provider of ['wms', 'wmts', 'xyz']) {
+    await service.selectOption(provider);
+    await expect(
+      map
+        .locator(
+          `img.leaflet-tile-loaded[src*="${provider === 'xyz' ? 'demo-tile.svg' : provider === 'wms' ? 'REQUEST=GetMap' : 'REQUEST=GetTile'}"]`
+        )
+        .first()
+    ).toBeVisible();
+    await expect(map.getByRole('alert')).toHaveCount(0);
+  }
+
   const basemap = map.getByRole('checkbox', {
     name: 'demonstration-basemap',
     exact: true

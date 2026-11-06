@@ -1,3 +1,5 @@
+import { assertWmtsLeafletGrid } from './sources/ogc-raster.ts';
+import type { OgcTileData } from './sources/ogc-raster.ts';
 import { assertXyzTileData } from './sources/xyz.ts';
 import { assertDisplayCrs } from './engine/registry.ts';
 import { createRegistries } from './extensions/registries.ts';
@@ -73,13 +75,37 @@ export function createLeafletRuntime(
   });
   renderers.register('leaflet:raster-tiles', {
     compatibility: (source) =>
-      source.provider === 'xyz'
+      ['xyz', 'wms', 'wmts'].includes(source.provider)
         ? undefined
-        : 'Only XYZ raster tiles are implemented.',
+        : 'Only XYZ, WMS and WMTS raster tiles are implemented.',
     prepare: (source, context) => {
       context.signal.throwIfAborted();
-      assertXyzTileData(source.data);
-      return { data: source.data };
+      if (source.provider === 'xyz') {
+        assertXyzTileData(source.data);
+        return { data: source.data };
+      }
+      const data = source.data as OgcTileData;
+      if (data.kind === 'wmts') {
+        assertWmtsLeafletGrid(data);
+        return { data };
+      }
+      const code = context.displayCrs.code;
+      if (!data.supportedCrs.includes(code))
+        throw new MapError('LAYER_INCOMPATIBLE', {
+          reason: 'WMS does not advertise the display CRS.'
+        });
+      return {
+        data: {
+          ...data,
+          requestCrs: code,
+          axisOrder:
+            data.version === '1.3.0' &&
+            code !== 'OGC:CRS84' &&
+            !context.displayCrs.projected
+              ? 'yx'
+              : 'xy'
+        } satisfies OgcTileData
+      };
     }
   });
   return {
@@ -239,7 +265,7 @@ export class MapController {
       )
         throw new MapError('CONFIG_INVALID', {
           reason:
-            'This slice supports read-only features, XYZ tiles, zoom, attribution and layer list; other controls and view limits are not yet supported.'
+            'This slice supports read-only features, XYZ/WMS/WMTS tiles, zoom, attribution and layer list; other controls and view limits are not yet supported.'
         });
       if (
         this.#config &&

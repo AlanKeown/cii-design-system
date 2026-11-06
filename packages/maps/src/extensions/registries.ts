@@ -1,3 +1,4 @@
+import { createOgcRasterSources } from '../sources/ogc-raster.ts';
 import { xyzSource } from '../sources/xyz.ts';
 import { Registry } from '../registry.ts';
 import { EngineRegistry } from '../engine/registry.ts';
@@ -38,6 +39,9 @@ export function createRegistries(
   const crs = createCrsRegistry(options);
   const sources = createFeatureSources(options.fetch);
   sources.register('xyz', xyzSource);
+  const ogc = createOgcRasterSources(options.fetch);
+  sources.register('wms', ogc.wms);
+  sources.register('wmts', ogc.wmts);
   return {
     engines: new EngineRegistry(),
     crs,

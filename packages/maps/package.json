@@ -101,6 +101,7 @@
     }
   },
   "dependencies": {
-    "@cii/tokens": "0.2.0"
+    "@cii/tokens": "0.2.0",
+    "@xmldom/xmldom": "0.9.12"
   }
 }

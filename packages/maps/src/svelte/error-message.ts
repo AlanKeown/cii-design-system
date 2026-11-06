@@ -12,10 +12,12 @@ export function mapErrorMessage(error: MapError): string {
         : 'The layer data could not be read as GeoJSON. Check the file’s format and geometry, then load it again.';
     case 'SOURCE_LOAD_FAILED':
     case 'LAYER_LOAD_FAILED':
-      return error.details.provider === 'xyz'
+      return ['xyz', 'wms', 'wmts'].includes(String(error.details.provider))
         ? 'Some tiles could not be loaded. Check your connection and the tile address, then hide and show the layer to retry.'
         : 'The layer could not be loaded. Check your connection and the data address, then try loading it again.';
     case 'SOURCE_TOO_LARGE':
+      if (error.details.provider === 'ogc')
+        return 'The capabilities document exceeds 2 MiB. Use a smaller service catalogue or a filtered application endpoint.';
       return 'The layer exceeds the supported data limit. Reduce it to 5 MiB, 10,000 features and 100,000 positions, then load it again.';
     case 'STYLE_UNSUPPORTED':
       return error.details.renderKind === 'raster-tiles'

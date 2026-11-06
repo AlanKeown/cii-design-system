@@ -1,4 +1,7 @@
 import type * as Leaflet from 'leaflet';
+import { assertWmtsLeafletGrid, ogcTileUrl } from './sources/ogc-raster.ts';
+import type { OgcTileData } from './sources/ogc-raster.ts';
+import type { XyzTileData } from './sources/xyz.ts';
 import { assertXyzTileData } from './sources/xyz.ts';
 import { MapError } from './errors.ts';
 import { loadLeaflet } from './engine/leaflet-api.ts';
@@ -549,12 +552,33 @@ export default class LeafletEngine implements IMapEngine {
     const map = this.#getMap();
     if (this.#entries.has(input.id) || this.#tiles.has(input.id))
       throw new MapError('LAYER_DUPLICATE', { id: input.id });
-    if (
-      input.displayCrs !== 'EPSG:3857' ||
-      input.sourceCrs.crs.code !== 'EPSG:3857'
-    )
+    const data = input.data as XyzTileData | OgcTileData;
+    const service =
+      data && typeof data === 'object' && 'kind' in data
+        ? (data as OgcTileData)
+        : undefined;
+    if (!service) {
+      if (
+        input.displayCrs !== 'EPSG:3857' ||
+        input.sourceCrs.crs.code !== 'EPSG:3857'
+      )
+        throw new MapError('LAYER_INCOMPATIBLE', { id: input.id });
+      assertXyzTileData(data);
+    } else if (service.kind === 'wmts') {
+      if (
+        input.displayCrs !== 'EPSG:3857' ||
+        input.sourceCrs.crs.code !== 'EPSG:3857'
+      )
+        throw new MapError('LAYER_INCOMPATIBLE', { id: input.id });
+      assertWmtsLeafletGrid(service);
+    } else if (
+      service.kind !== 'wms' ||
+      service.requestCrs !== input.displayCrs ||
+      !Array.isArray(service.supportedCrs) ||
+      !service.supportedCrs.includes(input.displayCrs)
+    ) {
       throw new MapError('LAYER_INCOMPATIBLE', { id: input.id });
-    assertXyzTileData(input.data);
+    }
     const assertStyle = (style?: PortableStyle) => {
       if (style && Object.keys(style).length)
         throw new MapError('STYLE_UNSUPPORTED', {
@@ -567,11 +591,18 @@ export default class LeafletEngine implements IMapEngine {
     const pane = map.createPane(paneName);
     pane.style.zIndex = String(400 + input.order);
     pane.style.pointerEvents = 'none';
-    const layer = new this.#library!.TileLayer(input.data.url, {
+    const L = this.#library!;
+    class OgcTileLayer extends L.TileLayer {
+      override getTileUrl(coords: Leaflet.Coords): string {
+        return ogcTileUrl(service!, coords) ?? L.Util.emptyImageUrl;
+      }
+    }
+    const TileLayer = service ? OgcTileLayer : L.TileLayer;
+    const layer = new TileLayer(data.url, {
       pane: paneName,
       tileSize: 256,
-      minZoom: 0,
-      maxZoom: 24,
+      minZoom: service?.kind === 'wmts' ? service.matrices[0].zoom! : 0,
+      maxZoom: service?.kind === 'wmts' ? service.matrices.at(-1)!.zoom! : 24,
       opacity: input.opacity,
       keepBuffer: 0,
       // Credits are always rendered as plain text by MapContainer.
@@ -584,9 +615,9 @@ export default class LeafletEngine implements IMapEngine {
           'error',
           new MapError('LAYER_LOAD_FAILED', {
             id: input.id,
-            provider: 'xyz',
+            provider: service?.kind ?? 'xyz',
             reason:
-              'An XYZ tile could not be loaded. Check the tile service and toggle the layer to retry.'
+              'A raster tile could not be loaded. Check the tile service and toggle the layer to retry.'
           })
         );
     };

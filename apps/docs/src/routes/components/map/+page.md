@@ -1,6 +1,6 @@
 ---
 title: Map
-description: Leaflet feature and XYZ tile maps with explicit CRS confirmation and first-party layer controls.
+description: Leaflet feature and XYZ/WMS/WMTS raster maps with explicit CRS confirmation and first-party layer controls.
 ---
 
 <script lang="ts">
@@ -9,7 +9,7 @@ description: Leaflet feature and XYZ tile maps with explicit CRS confirmation an
 
 `@cii/maps/svelte` provides an SSR-safe `MapContainer`. This first slice
 displays inline and fetched GeoJSON features and standard Web Mercator XYZ
-raster tiles using Leaflet 1.9.4, first-party zoom and layer controls, and
+raster tiles, plus WMS and WMTS services, using Leaflet 1.9.4, first-party zoom and layer controls, and
 mandatory attribution.
 
 <MapExample />
@@ -76,7 +76,8 @@ const config: MapConfig = {
 ```
 
 Supply a real tile service at the example URL. The live example above uses a
-local repeating synthetic grid, not a street map or geographic reference.
+local repeating synthetic grid, not a street map or geographic reference. Its
+Basemap service selector also exercises local WMS and WMTS capabilities.
 
 XYZ currently means 256-pixel tiles on the standard EPSG:3857 grid, zooms 0–24,
 with a top-left origin and Y increasing southward. Only `{z}`, `{x}` and `{y}`
@@ -102,9 +103,92 @@ tile in the viewport has downloaded. Hiding/removing the layer or unmounting
 releases pending tile images and native resources.
 
 XYZ uses browser image requests, including normal browser cookie rules. The
-runtime `fetch` override applies to GeoJSON requests; it does not intercept tile
+runtime `fetch` override applies to GeoJSON and capabilities requests; it does not intercept tile
 images. Serve authenticated tiles through an application-owned URL when custom
 request headers are needed. Keep credentials out of configuration.
+
+## WMS and WMTS services
+
+Services confirm their CRS from capabilities rather than an application declaration:
+
+```ts
+import type { LayerConfig } from '@cii/maps';
+
+const wms: LayerConfig = {
+  id: 'cadastre',
+  attribution: 'Your service provider’s required credit',
+  source: {
+    provider: 'wms',
+    url: '/services/wms',
+    layers: 'parcels,addresses',
+    version: '1.3.0',
+    crs: { fromMetadata: true, policy: 'prefer-display' }
+  }
+};
+
+const wmts: LayerConfig = {
+  id: 'imagery',
+  attribution: 'Your imagery provider’s required credit',
+  source: {
+    provider: 'wmts',
+    url: '/services/wmts',
+    layer: 'orthophoto',
+    matrixSet: 'GoogleMapsCompatible',
+    crs: { fromMetadata: true, policy: 'prefer-display' }
+  }
+};
+```
+
+Use either source in the map's `layers` array. The URLs above are application
+service placeholders. The providers request GetCapabilities and use the
+advertised GetMap/GetTile endpoint or REST template, including relative links.
+Probe and open share one request for each source input. Metadata is fetched
+through the runtime `fetch` override with cancellation; image requests use the
+browser's native tile loader. Cross-origin capabilities need CORS support.
+Attribution remains application-supplied plain text, never service HTML.
+
+The default `prefer-native` policy selects the first advertised candidate, since
+these catalogues do not identify a preferred CRS. `prefer-display` selects the
+display CRS when advertised, otherwise the first candidate. Confirmation retains
+the capabilities document URL and the CRS element location. Common EPSG URNs,
+OGC definition URLs and CRS:84 are normalised to registry codes. A declared
+service CRS, unknown selected CRS or missing metadata is refused.
+
+**WMS:** versions 1.1.1 and 1.3.0, HTTP GET and PNG/JPEG/WebP are supported.
+CRSs are inherited through nested layers; multiple requested layers must share
+the selected CRS. The renderer requests the display CRS only when every layer
+advertises it. It uses `SRS` for 1.1.1 and `CRS` for 1.3.0, with latitude-first
+EPSG:4326 BBOX order for 1.3.0 and longitude-first CRS:84. Current Leaflet
+displays remain EPSG:3857, EPSG:4326 and OGC:CRS84. The server renders into the
+requested CRS; the browser does not reproject a raster image. Requests use
+256px tiles at native zooms 0–24 and server-selected default styles.
+Fixed-size/non-subsettable layers and dimensions without advertised defaults are
+refused. Custom styles, explicit time/elevation settings, POST and GetFeatureInfo
+remain later work.
+
+**WMTS:** version 1.0.0, HTTP GET KVP and advertised REST tile templates are
+supported. The provider selects the named `layer` and, when supplied, its linked
+`matrixSet`; otherwise it uses the first linked set matching the confirmed CRS.
+It retains actual matrix identifiers, chooses the advertised default (or sole)
+style, uses advertised dimension defaults and enforces tile-row/column limits.
+Leaflet currently accepts contiguous levels of the standard 256px EPSG:3857
+quadtree, within zooms 0–24. Different origins, scales, tile sizes or matrix
+sizes are refused. Decimal scale-denominator rounding is recognised within a
+relative tolerance of 1e-9 and origin rounding within one micrometre. No tiles
+are requested outside advertised levels or limits. Custom grids, non-default
+styles and explicit dimension selections remain later work.
+
+Capabilities are bounded to 2 MiB of UTF-8 XML, 30,000 elements and 128 nesting
+levels. Malformed XML, entity declarations and internal DTDs fail before tile
+requests. External DTD declarations do not trigger network loading. HTTP and
+service-exception responses fail with typed source/metadata errors; native tile
+failures report `LAYER_LOAD_FAILED`. Reapply config to retry failed capabilities,
+or hide/show an attached layer to retry tile images. Removing a source or
+unmounting cancels its requests and releases native resources.
+
+The implementation follows [WMS 1.3.0](https://docs.ogc.org/is/06-042/06-042.pdf)
+and [WMTS 1.0.0](https://www.ogc.org/standards/wmts/). The synthetic fixtures test
+these supported paths; they do not claim full OGC service certification.
 
 ## Properties
 
@@ -201,7 +285,7 @@ wraps within the container.
 ## Scope and limits
 
 This slice supports base path styling, circle points, theme tokens and standard
-Web Mercator XYZ raster basemaps. Labels, icons, data-driven rules, custom
+Web Mercator XYZ/WMTS basemaps and WMS raster services. Labels, icons, data-driven rules, custom
 projected displays and editing are not implemented yet; unsupported options fail explicitly. GeoJSON reads are
 bounded to 5 MiB, 10,000 features and 100,000 positions. Properties are treated
 as data and never inserted as HTML.

@@ -2,9 +2,35 @@
   import { asset } from '$app/paths';
   import { MapContainer } from '@cii/maps/svelte';
   import { Button } from '@cii/svelte';
-  import type { MapConfig } from '@cii/maps';
+  import type { MapConfig, SourceConfig } from '@cii/maps';
   import Preview from '#lib/Preview.svelte';
   let visible = $state(true);
+  let basemap = $state<'xyz' | 'wms' | 'wmts'>('xyz');
+  const basemapSource = $derived<SourceConfig>(
+    basemap === 'xyz'
+      ? {
+          provider: 'xyz',
+          url: `${asset('maps/demo-tile.svg')}?z={z}&x={x}&y={y}`,
+          crs: {
+            code: 'EPSG:3857',
+            provenance: { kind: 'declared', by: 'CII example author' }
+          }
+        }
+      : basemap === 'wms'
+        ? {
+            provider: 'wms',
+            url: asset('maps/demo-wms.xml'),
+            layers: 'demo',
+            crs: { fromMetadata: true, policy: 'prefer-display' }
+          }
+        : {
+            provider: 'wmts',
+            url: asset('maps/demo-wmts.xml'),
+            layer: 'demo',
+            matrixSet: 'web',
+            crs: { fromMetadata: true, policy: 'prefer-display' }
+          }
+  );
   let mounted = $state(true);
   let large = $state(false);
   const sites = [
@@ -24,14 +50,7 @@
         id: 'demonstration-basemap',
         order: 0,
         attribution: 'CII synthetic tile grid — not geographic reference data',
-        source: {
-          provider: 'xyz',
-          url: `${asset('maps/demo-tile.svg')}?z={z}&x={x}&y={y}`,
-          crs: {
-            code: 'EPSG:3857',
-            provenance: { kind: 'declared', by: 'CII example author' }
-          }
-        }
+        source: basemapSource
       },
       {
         id: 'demonstration-sites',
@@ -68,8 +87,17 @@
   <p>
     Illustrative sites near Sydney. The locations and repeating basemap grid are
     synthetic. Tiles are served locally; the grid does not represent streets or
-    boundaries. Use Layers to change visibility, opacity and stacking order.
+    boundaries. Select XYZ, WMS or WMTS to try the providers, then use Layers to
+    change visibility, opacity and stacking order.
   </p>
+  <label class="provider">
+    Basemap service
+    <select bind:value={basemap}>
+      <option value="xyz">XYZ tiles</option>
+      <option value="wms">WMS 1.3.0</option>
+      <option value="wmts">WMTS 1.0.0</option>
+    </select>
+  </label>
   <div class="actions">
     <Button
       variant="secondary"
@@ -104,6 +132,24 @@
 </Preview>
 
 <style>
+  .provider {
+    display: grid;
+    gap: var(--cii-space-2);
+    margin-block: var(--cii-space-3);
+  }
+  .provider select {
+    color: var(--cii-text-primary);
+    background: var(--cii-bg-card);
+    border: 1px solid var(--cii-border-default);
+    border-radius: var(--cii-radius-input);
+    padding: var(--cii-space-2);
+    font: inherit;
+  }
+  .provider select:focus-visible {
+    outline: 3px solid var(--cii-focus-ring);
+    outline-offset: 3px;
+  }
+
   .actions {
     display: flex;
     flex-wrap: wrap;

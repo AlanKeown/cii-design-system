@@ -1,0 +1,6 @@
+<?xml version="1.0"?><WMS_Capabilities version="1.3.0" xmlns:xlink="http://www.w3.org/1999/xlink"><Capability>
+    <Request><GetMap><Format>image/png</Format><DCPType><HTTP><Get><OnlineResource xlink:href="demo-tile.png"/></Get></HTTP></DCPType></GetMap></Request>
+    <Layer><Title>Fixture</Title><CRS>EPSG:4326</CRS><CRS>EPSG:3857</CRS><CRS>CRS:84</CRS>
+      <Layer><Name>demo</Name><Title>Synthetic map</Title></Layer>
+      <Layer><Name>second</Name><Title>Synthetic overlay</Title></Layer>
+    </Layer></Capability></WMS_Capabilities>

@@ -2,7 +2,7 @@
 
 |                   |                                              |
 | ----------------- | -------------------------------------------- |
-| **Status**        | Phase 0 complete; Phase 1 in progress — v0.5 |
+| **Status**        | Phase 0 complete; Phase 1 in progress — v0.6 |
 | **Date**          | 6 November 2026                              |
 | **Engines**       | Leaflet, MapLibre GL JS, OpenLayers          |
 | **Framework**     | Svelte 5 (runes) / SvelteKit                 |
@@ -2329,10 +2329,10 @@ they remain uncommitted, so remote CI has not run on that final diff. See
 `docs/mapping-phase-0-spike-report.md` for evidence and limits.
 
 **Phase 1 handoff.** XYZ raster basemaps and first-party layer controls are
-implemented in the 6 November slice below. Next continue WMS/WMTS, CRS
-confirmation UI, display switching and the other production adapters. Preserve
-the capability refusals, source-CRS confirmation, attribution and accuracy
-reporting established in Phase 0.
+implemented in the 6 November slices below. Next continue CRS confirmation UI,
+scale/coordinate controls, display switching and the other production adapters.
+Preserve the capability refusals, source-CRS confirmation, attribution and
+accuracy reporting established in Phase 0.
 
 ---
 
@@ -2357,6 +2357,37 @@ locations. Source/grid refusal tests and Chromium coverage exercise raster and
 feature updates, keyboard controls, attribution, tile failure/retry and loading
 layer removal. WMS/WMTS, CRS confirmation UI, display switching and production
 MapLibre/OpenLayers adapters remain Phase 1 work.
+
+---
+
+### 16.5 Phase 1 WMS/WMTS slice — 6 November 2026
+
+Added bounded capabilities readers and instance-scoped WMS/WMTS providers.
+Probe/open share a cancellable metadata request. CRS confirmation records the
+capabilities document URL and CRS element, preserving advertised candidate order
+and explicit `prefer-display` selection. WMS supports inherited layer CRSs,
+multiple-layer intersections, 1.1.1/1.3.0 request parameters and axis order, and
+advertised GetMap HTTP GET endpoints. The server renders only an advertised
+display CRS; the browser does not reproject raster images.
+
+WMTS supports advertised GetTile KVP endpoints and REST templates, actual matrix
+IDs, default styles/dimensions and row/column limits. The Leaflet path accepts
+contiguous standard 256px EPSG:3857 quadtree levels (zooms 0–24); custom grids,
+tile sizes and incompatible displays are refused. Published decimal scales are
+recognised within relative 1e-9 rounding and origins within one micrometre. WMS
+uses server-selected default styles; fixed-size/non-subsettable layers and
+service dimensions without defaults are refused. Explicit style/dimension
+selection, POST and GetFeatureInfo remain later work.
+
+The `@xmldom/xmldom` 0.9.12 dependency (MIT) parses UTF-8 capabilities with a 2
+MiB limit, node/depth bounds and entity/internal-DTD rejection. Metadata uses
+the runtime fetch seam; tile images retain native browser loading and cleanup.
+The docs example switches among locally served XYZ/WMS/WMTS fixtures. Unit and
+Chromium tests cover axis order, metadata confirmation/provenance, matrix IDs,
+limits, incompatibility refusals, failures, cancellation and retry.
+
+Phase 1 remains in progress: CRS confirmation UI, scale and coordinate readouts,
+runtime display switching and production MapLibre/OpenLayers adapters remain.
 
 ---
 
@@ -2538,3 +2569,4 @@ should be re-checked during Phase 0 alongside spikes S1–S7._
 | 0.3     | 1 Nov 2026 | Applied the review in `sources/compare.md`. Marked the earlier spec as superseded and listed what carries forward. Added R5.6 (conformant persistence) and made adapter C a restricted adapter. Replaced `CommitResult` with per-op results, retry rules and idempotency. Moved `geometryCrs` onto each op and added the display-CRS switch pre-check. Added snapping precision rules and `vertexSources` (spike S8). Split `CrsDeclaration` (config) from `ConfirmedCrs` (resolved). Rewrote the `MapContainer` and `Layer` lifecycles. Added the view contract (§6.4) and style rule precedence (§7.4). Restored accessibility, theming, security and attribution requirements (§15.4–15.6) and drafts (§9.6). Added the scope table (§16.1), allocated KML/GPX/CSV and COG to phases, kept npm workspaces and the Node test runner, renamed packages to `@cii/*`, and recorded decisions D8 (Australia as the first-class jurisdiction), D9 (two packages to start) and D10 (scope as in §16.1). |
 | 0.4     | 5 Nov 2026 | Closed Phase 0 for the initial Supabase/local-reference scope; accepted S1–S8 with measured limits; recorded the schema-aware read-only audit, capability gates, CI evidence and Phase 1 handoff.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 0.5     | 6 Nov 2026 | Added the Phase 1 XYZ raster basemap and first-party layer-control slice, its documented capability limits and next delivery work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 0.6     | 6 Nov 2026 | Added WMS/WMTS metadata providers, Leaflet raster request rendering, bounded XML parsing, local service examples and conformance fixtures; recorded the supported scope and remaining Phase 1 work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |

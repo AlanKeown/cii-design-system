@@ -68,11 +68,11 @@ fail instead of being clipped.
 Config updates reconcile existing layers and preserve the map and user view for
 visual-only changes. Superseded requests and unmounts cancel pending work.
 Engine/display changes require remounting in this slice. Base paths, circle
-points, CII colour tokens and XYZ raster basemaps are supported; custom
-projected displays, labels, icons, rules, capture and other controls remain
-pending and fail explicitly. GeoJSON reads are limited to 5 MiB, 10,000 features
-and 100,000 positions; hit testing currently scans the bounded feature set
-without a spatial index. See the
+points, CII colour tokens, XYZ/WMTS basemaps and WMS raster services are
+supported; custom projected displays, labels, icons, rules, capture and other
+controls remain pending and fail explicitly. GeoJSON reads are limited to 5 MiB,
+10,000 features and 100,000 positions; hit testing currently scans the bounded
+feature set without a spatial index. See the
 [working documentation example](../../apps/docs/src/routes/components/map/+page.md).
 
 Install Leaflet (`>=1.9.4 <2`) and Svelte 5 for the rendering entry points; they
@@ -132,7 +132,7 @@ console.log(result.value.crs, result.value.provenance);
 ```
 
 Providers supply the probe result; inline and GeoJSON readers now exist, while
-other file readers and service metadata parsers remain pending. Metadata
+other file readers and feature-service metadata parsers remain pending. Metadata
 confirmation requires `fromMetadata: true`. `prefer-native` is the default
 policy; `prefer-display` selects the display CRS when offered. If the preferred
 code is absent, the first advertised candidate is used. Providers must preserve
@@ -396,7 +396,8 @@ Measured Supabase pipeline/grid limitations are enforced by the server
 capability preflight; production named browser grids remain disabled. Spike-only
 MapLibre/OpenLayers bridges, capture and custom Leaflet CRS construction do not
 expand the production adapter's capabilities. Phase 1 now includes XYZ raster
-basemaps and layer controls; WMS/WMTS and the remaining display work follow.
+basemaps and layer controls, plus WMS/WMTS services; the remaining display work
+follows.
 
 `createRegistries({ australia, fetch })` exposes engines, CRS providers, data
 sources, renderers, controls, capture modes, validators, persistence adapters,
@@ -446,3 +447,24 @@ override. See the documentation example for a complete config, request behaviour
 and retry guidance. Layer-list edits apply locally to the mounted map; a new
 config reapplies application settings. Default stacking follows config array
 order; explicit higher orders render above lower orders.
+
+WMS (1.1.1/1.3.0) and WMTS (1.0.0) providers resolve
+`crs: { fromMetadata: true, policy: 'prefer-display' }` from bounded
+capabilities XML. WMS requires `layers` (comma-separated names); WMTS requires
+`layer` and optionally a linked `matrixSet`. The default policy uses the first
+advertised CRS; `prefer-display` selects the display CRS when offered.
+Confirmation records the document URL and CRS element. WMS requests an
+advertised native Leaflet display CRS with the correct version-specific axis
+order. WMTS currently accepts standard 256px EPSG:3857 quadtree matrices,
+retaining matrix identifiers and enforcing limits. Other grids are refused
+before image requests. Both use advertised operation endpoints, default
+styles/dimensions and PNG/JPEG/WebP formats. WMS custom styles, explicit
+dimension selection, POST and feature-info requests remain pending.
+
+Capabilities use the runtime fetch override with cancellation; tile images use
+native browser requests. Metadata failures retry on config reapplication;
+attached tile failures retry on hide/show. The parser uses `@xmldom/xmldom`
+0.9.12 (MIT), with a 2 MiB UTF-8 response limit, structural bounds and entity
+rejection. No XML-controlled external resource is loaded by the parser. The
+[map docs](../../apps/docs/src/routes/components/map/+page.md) describe the full
+supported scope and include a local XYZ/WMS/WMTS example.
