@@ -47,13 +47,14 @@ attributes and `class` are forwarded; description IDs are combined. Errors show
 recovery guidance and configuration paths, while `onerror` retains typed
 diagnostic details.
 
-The component includes Leaflet CSS, first-party zoom controls, keyboard
-navigation, resize observation, mandatory text attribution, typed errors and
-datum warnings. Provide a text alternative for map content. `view` is bindable;
-`onready`, `onviewchange` and `onerror` expose lifecycle events.
-`getMapContext()` supplies descendants with the engine and layer manager. The
-initial `runtime` prop accepts `createLeafletRuntime({ fetch })` for app-owned
-requests and registries. Keep credentials out of serialised config.
+The component includes Leaflet CSS, first-party zoom controls, optional scale
+and coordinate readouts, keyboard navigation, resize observation, mandatory text
+attribution, typed errors and datum warnings. Provide a text alternative for map
+content. `view` is bindable; `onready`, `onviewchange` and `onerror` expose
+lifecycle events. `getMapContext()` supplies descendants with the engine and
+layer manager. The initial `runtime` prop accepts
+`createLeafletRuntime({ fetch })` for app-owned requests and registries. Keep
+credentials out of serialised config.
 
 `@cii/maps/leaflet` exports the adapter as its default export; it imports
 Leaflet only during mounting. It supports native EPSG:3857, EPSG:4326 and
@@ -489,3 +490,22 @@ revokes it. Do not combine this workflow with the legacy runtime-wide mismatch
 bypass. Evidence is not persisted in config or across runtime recreation. Probe
 errors can be retried; changing inputs or unmounting cancels stale work. See the
 live confirmation example on the map documentation page.
+
+Enable `{ id: 'scale' }` and `{ id: 'coords', readoutCrs: 'EPSG:7856' }` in
+`config.controls` for first-party readouts. Defaults place scale at bottom-left
+and coordinates at bottom-right; other positions are currently refused. The
+scale bar shows an approximate local ground distance, correcting Web Mercator
+for latitude, with metre/kilometre labels and a maximum 120 CSS-pixel width.
+Coordinate output uses core x/y order (longitude/latitude for geographic CRSs),
+showing the display CRS and optionally a transformed readout CRS. Unknown
+readout CRSs are rejected before committing a config update.
+
+Pointer movement is coalesced to animation frames. Keyboard navigation and the
+Use map centre action select the current centre; panning under a stationary
+pointer updates its coordinates. Leaving the viewport also selects the centre.
+No automatic live announcements are made; Announce coordinates reads the
+snapshot explicitly. Invalid transform positions clear stale values. Datum,
+ensemble and epoch warnings remain visible, and display precision is never an
+accuracy certification. Controls use CII tokens, move below the canvas on
+compact maps, and release subscriptions and pending frames on
+reconfiguration/unmount. See the live docs Readout CRS selector.

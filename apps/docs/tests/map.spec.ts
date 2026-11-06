@@ -19,6 +19,22 @@ test('map documentation prerenders a stable placeholder and hydrates a working f
   });
   await expect(map).toHaveAttribute('data-map-ready', 'true');
   await expect(map.locator('canvas')).toHaveCount(1);
+  await expect(
+    map.getByRole('region', { name: 'Map scale', exact: true })
+  ).toBeVisible();
+  const coordinates = map.getByRole('region', {
+    name: 'Coordinate readout',
+    exact: true
+  });
+  await expect(coordinates).toContainText('OGC:CRS84');
+  await page
+    .getByRole('combobox', { name: 'Readout CRS', exact: true })
+    .selectOption('EPSG:7856');
+  await expect(coordinates).toContainText('EPSG:7856');
+  await expect(coordinates).toContainText('Datums differ');
+  await page
+    .getByRole('combobox', { name: 'Readout CRS', exact: true })
+    .selectOption('OGC:CRS84');
   await expect(map.locator('img.leaflet-tile-loaded').first()).toBeVisible();
   const service = page.getByRole('combobox', { name: 'Basemap service' });
   for (const provider of ['wms', 'wmts', 'xyz']) {

@@ -5,6 +5,7 @@
   import type { MapConfig, SourceConfig } from '@cii/maps';
   import Preview from '#lib/Preview.svelte';
   let visible = $state(true);
+  let readoutCrs = $state('OGC:CRS84');
   let basemap = $state<'xyz' | 'wms' | 'wmts'>('xyz');
   const basemapSource = $derived<SourceConfig>(
     basemap === 'xyz'
@@ -40,7 +41,12 @@
   ];
   const config = $derived<MapConfig>({
     engine: 'leaflet',
-    controls: [{ id: 'zoom' }, { id: 'layer-list' }],
+    controls: [
+      { id: 'zoom' },
+      { id: 'layer-list' },
+      { id: 'scale' },
+      { id: 'coords', readoutCrs }
+    ],
     view: {
       center: { crs: 'OGC:CRS84', coordinates: [151.21, -33.87] },
       zoom: 14
@@ -96,6 +102,14 @@
       <option value="xyz">XYZ tiles</option>
       <option value="wms">WMS 1.3.0</option>
       <option value="wmts">WMTS 1.0.0</option>
+    </select>
+  </label>
+  <label class="provider">
+    Readout CRS
+    <select bind:value={readoutCrs}>
+      <option value="OGC:CRS84">Longitude/latitude — OGC:CRS84</option>
+      <option value="EPSG:7856">GDA2020 / MGA zone 56 — EPSG:7856</option>
+      <option value="EPSG:3857">Web Mercator — EPSG:3857</option>
     </select>
   </label>
   <div class="actions">

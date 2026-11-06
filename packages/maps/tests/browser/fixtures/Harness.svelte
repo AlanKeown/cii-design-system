@@ -45,6 +45,18 @@
   const config = $derived<MapConfig>({
     engine: 'leaflet',
     display: { crs: displayCrs },
+    ...(params.has('readouts')
+      ? {
+          controls: [
+            { id: 'zoom' as const },
+            { id: 'scale' as const },
+            {
+              id: 'coords' as const,
+              readoutCrs: params.get('readout') ?? 'OGC:CRS84'
+            }
+          ]
+        }
+      : {}),
     view: {
       center: { crs: 'OGC:CRS84', coordinates: [151.21, -33.87] },
       ...(displayCrs === 'EPSG:3857' ? { zoom: 14 } : { resolution: 0.0001 })

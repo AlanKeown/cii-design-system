@@ -2,7 +2,7 @@
 
 |                   |                                              |
 | ----------------- | -------------------------------------------- |
-| **Status**        | Phase 0 complete; Phase 1 in progress — v0.7 |
+| **Status**        | Phase 0 complete; Phase 1 in progress — v0.8 |
 | **Date**          | 6 November 2026                              |
 | **Engines**       | Leaflet, MapLibre GL JS, OpenLayers          |
 | **Framework**     | Svelte 5 (runes) / SvelteKit                 |
@@ -2424,6 +2424,37 @@ switching and production MapLibre/OpenLayers adapters remain.
 
 ---
 
+### 16.7 Phase 1 scale and coordinate readouts — 6 November 2026
+
+Added first-party scale and coordinate readout components driven by the engine
+contract and shared CRS service. The scale uses local spherical ground-distance
+approximations, including Web Mercator's latitude correction, metre/kilometre
+labels and a maximum 120 CSS-pixel bar. Its centre/zoom/resize updates do not
+claim survey measurements or treat projected Web Mercator metres as ground
+metres without correction.
+
+Coordinates display core x/y values plus an optional configured readout CRS,
+with explicit units and the transform's datum/ensemble/epoch warnings. Pointer
+movement is frame-batched, keyboard navigation selects the centre, and an
+explicit announcement action avoids continuous screen-reader chatter. Leaving
+the viewport selects the centre while entering its control panel retains the
+pointer position. Invalid transforms clear stale values; unsupported readout
+CRSs fail config preflight. Controls move below the canvas on compact maps,
+scroll on short wide maps, and use theme tokens, with deterministic
+subscription/frame cleanup.
+
+The docs example now exposes a readout-CRS selector. Unit and Chromium checks
+cover latitude correction, degree units, scale widths, coordinate precision, CRS
+changes, warnings, keyboard/pointer interaction, recovery, themes and cleanup.
+Scale/coords currently support bottom-left/bottom-right placement respectively;
+duplicate control IDs and misplaced readout-CRS options fail.
+
+Phase 1 remains in progress: runtime display-CRS switching and production
+MapLibre/OpenLayers adapters remain, along with the other retained navigation
+and integration work in the roadmap.
+
+---
+
 ## 17. Dependency flags and risk register
 
 ### 17.1 Dependency flags (requirement R3)
@@ -2604,3 +2635,4 @@ should be re-checked during Phase 0 alongside spikes S1–S7._
 | 0.5     | 6 Nov 2026 | Added the Phase 1 XYZ raster basemap and first-party layer-control slice, its documented capability limits and next delivery work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 0.6     | 6 Nov 2026 | Added WMS/WMTS metadata providers, Leaflet raster request rendering, bounded XML parsing, local service examples and conformance fixtures; recorded the supported scope and remaining Phase 1 work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 0.7     | 6 Nov 2026 | Added CRS confirmation UI, optional coordinate/envelope previews, source-scoped mismatch evidence, documentation and validation coverage; recorded the remaining Phase 1 work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 0.8     | 6 Nov 2026 | Added first-party scale and coordinate readout controls, CRS preflight, precision/accuracy information, accessible announcements, documentation and tests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |

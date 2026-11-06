@@ -3,6 +3,8 @@ import type { ConfigIssue } from '../config/index.ts';
 
 /** Task-oriented copy; the original typed error remains available through onerror. */
 export function mapErrorMessage(error: MapError): string {
+  if (error.details.control === 'coords')
+    return 'The coordinate readout could not be calculated. Check the registered readout CRS and whether this position can be transformed into it.';
   switch (error.code) {
     case 'CONFIG_INVALID':
       return 'Some map settings are invalid or unsupported. Check the configuration and correct any settings listed below.';

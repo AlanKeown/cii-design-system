@@ -1,3 +1,5 @@
+import { ReadoutObserver } from './controls/readouts.ts';
+import type { ReadoutSnapshot } from './controls/readouts.ts';
 import { assertWmtsLeafletGrid } from './sources/ogc-raster.ts';
 import type { OgcTileData } from './sources/ogc-raster.ts';
 import { assertXyzTileData } from './sources/xyz.ts';
@@ -136,6 +138,7 @@ export interface MapSnapshot {
   attributions: readonly string[];
   showZoom: boolean;
   showLayerList: boolean;
+  readouts: ReadoutSnapshot | null;
 }
 interface RecordEntry {
   key: string;
@@ -147,6 +150,7 @@ export interface MapControllerCallbacks {
   onstate?: (snapshot: MapSnapshot) => void;
   onready?: (engine: IMapEngine) => void;
   onlayererror?: (error: MapError) => void;
+  oncontrolerror?: (error: MapError) => void;
   onviewchange?: (view: ViewState, source: 'api' | 'user') => void;
 }
 
@@ -169,6 +173,9 @@ export class MapController {
   #notified = false;
   #offView?: () => void;
   #offError?: () => void;
+  #readouts?: ReadoutObserver;
+  #readoutState: ReadoutSnapshot | null = null;
+  #readoutKey = '';
   constructor(
     node: HTMLElement,
     runtime: MapRuntime,
@@ -185,6 +192,7 @@ export class MapController {
   snapshot(): MapSnapshot {
     return {
       ready: this.#ready,
+      readouts: this.#readoutState,
       engine: this.engine,
       view: this.#engine?.getView() ?? null,
       layers: [...this.#records].map(([id, entry]) => ({
@@ -246,17 +254,25 @@ export class MapController {
       const config = validated.value;
       if (
         config.capture ||
+        (config.controls !== undefined &&
+          new Set(config.controls.map((control) => control.id)).size !==
+            config.controls.length) ||
         config.layers.some((layer) => layer.editable) ||
         config.controls?.some(
           (control) =>
-            !['zoom', 'attribution', 'layer-list'].includes(control.id) ||
+            !['zoom', 'attribution', 'layer-list', 'scale', 'coords'].includes(
+              control.id
+            ) ||
+            (control.readoutCrs !== undefined && control.id !== 'coords') ||
             (control.position &&
               control.position !==
-                (control.id === 'zoom'
-                  ? 'top-left'
-                  : control.id === 'layer-list'
-                    ? 'top-right'
-                    : 'bottom-right'))
+                (control.id === 'scale'
+                  ? 'bottom-left'
+                  : control.id === 'zoom'
+                    ? 'top-left'
+                    : control.id === 'layer-list'
+                      ? 'top-right'
+                      : 'bottom-right'))
         ) ||
         [
           config.view.minZoom,
@@ -267,7 +283,7 @@ export class MapController {
       )
         throw new MapError('CONFIG_INVALID', {
           reason:
-            'This slice supports read-only features, XYZ/WMS/WMTS tiles, zoom, attribution and layer list; other controls and view limits are not yet supported.'
+            'This slice supports read-only features, XYZ/WMS/WMTS tiles, zoom, attribution, layer list, scale and coordinates; other controls and view limits are not yet supported.'
         });
       if (
         this.#config &&
@@ -297,6 +313,44 @@ export class MapController {
         resolution: resolveViewResolution(config.view, definition.tileMatrix),
         rotation: config.view.rotation ?? 0
       };
+      const scale =
+        config.controls?.some((control) => control.id === 'scale') ?? false;
+      const coords = config.controls?.find(
+        (control) => control.id === 'coords'
+      );
+      let target = definition;
+      let transform:
+        Awaited<ReturnType<MapRuntime['transforms']['prepare']>> | undefined;
+      try {
+        if (coords) {
+          target = await this.#runtime.crs.resolve(
+            coords.readoutCrs ?? definition.code
+          );
+          transform = await this.#runtime.transforms.prepare({
+            source: definition.code,
+            target: target.code
+          });
+        }
+      } catch (cause) {
+        if (cause instanceof MapError)
+          throw new MapError(cause.code, {
+            ...cause.details,
+            control: 'coords'
+          });
+        throw cause;
+      }
+      const geographic = scale
+        ? await this.#runtime.transforms.prepare({
+            source: definition.code,
+            target: 'EPSG:4326'
+          })
+        : undefined;
+      const readoutKey = JSON.stringify(
+        config.controls?.filter((control) =>
+          ['scale', 'coords'].includes(control.id)
+        ) ?? []
+      );
+      if (!current()) return;
       const commit = this.#tail.then(async () => {
         if (!current()) return;
         if (!this.#engine) {
@@ -347,6 +401,30 @@ export class MapController {
         if (!current()) return;
         if (move) this.#engine!.setView(view);
         this.#ready = true;
+        if (readoutKey !== this.#readoutKey) {
+          this.#readouts?.destroy();
+          this.#readouts = undefined;
+          this.#readoutState = null;
+          this.#readoutKey = readoutKey;
+          if (scale || coords)
+            this.#readouts = new ReadoutObserver(
+              this.#engine!,
+              {
+                display: definition,
+                target,
+                geographic,
+                transform,
+                scale,
+                coordinates: !!coords,
+                width: () => this.#node.clientWidth,
+                onerror: (error) => this.#callbacks.oncontrolerror?.(error)
+              },
+              (state) => {
+                this.#readoutState = state;
+                this.#emit();
+              }
+            );
+        }
         this.#emit();
         if (!this.#notified) {
           this.#notified = true;
@@ -470,6 +548,9 @@ export class MapController {
     this.#layerErrors.delete(id);
     this.#emit();
   }
+  useCentreCoordinates(): void {
+    this.#readouts?.useCentre();
+  }
   zoom(delta: number): void {
     if (!this.#engine) return;
     const view = this.#engine.getView();
@@ -485,6 +566,9 @@ export class MapController {
     if (this.#lifetime.signal.aborted) return;
     this.#preparing?.abort();
     this.#lifetime.abort();
+    this.#readouts?.destroy();
+    this.#readouts = undefined;
+    this.#readoutState = null;
     this.#offView?.();
     this.#offError?.();
     try {

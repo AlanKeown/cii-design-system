@@ -1,6 +1,8 @@
 <script lang="ts">
   import { untrack, type Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
+  import MapScale from './MapScale.svelte';
+  import CoordinateReadout from './CoordinateReadout.svelte';
   import LayerList from './LayerList.svelte';
   import MapErrorNotice from './MapErrorNotice.svelte';
   import { Alert, Button } from '@cii/svelte';
@@ -94,6 +96,7 @@
       },
       onready: (engine) => onready?.(engine),
       onlayererror: (error) => onerror?.(error),
+      oncontrolerror: (error) => onerror?.(error),
       onviewchange: (next, source) => {
         if (source === 'user') view = next;
         onviewchange?.(next, source);
@@ -141,7 +144,18 @@
   {#if description}<p id={`${id}-description`} class="description">
       {description}
     </p>{/if}
-  <div class="viewport" style:height>
+  <div
+    class="viewport"
+    role="group"
+    aria-label={`${label} map viewport and controls`}
+    class:has-readouts={snapshot?.readouts?.scaleEnabled ||
+      snapshot?.readouts?.coordinatesEnabled}
+    style:--cii-map-height={height}
+    onpointerleave={(event) => {
+      if (event.pointerType !== 'touch') controller?.useCentreCoordinates();
+    }}
+    onpointercancel={() => controller?.useCentreCoordinates()}
+  >
     <div
       class="canvas"
       role="application"
@@ -149,6 +163,10 @@
       aria-describedby={`${id}-shortcuts`}
       aria-busy={!ready}
       tabindex="-1"
+      onfocus={(event) => {
+        if (event.currentTarget.matches(':focus-visible'))
+          controller?.useCentreCoordinates();
+      }}
       {@attach attach}
     ></div>
     {#if snapshot?.showZoom ?? true}
@@ -174,6 +192,17 @@
           onchange={(id, patch) =>
             navigate(() => controller?.updateLayer(id, patch))}
         />
+      </div>
+    {/if}
+    {#if snapshot?.readouts}
+      <div class="readouts">
+        {#if snapshot.readouts.scaleEnabled}<MapScale
+            value={snapshot.readouts.scale}
+          />{/if}
+        {#if snapshot.readouts.coordinatesEnabled}<CoordinateReadout
+            value={snapshot.readouts.coordinates}
+            oncentre={() => controller?.useCentreCoordinates()}
+          />{/if}
       </div>
     {/if}
     {#if !ready && !error}<p class="loading" role="status">Loading map…</p>{/if}
@@ -221,6 +250,7 @@
 <style>
   .cii-map {
     display: grid;
+    container-type: inline-size;
     gap: var(--cii-space-3);
     color: var(--cii-text-primary);
     font: var(--cii-font-body)/var(--cii-line-body) var(--cii-font-family);
@@ -231,6 +261,7 @@
   }
   .viewport {
     position: relative;
+    height: var(--cii-map-height);
     min-height: 12rem;
     border: 1px solid var(--cii-border-default);
     border-radius: var(--cii-radius-card);
@@ -265,6 +296,49 @@
     background: var(--cii-bg-card);
     border-radius: var(--cii-radius-input);
     font-size: var(--cii-font-caption);
+  }
+  .readouts {
+    position: absolute;
+    bottom: var(--cii-space-3);
+    left: var(--cii-space-3);
+    right: var(--cii-space-3);
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: var(--cii-space-2);
+    max-height: 70%;
+    overflow: auto;
+    pointer-events: none;
+    font-size: var(--cii-font-caption);
+  }
+  .readouts :global(> *) {
+    pointer-events: auto;
+  }
+  .readouts :global(.coordinates) {
+    margin-left: auto;
+  }
+  .has-readouts .layer-list {
+    max-height: calc(30% - 2 * var(--cii-space-3));
+  }
+  @container (max-width: 36rem) {
+    .viewport.has-readouts {
+      height: auto;
+    }
+    .has-readouts .canvas {
+      height: var(--cii-map-height);
+      min-height: 12rem;
+    }
+    .has-readouts .readouts {
+      position: static;
+      max-height: none;
+      overflow: visible;
+      margin: var(--cii-space-3);
+    }
+    .has-readouts .layer-list {
+      max-height: min(16rem, calc(var(--cii-map-height) * 0.5));
+    }
   }
   .loading {
     position: absolute;

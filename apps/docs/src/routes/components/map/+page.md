@@ -193,6 +193,69 @@ The implementation follows [WMS 1.3.0](https://docs.ogc.org/is/06-042/06-042.pdf
 and [WMTS 1.0.0](https://www.ogc.org/standards/wmts/). The synthetic fixtures test
 these supported paths; they do not claim full OGC service certification.
 
+## Scale and coordinate readout controls
+
+Enable the first-party controls in map configuration:
+
+```ts
+import type { ControlConfig } from '@cii/maps';
+
+const controls: ControlConfig[] = [
+  { id: 'zoom' },
+  { id: 'scale', position: 'bottom-left' },
+  {
+    id: 'coords',
+    position: 'bottom-right',
+    readoutCrs: 'EPSG:7856'
+  }
+];
+```
+
+Use that array as `config.controls`. The scale bar shows a readable metre or
+kilometre distance, updating on zoom, pan and resize. It measures approximate
+local ground distance at the map centre, with a spherical latitude correction
+for Web Mercator and geographic degree units. It is not a survey measurement.
+The bar uses at most 120 CSS pixels, shrinking for narrow viewports; sub-metre
+distances remain labelled in metres. At a pole or an invalid centre, it reports
+that scale is unavailable.
+
+The coordinate control shows the pointer position in the display CRS plus the
+configured `readoutCrs`. Omitting `readoutCrs` uses the display CRS and avoids a
+duplicate line. The live example's Readout CRS selector switches between
+longitude/latitude, MGA zone 56 and Web Mercator without rebuilding the map.
+Unknown CRSs or unsupported transformations reject the configuration update;
+the previous valid map stays intact. Control IDs must be unique. Only the
+positions shown above are implemented for these controls; `readoutCrs` is valid
+only on `coords`.
+
+Geographic readouts use **longitude, latitude** in core x/y order, even for
+EPSG:4326, with six decimal places. Projected readouts show X/Y in metres with
+two decimal places. These digits describe display precision, not accuracy.
+Conversions use the CRS service and retain its datum/ensemble/epoch warnings.
+Different or unknown datums are labelled explicitly; no transformation accuracy
+or survey alignment is certified.
+
+Keyboard navigation uses the map centre. Pointer movement uses its current
+screen location; a pan under a stationary pointer updates that location's
+coordinates. Leaving the viewport returns to centre mode, and **Use map centre**
+provides an explicit action. Moving into the map's control panel retains the
+pointer location so it can be inspected or announced. Touch locations remain
+until another pointer sample, keyboard navigation or an explicit centre action
+replaces them. A position outside
+the transform's domain clears the old coordinates and reports unavailability;
+choosing the centre can recover a valid readout.
+
+Automatic coordinate/scale updates are not live announcements. **Announce
+coordinates** reads the current snapshot through a polite live region, including
+the CRS, coordinate mode and accuracy caveat. This keeps pointer movement from
+flooding screen readers, consistent with
+[WCAG status-message guidance](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html).
+Both controls follow CII theme tokens. On compact maps, the controls move below
+the canvas so their values stay visible; the configured canvas height is
+retained. Short, wider maps can scroll their control panels. Keyboard focus can
+reach every action. Pending animation frames
+and engine subscriptions are released when controls change or the map unmounts.
+
 ## Source CRS confirmation
 
 `CrsConfirm` is an optional input workflow before adding a layer. A hint never
