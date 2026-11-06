@@ -8,7 +8,11 @@
   import { Alert, Button } from '@cii/svelte';
   import 'leaflet/dist/leaflet.css';
   import { MapController, createLeafletRuntime } from '../map-controller.js';
-  import type { MapRuntime, MapSnapshot } from '../map-controller.js';
+  import type {
+    MapRuntime,
+    MapSnapshot,
+    DisplayCrsChange
+  } from '../map-controller.js';
   import { MapError } from '../errors.js';
   import type { MapConfig } from '../config/types.js';
   import type { IMapEngine } from '../engine/types.js';
@@ -27,6 +31,7 @@
     runtime?: MapRuntime;
     children?: Snippet;
     onready?: (engine: IMapEngine) => void;
+    ondisplaycrschange?: (change: DisplayCrsChange) => void;
     onerror?: (error: MapError) => void;
     onviewchange?: (view: ViewState, source: 'api' | 'user') => void;
   }
@@ -39,6 +44,7 @@
     runtime,
     children,
     onready,
+    ondisplaycrschange,
     onerror,
     onviewchange,
     class: className = '',
@@ -71,7 +77,17 @@
     },
     get ready() {
       return ready;
-    }
+    },
+    get displayCrs() {
+      return snapshot?.displayCrs ?? null;
+    },
+    get switching() {
+      return snapshot?.switching ?? false;
+    },
+    setDisplayCrs: (code: string) =>
+      controller
+        ? controller.setDisplayCrs(code)
+        : Promise.reject(new MapError('ENGINE_STATE'))
   });
 
   function report(cause: unknown) {
@@ -91,10 +107,18 @@
   function attach(node: HTMLElement) {
     const instance = new MapController(node, selectedRuntime, {
       onstate: (next) => {
-        node.tabIndex = next.ready ? 0 : -1;
+        instance.host.tabIndex = next.ready ? 0 : -1;
+        instance.host.setAttribute(
+          'aria-busy',
+          String(!next.ready || next.switching)
+        );
         snapshot = next;
       },
       onready: (engine) => onready?.(engine),
+      ondisplaycrschange: (change) => {
+        view = change.view;
+        ondisplaycrschange?.(change);
+      },
       onlayererror: (error) => onerror?.(error),
       oncontrolerror: (error) => onerror?.(error),
       onviewchange: (next, source) => {
@@ -140,6 +164,8 @@
   aria-label={rest['aria-label'] ?? label}
   aria-describedby={descriptionIds}
   data-map-ready={ready}
+  data-map-switching={snapshot?.switching ?? false}
+  data-display-crs={snapshot?.displayCrs ?? undefined}
 >
   {#if description}<p id={`${id}-description`} class="description">
       {description}
@@ -158,13 +184,15 @@
   >
     <div
       class="canvas"
-      role="application"
-      aria-label={`${label} map canvas`}
-      aria-describedby={`${id}-shortcuts`}
-      aria-busy={!ready}
-      tabindex="-1"
-      onfocus={(event) => {
-        if (event.currentTarget.matches(':focus-visible'))
+      role="group"
+      aria-label={`${label} map surface`}
+      data-canvas-label={`${label} map canvas`}
+      data-canvas-description={`${id}-shortcuts`}
+      onfocusin={(event) => {
+        if (
+          event.target instanceof HTMLElement &&
+          event.target.matches(':focus-visible')
+        )
           controller?.useCentreCoordinates();
       }}
       {@attach attach}
@@ -173,13 +201,13 @@
       <div class="zoom" role="group" aria-label="Map zoom">
         <Button
           variant="secondary"
-          disabled={!ready}
+          disabled={!ready || snapshot?.switching}
           aria-label="Zoom in"
           onclick={() => navigate(() => controller?.zoom(1))}>+</Button
         >
         <Button
           variant="secondary"
-          disabled={!ready}
+          disabled={!ready || snapshot?.switching}
           aria-label="Zoom out"
           onclick={() => navigate(() => controller?.zoom(-1))}>−</Button
         >
@@ -189,6 +217,7 @@
       <div class="layer-list">
         <LayerList
           layers={snapshot.layers}
+          disabled={snapshot.switching}
           onchange={(id, patch) =>
             navigate(() => controller?.updateLayer(id, patch))}
         />
@@ -213,6 +242,9 @@
         · {attribution}</span
       >{/each}
   </div>
+  {#if snapshot?.switching}<p role="status">
+      Switching display coordinate system…
+    </p>{/if}
   {#if error}<MapErrorNotice {error} title="Map could not be updated" />{/if}
   {#each snapshot?.layerErrors ?? [] as failure (failure.id)}
     <MapErrorNotice
@@ -269,11 +301,15 @@
     isolation: isolate;
   }
   .canvas {
+    position: relative;
     width: 100%;
     height: 100%;
     background: var(--cii-map-surface);
   }
-  .canvas:focus-visible {
+  .canvas :global([data-map-host]) {
+    background: var(--cii-map-surface);
+  }
+  .canvas :global([data-map-host]:focus-visible) {
     outline: 3px solid var(--cii-focus-ring);
     outline-offset: -4px;
   }

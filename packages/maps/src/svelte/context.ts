@@ -7,6 +7,9 @@ export interface MapContext {
   readonly engine: IMapEngine | null;
   readonly layers: LayerManager | null;
   readonly ready: boolean;
+  readonly displayCrs: string | null;
+  readonly switching: boolean;
+  setDisplayCrs(code: string): Promise<void>;
 }
 const [read, write] = createContext<MapContext>();
 export const setMapContext = write;

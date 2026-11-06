@@ -114,6 +114,8 @@ export class LayerManager {
   #attachment?: Attachment;
   #tail: Promise<void> = Promise.resolve();
   #destroyed = false;
+  #revision = 0;
+  #stagedTargets = new Map<symbol, LayerSpec>();
 
   constructor(
     options: {
@@ -195,6 +197,7 @@ export class LayerManager {
       generation: 0
     };
     this.#entries.set(spec.id, entry);
+    this.#revision++;
     if (this.#attachment) void this.#schedule(entry, this.#attachment);
     const manager = this;
     const managed: ManagedLayer = {
@@ -436,11 +439,13 @@ export class LayerManager {
         entry.handle.setStyle(next.style ?? {});
     }
     entry.spec = snapshot(next);
+    this.#revision++;
     if (reload && this.#attachment) this.#reload(entry);
   }
 
   #reload(entry: Entry): void {
     this.#assertActive();
+    this.#revision++;
     if (entry.status === 'removed')
       throw new MapError('LAYER_REMOVED', { id: entry.spec.id });
     if (this.#attachment) {
@@ -472,6 +477,7 @@ export class LayerManager {
   #remove(entry: Entry): void {
     if (entry.status === 'removed') return;
     entry.status = 'removed';
+    this.#revision++;
     entry.controller?.abort();
     entry.ready.reject(new MapError('LAYER_REMOVED', { id: entry.spec.id }));
     this.#entries.delete(entry.spec.id);
@@ -503,14 +509,19 @@ export class LayerManager {
     const blocked: { id: string; reason: string }[] = [];
     for (const spec of [...this.#entries.values()]
       .map((entry) => entry.spec)
-      .concat(options.stagedTargets ?? [])) {
+      .concat([...this.#stagedTargets.values()], options.stagedTargets ?? [])) {
       try {
         validateSpec(spec);
         this.#compatible(spec, attachment);
       } catch (error) {
         blocked.push({
           id: spec.id,
-          reason: error instanceof Error ? error.message : 'Incompatible layer.'
+          reason:
+            error instanceof MapError
+              ? typeof error.details.reason === 'string'
+                ? error.details.reason
+                : error.code
+              : 'Incompatible layer.'
         });
       }
     }
@@ -518,10 +529,136 @@ export class LayerManager {
       throw new MapError('DISPLAY_CRS_SWITCH_BLOCKED', { layers: blocked });
   }
 
+  /** Keep a removed edit target in CRS preflight until its staged edits are resolved. */
+  retainStagedTarget(spec: LayerSpec): () => void {
+    this.#assertActive();
+    validateSpec(spec);
+    const key = Symbol(spec.id);
+    this.#stagedTargets.set(key, snapshot(spec));
+    this.#revision++;
+    return () => {
+      if (this.#stagedTargets.delete(key)) this.#revision++;
+    };
+  }
+
+  /** Prepare a second attachment without changing registrations or current handles. */
+  async prepareDisplayCrsSwitch(
+    engine: IMapEngine,
+    displayCrs: CrsDef,
+    options: { signal: AbortSignal; allowExperimental?: boolean }
+  ): Promise<{ commit(): () => void; dispose(): void }> {
+    this.assertCanSwitchDisplayCrs(displayCrs, options);
+    const previous = this.#attachment;
+    const revision = this.#revision;
+    const originals = [...this.#entries.values()];
+    const pending = originals.filter((entry) => entry.status !== 'ready');
+    if (pending.length)
+      throw new MapError('DISPLAY_CRS_SWITCH_BLOCKED', {
+        layers: pending.map((entry) => ({
+          id: entry.spec.id,
+          reason:
+            'Layer must finish loading successfully before a display switch.'
+        }))
+      });
+    const attachment: Attachment = {
+      engine,
+      displayCrs: structuredClone(displayCrs),
+      allowExperimental: options.allowExperimental ?? false
+    };
+    for (const spec of originals
+      .map((entry) => entry.spec)
+      .concat([...this.#stagedTargets.values()]))
+      this.#compatible(spec, attachment);
+    const staged = new LayerManager({ renderers: this.renderers });
+    let transferred = false;
+    const abort = () => {
+      if (!transferred) {
+        try {
+          staged.destroy();
+        } catch {
+          /* Candidate engine teardown also releases native resources. */
+        }
+      }
+    };
+    options.signal.addEventListener('abort', abort, { once: true });
+    const dispose = () => {
+      options.signal.removeEventListener('abort', abort);
+      if (!transferred) staged.destroy();
+    };
+    try {
+      options.signal.throwIfAborted();
+      for (const entry of originals) staged.add(entry.spec);
+      await staged.attach(engine, displayCrs, options);
+      options.signal.throwIfAborted();
+      await Promise.all(staged.list().map((entry) => entry.ready));
+      return {
+        dispose,
+        commit: () => {
+          options.signal.throwIfAborted();
+          this.#assertActive();
+          if (revision !== this.#revision || previous !== this.#attachment)
+            throw new MapError('DISPLAY_CRS_SWITCH_BLOCKED', {
+              reason:
+                'Layer or staged-target state changed while preparing the switch. Retry with current state.'
+            });
+          this.assertCanSwitchDisplayCrs(displayCrs, options);
+          const releases: (() => void)[] = [];
+          for (const entry of originals) {
+            const replacement = staged.#entries.get(entry.spec.id)!;
+            const handle = entry.handle,
+              prepared = entry.prepared;
+            releases.push(() => {
+              try {
+                handle?.remove();
+              } finally {
+                prepared?.dispose?.();
+              }
+            });
+            entry.controller?.abort();
+            entry.generation++;
+            entry.handle = replacement.handle;
+            entry.prepared = replacement.prepared;
+            entry.status = 'ready';
+            entry.ready = deferred();
+            entry.ready.resolve();
+            replacement.handle = undefined;
+            replacement.prepared = undefined;
+          }
+          this.#attachment = attachment;
+          this.#tail = Promise.resolve();
+          this.#revision++;
+          transferred = true;
+          staged.#entries.clear();
+          staged.destroy();
+          options.signal.removeEventListener('abort', abort);
+          return () => {
+            const errors: unknown[] = [];
+            for (const release of releases) {
+              try {
+                release();
+              } catch (error) {
+                errors.push(error);
+              }
+            }
+            if (errors.length)
+              throw new AggregateError(
+                errors,
+                'Old display layer cleanup failed.'
+              );
+          };
+        }
+      };
+    } catch (error) {
+      dispose();
+      throw error;
+    }
+  }
+
   /** Preserve registrations/settings for a new engine; cancel all outstanding preparation. */
   detach(): void {
     if (!this.#attachment) return;
     this.#attachment = undefined;
+    this.#revision++;
     this.#tail = Promise.resolve();
     const errors: unknown[] = [];
     for (const entry of this.#entries.values()) {
@@ -547,6 +684,8 @@ export class LayerManager {
   destroy(): void {
     if (this.#destroyed) return;
     this.#destroyed = true;
+    this.#revision++;
+    this.#stagedTargets.clear();
     this.#attachment = undefined;
     const errors: unknown[] = [];
     for (const entry of [...this.#entries.values()]) {

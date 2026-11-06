@@ -1,3 +1,10 @@
+import {
+  createEngineHost,
+  transformedDisplayView,
+  waitForSwitch
+} from './display-switch.ts';
+import type { EngineHost } from './display-switch.ts';
+import type { CrsDef } from './crs/types.ts';
 import { ReadoutObserver } from './controls/readouts.ts';
 import type { ReadoutSnapshot } from './controls/readouts.ts';
 import { assertWmtsLeafletGrid } from './sources/ogc-raster.ts';
@@ -129,7 +136,14 @@ export interface MapLayerInfo {
   opacity: number;
   order: number;
 }
+export interface DisplayCrsChange {
+  previous: string;
+  current: string;
+  view: ViewState;
+}
 export interface MapSnapshot {
+  displayCrs: string | null;
+  switching: boolean;
   ready: boolean;
   engine: IMapEngine | null;
   view: ViewState | null;
@@ -149,6 +163,7 @@ interface RecordEntry {
 export interface MapControllerCallbacks {
   onstate?: (snapshot: MapSnapshot) => void;
   onready?: (engine: IMapEngine) => void;
+  ondisplaycrschange?: (change: DisplayCrsChange) => void;
   onlayererror?: (error: MapError) => void;
   oncontrolerror?: (error: MapError) => void;
   onviewchange?: (view: ViewState, source: 'api' | 'user') => void;
@@ -176,6 +191,12 @@ export class MapController {
   #readouts?: ReadoutObserver;
   #readoutState: ReadoutSnapshot | null = null;
   #readoutKey = '';
+  #host?: EngineHost;
+  #mountingHost?: EngineHost;
+  #switchAbort?: AbortController;
+  #switching = false;
+  #request = 0;
+  #lastSwitchView?: ViewState;
   constructor(
     node: HTMLElement,
     runtime: MapRuntime,
@@ -189,8 +210,13 @@ export class MapController {
   get engine(): IMapEngine | null {
     return this.#engine ?? null;
   }
+  get host(): HTMLElement {
+    return this.#host?.node ?? this.#node;
+  }
   snapshot(): MapSnapshot {
     return {
+      displayCrs: this.#config?.display.crs ?? null,
+      switching: this.#switching,
       ready: this.#ready,
       readouts: this.#readoutState,
       engine: this.engine,
@@ -240,7 +266,86 @@ export class MapController {
     }
   }
 
+  #assertConfig(config: ResolvedMapConfig): void {
+    if (
+      config.capture ||
+      (config.controls !== undefined &&
+        new Set(config.controls.map((control) => control.id)).size !==
+          config.controls.length) ||
+      config.layers.some((layer) => layer.editable) ||
+      config.controls?.some(
+        (control) =>
+          !['zoom', 'attribution', 'layer-list', 'scale', 'coords'].includes(
+            control.id
+          ) ||
+          (control.readoutCrs !== undefined && control.id !== 'coords') ||
+          (control.position &&
+            control.position !==
+              (control.id === 'scale'
+                ? 'bottom-left'
+                : control.id === 'zoom'
+                  ? 'top-left'
+                  : control.id === 'layer-list'
+                    ? 'top-right'
+                    : 'bottom-right'))
+      ) ||
+      [
+        config.view.minZoom,
+        config.view.maxZoom,
+        config.view.minResolution,
+        config.view.maxResolution
+      ].some((value) => value !== undefined)
+    )
+      throw new MapError('CONFIG_INVALID', {
+        reason:
+          'This slice supports read-only features, XYZ/WMS/WMTS tiles, zoom, attribution, layer list, scale and coordinates; other controls and view limits are not yet supported.'
+      });
+  }
   async applyConfig(input: unknown): Promise<void> {
+    const validated = validateMapConfig(input);
+    if (!validated.ok) throw validated.error;
+    this.#assertConfig(validated.value);
+    if (this.#config && validated.value.engine !== this.#config.engine)
+      throw new MapError('CONFIG_INVALID', {
+        reason: 'Remount MapContainer to change engines.'
+      });
+    const request = ++this.#request;
+    this.#switchAbort?.abort();
+    if (
+      this.#config &&
+      validated.value.display.crs !== this.#config.display.crs
+    ) {
+      await this.#switchDisplayCrs(validated.value, request);
+      return;
+    }
+    this.#switchAbort = undefined;
+    if (this.#switching) {
+      this.#switching = false;
+      this.#emit();
+    }
+    if (
+      this.#config &&
+      this.#ready &&
+      !this.#layerErrors.size &&
+      this.#records.size === this.#config.layers.length &&
+      [...this.#records.values()].every(
+        (entry) => entry.managed.status === 'ready'
+      ) &&
+      JSON.stringify(validated.value) === JSON.stringify(this.#config)
+    )
+      return;
+    await this.#applyStableConfig(input, request);
+  }
+
+  async setDisplayCrs(code: string): Promise<void> {
+    if (!this.#config) throw new MapError('ENGINE_STATE');
+    await this.applyConfig({
+      ...this.#config,
+      display: { ...this.#config.display, crs: code }
+    });
+  }
+
+  async #applyStableConfig(input: unknown, request: number): Promise<void> {
     this.#preparing?.abort();
     const preparing = new AbortController();
     this.#preparing = preparing;
@@ -248,51 +353,15 @@ export class MapController {
     const current = () =>
       !this.#lifetime.signal.aborted && generation === this.#generation;
     let candidate: IMapEngine | undefined;
+    let candidateHost: EngineHost | undefined;
     try {
       const validated = validateMapConfig(input);
       if (!validated.ok) throw validated.error;
       const config = validated.value;
-      if (
-        config.capture ||
-        (config.controls !== undefined &&
-          new Set(config.controls.map((control) => control.id)).size !==
-            config.controls.length) ||
-        config.layers.some((layer) => layer.editable) ||
-        config.controls?.some(
-          (control) =>
-            !['zoom', 'attribution', 'layer-list', 'scale', 'coords'].includes(
-              control.id
-            ) ||
-            (control.readoutCrs !== undefined && control.id !== 'coords') ||
-            (control.position &&
-              control.position !==
-                (control.id === 'scale'
-                  ? 'bottom-left'
-                  : control.id === 'zoom'
-                    ? 'top-left'
-                    : control.id === 'layer-list'
-                      ? 'top-right'
-                      : 'bottom-right'))
-        ) ||
-        [
-          config.view.minZoom,
-          config.view.maxZoom,
-          config.view.minResolution,
-          config.view.maxResolution
-        ].some((value) => value !== undefined)
-      )
+      this.#assertConfig(config);
+      if (this.#config && config.engine !== this.#config.engine)
         throw new MapError('CONFIG_INVALID', {
-          reason:
-            'This slice supports read-only features, XYZ/WMS/WMTS tiles, zoom, attribution, layer list, scale and coordinates; other controls and view limits are not yet supported.'
-        });
-      if (
-        this.#config &&
-        (config.engine !== this.#config.engine ||
-          config.display.crs !== this.#config.display.crs)
-      )
-        throw new MapError('DISPLAY_CRS_SWITCH_BLOCKED', {
-          reason:
-            'Remount MapContainer to change engine or display CRS in this slice.'
+          reason: 'Remount MapContainer to change engines.'
         });
       const definition = await this.#runtime.crs.resolve(config.display.crs);
       candidate = this.#engine
@@ -304,15 +373,25 @@ export class MapController {
         definition.code,
         config.display.allowExperimental
       );
-      const centerTransform = await this.#runtime.transforms.prepare({
-        source: config.view.center.crs,
-        target: definition.code
-      });
-      const view = {
-        center: centerTransform.coordinate(config.view.center.coordinates),
-        resolution: resolveViewResolution(config.view, definition.tileMatrix),
-        rotation: config.view.rotation ?? 0
-      };
+      const move =
+        !this.#config ||
+        JSON.stringify(config.view) !== JSON.stringify(this.#config.view);
+      const centerTransform = move
+        ? await this.#runtime.transforms.prepare({
+            source: config.view.center.crs,
+            target: definition.code
+          })
+        : undefined;
+      const view = move
+        ? {
+            center: centerTransform!.coordinate(config.view.center.coordinates),
+            resolution: resolveViewResolution(
+              config.view,
+              definition.tileMatrix
+            ),
+            rotation: config.view.rotation ?? 0
+          }
+        : this.#engine!.getView();
       const scale =
         config.controls?.some((control) => control.id === 'scale') ?? false;
       const coords = config.controls?.find(
@@ -345,17 +424,22 @@ export class MapController {
             target: 'EPSG:4326'
           })
         : undefined;
-      const readoutKey = JSON.stringify(
-        config.controls?.filter((control) =>
-          ['scale', 'coords'].includes(control.id)
-        ) ?? []
-      );
+      const readoutKey = JSON.stringify({
+        display: definition.code,
+        controls:
+          config.controls?.filter((control) =>
+            ['scale', 'coords'].includes(control.id)
+          ) ?? []
+      });
       if (!current()) return;
+      let applied = false;
       const commit = this.#tail.then(async () => {
-        if (!current()) return;
+        if (!current() || request !== this.#request) return;
         if (!this.#engine) {
           this.#mounting = candidate;
-          await candidate!.mount(this.#node, {
+          candidateHost = createEngineHost(this.#node);
+          this.#mountingHost = candidateHost;
+          await candidate!.mount(candidateHost.node, {
             displayCrs: definition,
             view,
             signal: this.#lifetime.signal,
@@ -363,24 +447,12 @@ export class MapController {
           });
           if (!current()) return;
           this.#engine = candidate;
+          this.#host = candidateHost;
+          candidateHost = undefined;
+          this.#mountingHost = undefined;
           candidate = undefined;
           this.#mounting = undefined;
-          this.#offError = this.#engine!.on('error', (error) => {
-            const id = error.details.id;
-            if (
-              typeof id === 'string' &&
-              this.#records.has(id) &&
-              !this.#layerErrors.has(id)
-            ) {
-              this.#layerErrors.set(id, error);
-              this.#emit();
-              this.#callbacks.onlayererror?.(error);
-            }
-          });
-          this.#offView = this.#engine!.on('viewchange', (event) => {
-            this.#emit();
-            this.#callbacks.onviewchange?.(event.view, event.source);
-          });
+          this.#bindEngine(this.#engine!);
         }
         // Drop removed/replaced sources before starting independent layer loads.
         for (const [id, entry] of this.#records) {
@@ -390,10 +462,8 @@ export class MapController {
           }
         }
         this.#layerErrors.clear();
-        const move =
-          !this.#config ||
-          JSON.stringify(config.view) !== JSON.stringify(this.#config.view);
         this.#config = config;
+        applied = true;
         if (!this.layers.attached)
           await this.layers.attach(this.#engine!, definition, {
             allowExperimental: config.display.allowExperimental
@@ -433,7 +503,7 @@ export class MapController {
       });
       this.#tail = commit.catch(() => {});
       await commit;
-      if (!current()) return;
+      if (!current() || !applied) return;
       // Source I/O is outside the mount queue: a stalled source cannot block a
       // sibling layer, readiness, or a newer configuration.
       await Promise.all(
@@ -514,9 +584,371 @@ export class MapController {
       throw new MapError('SOURCE_LOAD_FAILED');
     } finally {
       candidate?.destroy();
+      candidateHost?.dispose();
       if (this.#mounting === candidate) this.#mounting = undefined;
     }
   }
+  async #switchDisplayCrs(
+    config: ResolvedMapConfig,
+    request: number
+  ): Promise<void> {
+    const previousConfig = this.#config!;
+    // Apply unrelated layer/control edits first so preflight cannot silently drop a blocker.
+    if (
+      JSON.stringify(config.layers) !== JSON.stringify(previousConfig.layers) ||
+      JSON.stringify(config.controls) !==
+        JSON.stringify(previousConfig.controls)
+    )
+      throw new MapError('DISPLAY_CRS_SWITCH_BLOCKED', {
+        reason:
+          'Apply layer and control configuration changes before switching the display CRS.'
+      });
+    const missing = previousConfig.layers.filter(
+      (layer) =>
+        !this.#records.has(layer.id) ||
+        this.#records.get(layer.id)!.managed.status !== 'ready'
+    );
+    if (missing.length)
+      throw new MapError('DISPLAY_CRS_SWITCH_BLOCKED', {
+        layers: missing.map((layer) => ({
+          id: layer.id,
+          reason:
+            'Layer is still loading or failed; finish or remove it before switching.'
+        }))
+      });
+    const definition = await this.#runtime.crs.resolve(config.display.crs);
+    if (this.#lifetime.signal.aborted || request !== this.#request) return;
+    this.layers.assertCanSwitchDisplayCrs(definition, {
+      allowExperimental: config.display.allowExperimental
+    });
+    this.#switchAbort?.abort();
+    const abort = new AbortController();
+    this.#switchAbort = abort;
+    const stop = () => abort.abort();
+    this.#lifetime.signal.addEventListener('abort', stop, { once: true });
+    const run = this.#tail.then(async () => {
+      let candidate: IMapEngine | undefined;
+      let host: EngineHost | undefined;
+      let transaction:
+        | Awaited<ReturnType<LayerManager['prepareDisplayCrsSwitch']>>
+        | undefined;
+      let offErrors: (() => void) | undefined;
+      let committed = false;
+      let retire: (() => void) | undefined;
+      try {
+        abort.signal.throwIfAborted();
+        this.#switching = true;
+        this.#emit();
+        const old = this.#engine!;
+        const oldHost = this.#host!;
+        const oldDefinition = await this.#runtime.crs.resolve(
+          previousConfig.display.crs
+        );
+        const explicitView =
+          JSON.stringify(config.view) !== JSON.stringify(previousConfig.view);
+        const targetView = async () => {
+          if (!explicitView)
+            return transformedDisplayView(
+              old,
+              oldDefinition,
+              definition,
+              this.#runtime
+            );
+          const transform = await this.#runtime.transforms.prepare({
+            source: config.view.center.crs,
+            target: definition.code
+          });
+          if (definition.code === 'EPSG:3857') {
+            const geographic = await this.#runtime.transforms.prepare({
+              source: config.view.center.crs,
+              target: 'EPSG:4326'
+            });
+            if (
+              Math.abs(
+                geographic.coordinate(config.view.center.coordinates)[1]
+              ) > 85.0511287798066
+            )
+              throw new MapError('DISPLAY_CRS_SWITCH_BLOCKED', {
+                reason:
+                  'Requested centre is outside the native Web Mercator latitude range.'
+              });
+          }
+          return {
+            center: transform.coordinate(config.view.center.coordinates),
+            resolution: resolveViewResolution(
+              config.view,
+              definition.tileMatrix
+            ),
+            rotation: config.view.rotation ?? 0
+          };
+        };
+        const initialView = await targetView();
+        const loadingEngine = this.#runtime.engines.create(config.engine);
+        void loadingEngine
+          .then(
+            (engine) => {
+              if (abort.signal.aborted && !committed) engine.destroy();
+            },
+            () => {}
+          )
+          .catch(() => {});
+        candidate = await waitForSwitch(loadingEngine, abort.signal);
+        assertDisplayCrs(
+          candidate.capabilities,
+          definition.code,
+          config.display.allowExperimental
+        );
+        const scale =
+          config.controls?.some((control) => control.id === 'scale') ?? false;
+        const coords = config.controls?.find(
+          (control) => control.id === 'coords'
+        );
+        const target = coords
+          ? await this.#runtime.crs.resolve(
+              coords.readoutCrs ?? definition.code
+            )
+          : definition;
+        const geographic = scale
+          ? await this.#runtime.transforms.prepare({
+              source: definition.code,
+              target: 'EPSG:4326'
+            })
+          : undefined;
+        const transform = coords
+          ? await this.#runtime.transforms.prepare({
+              source: definition.code,
+              target: target.code
+            })
+          : undefined;
+        const accuracy = new Map<string, TransformAccuracy>();
+        for (const [id, entry] of this.#records)
+          accuracy.set(
+            id,
+            (
+              await this.#runtime.transforms.forDisplay(
+                entry.spec.source.crs,
+                definition.code
+              )
+            ).accuracy
+          );
+        abort.signal.throwIfAborted();
+        this.#switching = true;
+        this.#emit();
+        host = createEngineHost(this.#node, true);
+        this.#mounting = candidate;
+        this.#mountingHost = host;
+        const mounted = candidate;
+        const pending = candidate.mount(host.node, {
+          displayCrs: definition,
+          view: initialView,
+          signal: abort.signal,
+          allowExperimental: config.display.allowExperimental
+        });
+        void pending
+          .finally(() => {
+            if (abort.signal.aborted && !committed) mounted.destroy();
+          })
+          .catch(() => {});
+        await waitForSwitch(pending, abort.signal);
+        const tileErrors = new Map<string, MapError>();
+        offErrors = candidate.on('error', (error) => {
+          if (typeof error.details.id === 'string')
+            tileErrors.set(error.details.id, error);
+        });
+        transaction = await this.layers.prepareDisplayCrsSwitch(
+          candidate,
+          definition,
+          {
+            signal: abort.signal,
+            allowExperimental: config.display.allowExperimental
+          }
+        );
+        // Navigation can continue on the old map during preparation. Preserve its latest view.
+        const finalView = await targetView();
+        candidate.resize();
+        candidate.setView(finalView);
+        abort.signal.throwIfAborted();
+        const focus =
+          !!oldHost.node.ownerDocument &&
+          oldHost.node.contains(oldHost.node.ownerDocument.activeElement);
+        const cleanup = transaction.commit();
+        committed = true;
+        let retired = false;
+        retire = () => {
+          if (retired) return;
+          retired = true;
+          try {
+            try {
+              cleanup();
+            } catch {
+              this.#callbacks.oncontrolerror?.(
+                new MapError('LAYER_LOAD_FAILED', {
+                  reason:
+                    'Old display resource cleanup failed after a successful switch.'
+                })
+              );
+            }
+          } finally {
+            try {
+              old.destroy();
+            } finally {
+              oldHost.dispose();
+            }
+          }
+        };
+        this.#generation++;
+        this.#preparing?.abort();
+        this.#offView?.();
+        this.#offError?.();
+        this.#readouts?.destroy();
+        this.#readouts = undefined;
+        this.#readoutState = null;
+        this.#readoutKey = '';
+        this.#engine = candidate;
+        this.#host = host;
+        candidate = undefined;
+        host = undefined;
+        this.#mounting = undefined;
+        this.#mountingHost = undefined;
+        this.#host.activate();
+        this.#config = config;
+        for (const [id, entry] of this.#records) {
+          entry.spec = entry.managed.spec;
+          entry.accuracy = accuracy.get(id)!;
+        }
+        this.#layerErrors.clear();
+        for (const [id, error] of tileErrors)
+          if (this.#records.has(id)) this.#layerErrors.set(id, error);
+        offErrors();
+        offErrors = undefined;
+        this.#bindEngine(this.#engine);
+        if (scale || coords)
+          this.#readouts = new ReadoutObserver(
+            this.#engine,
+            {
+              display: definition,
+              target,
+              geographic,
+              transform,
+              scale,
+              coordinates: !!coords,
+              width: () => this.#node.clientWidth,
+              onerror: (error) => this.#callbacks.oncontrolerror?.(error)
+            },
+            (state) => {
+              this.#readoutState = state;
+              this.#emit();
+            }
+          );
+        this.#readoutKey = JSON.stringify({
+          display: definition.code,
+          controls:
+            config.controls?.filter((control) =>
+              ['scale', 'coords'].includes(control.id)
+            ) ?? []
+        });
+        const view = this.#engine.getView();
+        this.#lastSwitchView = view;
+        this.#switching = false;
+        this.#callbacks.ondisplaycrschange?.({
+          previous: previousConfig.display.crs,
+          current: definition.code,
+          view
+        });
+        this.#callbacks.onviewchange?.(view, 'api');
+        this.#emit();
+        if (focus) this.#host.node.focus({ preventScroll: true });
+        retire();
+        if (!this.#lifetime.signal.aborted)
+          this.#callbacks.onready?.(this.#engine);
+        for (const error of tileErrors.values())
+          this.#callbacks.onlayererror?.(error);
+      } catch (cause) {
+        if (abort.signal.aborted || this.#lifetime.signal.aborted) return;
+        if (committed) throw cause;
+        const error =
+          cause instanceof MapError ? cause : new MapError('ENGINE_STATE');
+        throw new MapError('DISPLAY_CRS_SWITCH_BLOCKED', {
+          reason:
+            typeof error.details.reason === 'string'
+              ? error.details.reason
+              : 'Replacement map could not be prepared; the previous map remains active.',
+          cause: error.code,
+          ...(typeof error.details.id === 'string'
+            ? {
+                layers: [
+                  {
+                    id: error.details.id,
+                    reason:
+                      typeof error.details.reason === 'string'
+                        ? error.details.reason
+                        : error.code
+                  }
+                ]
+              }
+            : {})
+        });
+      } finally {
+        retire?.();
+        offErrors?.();
+        if (this.#mounting === candidate) this.#mounting = undefined;
+        if (this.#mountingHost === host) this.#mountingHost = undefined;
+        try {
+          transaction?.dispose();
+        } finally {
+          try {
+            candidate?.destroy();
+          } finally {
+            host?.dispose();
+          }
+        }
+        if (this.#switchAbort === abort) {
+          this.#switchAbort = undefined;
+          this.#switching = false;
+          this.#mounting = undefined;
+          this.#mountingHost = undefined;
+          this.#emit();
+        }
+        this.#lifetime.signal.removeEventListener('abort', stop);
+      }
+    });
+    this.#tail = run.catch(() => {});
+    await run;
+  }
+
+  #bindEngine(engine: IMapEngine): void {
+    this.#offError = engine.on('error', (error) => {
+      const id = error.details.id;
+      if (
+        typeof id === 'string' &&
+        this.#records.has(id) &&
+        !this.#layerErrors.has(id)
+      ) {
+        this.#layerErrors.set(id, error);
+        this.#emit();
+        this.#callbacks.onlayererror?.(error);
+      }
+    });
+    this.#offView = engine.on('viewchange', (event) => {
+      if (this.#engine !== engine) return;
+      const echo = this.#lastSwitchView;
+      this.#lastSwitchView = undefined;
+      if (
+        echo &&
+        event.source === 'api' &&
+        echo.center.every(
+          (coordinate, index) =>
+            Math.abs(coordinate - event.view.center[index]) < 1e-7
+        ) &&
+        Math.abs(echo.resolution - event.view.resolution) < 1e-9 &&
+        echo.rotation === event.view.rotation
+      )
+        return;
+      this.#emit();
+      this.#callbacks.onviewchange?.(event.view, event.source);
+    });
+  }
+
   setView(view: Partial<ViewState>): void {
     if (!this.#engine) return;
     const current = this.#engine.getView();
@@ -565,6 +997,7 @@ export class MapController {
   destroy(): void {
     if (this.#lifetime.signal.aborted) return;
     this.#preparing?.abort();
+    this.#switchAbort?.abort();
     this.#lifetime.abort();
     this.#readouts?.destroy();
     this.#readouts = undefined;
@@ -577,6 +1010,8 @@ export class MapController {
       this.#engine?.destroy();
       this.#mounting?.destroy();
       this.#engine = undefined;
+      this.#host?.dispose();
+      this.#mountingHost?.dispose();
       this.#records.clear();
     }
   }

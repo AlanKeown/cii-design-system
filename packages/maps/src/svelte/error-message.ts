@@ -41,7 +41,7 @@ export function mapErrorMessage(error: MapError): string {
     case 'DISPLAY_CRS_UNSUPPORTED':
       return 'The engine does not support this display coordinate system. Choose a supported display CRS and load the map again.';
     case 'DISPLAY_CRS_SWITCH_BLOCKED':
-      return 'The engine or display CRS cannot be changed on this map. Remount the map with the new settings.';
+      return 'The display coordinate system could not be changed. The previous map is still active. Check incompatible layers, pending sources and the requested view, then retry.';
     case 'ENGINE_NOT_REGISTERED':
     case 'ENGINE_ID_MISMATCH':
     case 'REGISTRY_NOT_FOUND':
@@ -55,6 +55,36 @@ export function mapErrorMessage(error: MapError): string {
 }
 
 export function mapErrorIssues(error: MapError): readonly ConfigIssue[] {
+  if (error.code === 'DISPLAY_CRS_SWITCH_BLOCKED') {
+    if (Array.isArray(error.details.layers))
+      return error.details.layers.flatMap((layer: unknown) => {
+        if (
+          !layer ||
+          typeof layer !== 'object' ||
+          !('id' in layer) ||
+          typeof layer.id !== 'string' ||
+          !('reason' in layer) ||
+          typeof layer.reason !== 'string'
+        )
+          return [];
+        return [
+          {
+            path: `layers.${layer.id}`,
+            message: layer.reason,
+            action:
+              'Resolve or remove this blocker before retrying the display switch.'
+          }
+        ];
+      });
+    if (typeof error.details.reason === 'string')
+      return [
+        {
+          path: 'display.crs',
+          message: error.details.reason,
+          action: 'The previous map remains active.'
+        }
+      ];
+  }
   if (!Array.isArray(error.details.issues)) return [];
   return error.details.issues.filter(
     (issue): issue is ConfigIssue =>

@@ -5,7 +5,12 @@
   import LeafletEngine from '../../../src/leaflet.ts';
   import { createCrsRegistry, EngineRegistry } from '../../../src/index.ts';
   import { checkEngineConformance } from '../../../src/testing.ts';
-  import type { IMapEngine, MapConfig, ViewState } from '../../../src/index.ts';
+  import type {
+    IMapEngine,
+    MapConfig,
+    ViewState,
+    EngineInit
+  } from '../../../src/index.ts';
   import type { Map as LeafletMap } from 'leaflet';
   const viewEvents: { view: ViewState; source: 'api' | 'user' }[] = [];
   let overrideConfig = $state.raw<MapConfig | undefined>();
@@ -22,6 +27,23 @@
   let text = $state('Safe site');
   const runtime = createLeafletRuntime();
   const params = new URLSearchParams(location.search);
+  if (params.has('switch-fail') || params.has('switch-delay')) {
+    class SwitchEngine extends LeafletEngine {
+      override async mount(node: HTMLElement, init: EngineInit) {
+        if (init.displayCrs.code === 'EPSG:4326') {
+          if (params.has('switch-fail'))
+            throw new Error('Synthetic replacement failure');
+          await new Promise((resolve) =>
+            setTimeout(resolve, Number(params.get('switch-delay')))
+          );
+        }
+        await super.mount(node, init);
+      }
+    }
+    const engines = new EngineRegistry();
+    engines.register('leaflet', async () => ({ default: SwitchEngine }));
+    runtime.engines = engines;
+  }
   const controlled = (x: number, rotation = 0): ViewState => ({
     center: [x, 0],
     resolution: 1000,
@@ -48,6 +70,7 @@
     ...(params.has('readouts')
       ? {
           controls: [
+            ...(params.has('switching') ? [{ id: 'layer-list' as const }] : []),
             { id: 'zoom' as const },
             { id: 'scale' as const },
             {

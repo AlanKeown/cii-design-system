@@ -5,6 +5,7 @@ description: Leaflet feature and XYZ/WMS/WMTS raster maps with explicit CRS conf
 
 <script lang="ts">
   import MapExample from '#lib/examples/MapExample.svelte';
+  import RuntimeCrsExample from '#lib/examples/RuntimeCrsExample.svelte';
   import CrsConfirmExample from '#lib/examples/CrsConfirmExample.svelte';
 </script>
 
@@ -193,6 +194,64 @@ The implementation follows [WMS 1.3.0](https://docs.ogc.org/is/06-042/06-042.pdf
 and [WMTS 1.0.0](https://www.ogc.org/standards/wmts/). The synthetic fixtures test
 these supported paths; they do not claim full OGC service certification.
 
+## Runtime display CRS
+
+<RuntimeCrsExample />
+
+Change `config.display.crs` to switch an existing map. Keep layer and control
+configuration unchanged during the switch; apply other edits separately first.
+The current Leaflet adapter supports EPSG:3857, EPSG:4326 and OGC:CRS84.
+
+```svelte
+<script lang="ts">
+  import { MapContainer } from '@cii/maps/svelte';
+  import type { MapConfig } from '@cii/maps';
+
+  // App-owned configuration with compatible feature or WMS layers.
+  let { initialConfig }: { initialConfig: MapConfig } = $props();
+  let displayCrs = $state('EPSG:3857');
+  const config = $derived({
+    ...initialConfig,
+    display: { ...initialConfig.display, crs: displayCrs }
+  });
+</script>
+
+<select aria-label="Display CRS" bind:value={displayCrs}>
+  <option value="EPSG:3857">Web Mercator</option>
+  <option value="EPSG:4326">WGS 84</option>
+  <option value="OGC:CRS84">Longitude/latitude</option>
+</select>
+<MapContainer {config} label="Community sites" />
+```
+
+The switch transforms the live centre and preserves local horizontal scale,
+layer identity, visibility, opacity, order, styles and source CRS provenance.
+WMS requests use the advertised target CRS and its protocol axis order without
+reconfirming the source. A replacement engine and all registered layers are
+prepared before handoff. Failure leaves the previous map usable and reports
+`DISPLAY_CRS_SWITCH_BLOCKED`; rapid requests discard obsolete replacements.
+Zoom and layer controls pause during staging, while the old map remains usable.
+
+Fixed-grid XYZ/WMTS layers can block geographic displays even when hidden.
+Errors name incompatible layers. Remove incompatible registrations in a separate
+update before retrying. Pending or failed layer preparations must finish or be
+retried first. Retained edit targets participate in preflight through
+`layers.retainStagedTarget(spec)`; call its returned release function when the
+target is no longer retained. Capture and editing tools remain future work.
+
+`ondisplaycrschange` receives `{ previous, current, view }` after a successful
+handoff. `view` and `bind:view` then use the new display units; `onviewchange`
+reports the transformed view with source `api`. `onready` runs again with the
+replacement engine, so refresh any stored engine reference. Descendant controls
+can use `getMapContext().setDisplayCrs(code)` and inspect `displayCrs` and
+`switching`; synchronise app-owned display configuration with the callback.
+
+An unchanged initial zoom declaration is not reapplied during switching. When
+persisting a switched map for a new mount, save the callback's centre with the
+new CRS and explicit `resolution`, rather than reusing an initial zoom in a CRS
+without a tile matrix. Out-of-range Mercator centres are refused, not clipped.
+Engine changes still require remounting.
+
 ## Scale and coordinate readout controls
 
 Enable the first-party controls in map configuration:
@@ -349,18 +408,19 @@ state, with no network requests or browser map creation.
 
 ## Properties
 
-| Property       | Type                                                 | Default                  |
-| -------------- | ---------------------------------------------------- | ------------------------ |
-| `config`       | `MapConfig` (required)                               | —                        |
-| `label`        | string (required)                                    | —                        |
-| `description`  | string                                               | —                        |
-| `height`       | CSS length                                           | `24rem`                  |
-| `view`         | `ViewState`, bindable                                | —                        |
-| `runtime`      | `MapRuntime`, read once when mounted                 | `createLeafletRuntime()` |
-| `children`     | Svelte snippet                                       | —                        |
-| `onready`      | `(engine: IMapEngine) => void`                       | —                        |
-| `onerror`      | `(error: MapError) => void`                          | —                        |
-| `onviewchange` | `(view: ViewState, source: 'api' \| 'user') => void` | —                        |
+| Property             | Type                                                 | Default                  |
+| -------------------- | ---------------------------------------------------- | ------------------------ |
+| `config`             | `MapConfig` (required)                               | —                        |
+| `label`              | string (required)                                    | —                        |
+| `description`        | string                                               | —                        |
+| `height`             | CSS length                                           | `24rem`                  |
+| `view`               | `ViewState`, bindable                                | —                        |
+| `runtime`            | `MapRuntime`, read once when mounted                 | `createLeafletRuntime()` |
+| `children`           | Svelte snippet                                       | —                        |
+| `onready`            | `(engine: IMapEngine) => void`                       | —                        |
+| `ondisplaycrschange` | `(change: DisplayCrsChange) => void`                 | —                        |
+| `onerror`            | `(error: MapError) => void`                          | —                        |
+| `onviewchange`       | `(view: ViewState, source: 'api' \| 'user') => void` | —                        |
 
 `MapContainer` accepts `class` and forwards HTML attributes, including `data-*`
 and ARIA attributes, to its root section. Caller-provided `aria-describedby` IDs
@@ -380,8 +440,8 @@ container. `view` is bindable; view changes are also available through
 `onviewchange`. Use `onready` to access the typed engine contract and `onerror`
 for typed errors.
 
-Engine/display changes require an explicit component remount in this slice;
-runtime CRS switch orchestration remains pending. The initial `runtime` prop can
+Engine changes require an explicit component remount. The initial `runtime`
+prop can
 inject app-owned registries or a fetch implementation through
 `createLeafletRuntime`, exported from `@cii/maps/svelte`. Credentials belong in
 that runtime fetch implementation, not in serialised map config.

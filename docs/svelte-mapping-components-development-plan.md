@@ -2,7 +2,7 @@
 
 |                   |                                              |
 | ----------------- | -------------------------------------------- |
-| **Status**        | Phase 0 complete; Phase 1 in progress — v0.8 |
+| **Status**        | Phase 0 complete; Phase 1 in progress — v0.9 |
 | **Date**          | 6 November 2026                              |
 | **Engines**       | Leaflet, MapLibre GL JS, OpenLayers          |
 | **Framework**     | Svelte 5 (runes) / SvelteKit                 |
@@ -55,8 +55,8 @@ type checks and Node test runner.
   grid/service/engine/style compatibility checks, ordered queued attachment,
   surgical updates, reload, cancellation and deterministic resource cleanup.
   Display-CRS switch preflight checks registered layers and retained staged-edit
-  targets without mutating state. Rendering and switch/rebuild orchestration
-  remain work for the production adapters and map-state coordinator.
+  targets without mutating state. Runtime switch/rebuild orchestration is now
+  implemented for the production Leaflet adapter (see §16.8).
 - Added the proj4-backed horizontal display transform service through the CRS
   registry, with explicit source/display handling, geometry copies, datum/epoch
   reports and an optional same-datum policy. Generated definitions now include
@@ -92,7 +92,8 @@ type checks and Node test runner.
   slice supports native EPSG:3857/4326/CRS84 display and bounded GeoJSON, with
   linear hit testing. Custom projected displays, raster basemaps,
   labels/rules/icons, other controls and editing remain pending. Engine/display
-  changes require an explicit remount until switch orchestration is implemented.
+  changes originally required remounting; display switching is now implemented
+  in §16.8. Engine changes still require remounting.
 
 ### Phase 0 follow-up — 5 November 2026
 
@@ -2455,6 +2456,29 @@ and integration work in the roadmap.
 
 ---
 
+### 16.8 Phase 1 runtime display-CRS switching — 6 November 2026
+
+Added display-only config updates, `MapController.setDisplayCrs()` and the
+Svelte context equivalent. Preflight includes registered layers, hidden fixed
+grids and retained edit targets. A hidden, inert replacement engine prepares all
+layers before handoff; failures and obsolete requests retain the active map.
+Registration identity, local layer settings, original data and confirmed CRS
+provenance survive, including WMS metadata and acknowledgement evidence.
+
+The live centre and local horizontal scale transform into the new display CRS;
+Mercator latitude overflow fails without clipping. The bound view, readouts,
+focus and engine references update on handoff. `ondisplaycrschange` reports the
+new view and `onready` runs again for the replacement engine. Zoom and layer
+controls pause during staging. Layer/control config edits must be applied
+separately; pending or failed registrations must be resolved before switching.
+
+Unit and real Chromium tests cover round trips, preserved settings, named
+blockers, retained targets, staging failure, cancellation, late resource
+cleanup, WMS request axis order and unmounts. The docs include a live switching
+example and callback/persistence guidance. Phase 1 remains in progress:
+production MapLibre/OpenLayers adapters and custom projected displays remain.
+Capture tools and actual staged geometries are later-phase work.
+
 ## 17. Dependency flags and risk register
 
 ### 17.1 Dependency flags (requirement R3)
@@ -2636,3 +2660,4 @@ should be re-checked during Phase 0 alongside spikes S1–S7._
 | 0.6     | 6 Nov 2026 | Added WMS/WMTS metadata providers, Leaflet raster request rendering, bounded XML parsing, local service examples and conformance fixtures; recorded the supported scope and remaining Phase 1 work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 0.7     | 6 Nov 2026 | Added CRS confirmation UI, optional coordinate/envelope previews, source-scoped mismatch evidence, documentation and validation coverage; recorded the remaining Phase 1 work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 0.8     | 6 Nov 2026 | Added first-party scale and coordinate readout controls, CRS preflight, precision/accuracy information, accessible announcements, documentation and tests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 0.9     | 6 Nov 2026 | Added atomic runtime display-CRS switching, rollback, live view conversion, preserved layer state/provenance, retained-target preflight, callbacks, documentation and tests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |

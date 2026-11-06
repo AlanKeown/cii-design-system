@@ -68,12 +68,12 @@ fail instead of being clipped.
 
 Config updates reconcile existing layers and preserve the map and user view for
 visual-only changes. Superseded requests and unmounts cancel pending work.
-Engine/display changes require remounting in this slice. Base paths, circle
-points, CII colour tokens, XYZ/WMTS basemaps and WMS raster services are
-supported; custom projected displays, labels, icons, rules, capture and other
-controls remain pending and fail explicitly. GeoJSON reads are limited to 5 MiB,
-10,000 features and 100,000 positions; hit testing currently scans the bounded
-feature set without a spatial index. See the
+Display-only changes rebuild atomically with rollback; engine changes require
+remounting. Base paths, circle points, CII colour tokens, XYZ/WMTS basemaps and
+WMS raster services are supported; custom projected displays, labels, icons,
+rules, capture and other controls remain pending and fail explicitly. GeoJSON
+reads are limited to 5 MiB, 10,000 features and 100,000 positions; hit testing
+currently scans the bounded feature set without a spatial index. See the
 [working documentation example](../../apps/docs/src/routes/components/map/+page.md).
 
 Install Leaflet (`>=1.9.4 <2`) and Svelte 5 for the rendering entry points; they
@@ -370,8 +370,12 @@ Engine and layer lifecycle:
 - `assertCanSwitchDisplayCrs(next, { stagedTargets })` is a read-only preflight
   that names incompatible registered layers and retained staged-edit targets in
   `DISPLAY_CRS_SWITCH_BLOCKED`. It does not switch the engine or transform
-  view/capture state. A future map-state coordinator will perform the Phase 1
-  switch/rebuild transaction after preflight.
+  view/capture state itself. `MapContainer` and `MapController.setDisplayCrs()`
+  coordinate the switch/rebuild transaction after preflight.
+- `retainStagedTarget(spec)` retains an edit target for subsequent preflights
+  and returns an idempotent release function. `prepareDisplayCrsSwitch()` stages
+  replacement handles, preserves managed registration identity and checks for
+  intervening mutations before committing. Capture tools remain future work.
 - `detach()` preserves registrations/settings for another mounted engine;
   `destroy()` permanently removes them. The manager never owns engine
   destruction. `MapContainer` owns both lifecycles, reactive config
@@ -447,9 +451,10 @@ support zooms 0–24; outside that range tiles are not shown. Other grids,
 TMS/subdomain/retina conventions and raster feature styles fail explicitly. Tile
 images use native browser requests rather than the runtime GeoJSON `fetch`
 override. See the documentation example for a complete config, request behaviour
-and retry guidance. Layer-list edits apply locally to the mounted map; a new
-config reapplies application settings. Default stacking follows config array
-order; explicit higher orders render above lower orders.
+and retry guidance. Layer-list edits apply locally to the mounted map; changed
+layer/control config reapplies application settings. Unchanged config and
+display-only switches preserve local settings. Default stacking follows config
+array order; explicit higher orders render above lower orders.
 
 WMS (1.1.1/1.3.0) and WMTS (1.0.0) providers resolve
 `crs: { fromMetadata: true, policy: 'prefer-display' }` from bounded
@@ -509,3 +514,33 @@ ensemble and epoch warnings remain visible, and display precision is never an
 accuracy certification. Controls use CII tokens, move below the canvas on
 compact maps, and release subscriptions and pending frames on
 reconfiguration/unmount. See the live docs Readout CRS selector.
+
+## Runtime display CRS
+
+Set `config.display.crs` while keeping layer/control configuration unchanged, or
+call `getMapContext().setDisplayCrs(code)` from a descendant. The current
+Leaflet adapter rebuilds on a hidden, inert host, attaches all registered layers
+and then hands over. Failure keeps the active engine, view and handles intact.
+Rapid changes cancel obsolete preparations and release late results.
+
+The live centre and local horizontal scale are transformed. Managed layer
+identity, visibility, opacity, order, styles, source coordinates and confirmed
+CRS provenance survive. WMS requests use the new advertised display CRS without
+fetching capabilities again. Fixed-grid XYZ/WMTS layers, including hidden ones,
+and retained edit targets can refuse a switch. Pending/error layers must be
+resolved first. Other config edits must be applied separately before switching.
+
+`ondisplaycrschange({ previous, current, view })` reports successful handoff;
+`bind:view` and the API `onviewchange` event use the new display units.
+`onready` runs again with the replacement engine. Refresh app-owned engine
+references and synchronise controlled display configuration in that callback.
+Context exposes `displayCrs` and `switching`. Zoom/layer controls pause while
+staging, and focus returns to the replacement canvas if the old canvas held it.
+
+An unchanged config is a no-op; a display-only change preserves local layer
+settings. Save the transformed centre with its CRS and explicit resolution when
+persisting a switched view for a fresh mount. An initial zoom declaration is not
+sufficient for a geographic display without a registered tile matrix.
+Out-of-range Mercator centres fail without clipping. Production MapLibre and
+OpenLayers adapters, custom projected Leaflet displays and capture remain
+pending.

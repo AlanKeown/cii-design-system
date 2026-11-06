@@ -4,9 +4,11 @@
 
   let {
     layers,
+    disabled = false,
     onchange
   }: {
     layers: readonly MapLayerInfo[];
+    disabled?: boolean;
     onchange: (
       id: string,
       patch: { visible?: boolean; opacity?: number; order?: number }
@@ -32,7 +34,7 @@
   }
 </script>
 
-<fieldset>
+<fieldset {disabled}>
   <legend>Layers</legend>
   <ol>
     {#each ordered as layer, index (layer.id)}

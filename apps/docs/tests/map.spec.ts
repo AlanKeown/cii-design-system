@@ -125,3 +125,39 @@ test('CRS confirmation docs require acceptance and share scoped acknowledgement 
   await expect(map.locator('canvas')).toHaveCount(1);
   await expect(map.getByRole('alert')).toHaveCount(0);
 });
+
+test('runtime display CRS docs preserve local layer settings through a round trip', async ({
+  page
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('components/map/');
+  const example = page.getByRole('region', {
+    name: 'Runtime display CRS',
+    exact: true
+  });
+  const map = example.getByRole('region', {
+    name: 'Switchable demonstration',
+    exact: true
+  });
+  await expect(map).toHaveAttribute('data-map-ready', 'true');
+  const site = map.getByRole('checkbox', {
+    name: 'switching-site',
+    exact: true
+  });
+  await site.uncheck();
+  for (const crs of ['EPSG:4326', 'OGC:CRS84', 'EPSG:3857']) {
+    await example
+      .getByRole('combobox', { name: 'Display CRS', exact: true })
+      .selectOption(crs);
+    await expect(map).toHaveAttribute('data-display-crs', crs);
+    await expect(
+      example.getByRole('status').filter({ hasText: 'Active display:' })
+    ).toHaveText(`Active display: ${crs}`);
+    await expect(site).not.toBeChecked();
+    await expect(map.locator('.leaflet-container')).toHaveCount(1);
+    await expect(map.getByRole('alert')).toHaveCount(0);
+  }
+  await site.check();
+  expect(errors).toEqual([]);
+});
