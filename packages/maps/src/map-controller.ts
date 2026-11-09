@@ -279,6 +279,10 @@ export class MapController {
   #generation = 0;
   #tail: Promise<void> = Promise.resolve();
   #records = new Map<string, RecordEntry>();
+  #declarative = new Map<
+    string,
+    { managed: ManagedLayer; onerror?: (error: MapError) => void }
+  >();
   #layerErrors = new Map<string, MapError>();
   #config?: ResolvedMapConfig;
   #ready = false;
@@ -364,6 +368,9 @@ export class MapController {
   }
 
   #assertConfig(config: ResolvedMapConfig): void {
+    for (const layer of config.layers)
+      if (this.#declarative.has(layer.id))
+        throw new MapError('LAYER_DUPLICATE', { id: layer.id });
     if (
       config.capture ||
       (config.controls !== undefined &&
@@ -424,7 +431,8 @@ export class MapController {
       this.#config &&
       this.#ready &&
       !this.#layerErrors.size &&
-      this.#records.size === this.#config.layers.length &&
+      this.#records.size ===
+        this.#config.layers.length + this.#declarative.size &&
       [...this.#records.values()].every(
         (entry) => entry.managed.status === 'ready'
       ) &&
@@ -553,12 +561,14 @@ export class MapController {
         }
         // Drop removed/replaced sources before starting independent layer loads.
         for (const [id, entry] of this.#records) {
+          if (this.#declarative.has(id)) continue;
           const item = config.layers.find((layer) => layer.id === id);
           if (!item || entry.key !== JSON.stringify(item.source)) {
             this.#removeLayer(id);
           }
         }
-        this.#layerErrors.clear();
+        for (const id of this.#layerErrors.keys())
+          if (!this.#declarative.has(id)) this.#layerErrors.delete(id);
         this.#config = config;
         applied = true;
         if (!this.layers.attached)
@@ -700,7 +710,10 @@ export class MapController {
         reason:
           'Apply layer and control configuration changes before switching the display CRS.'
       });
-    const missing = previousConfig.layers.filter(
+    const missing = [
+      ...previousConfig.layers,
+      ...[...this.#declarative.keys()].map((id) => ({ id }))
+    ].filter(
       (layer) =>
         !this.#records.has(layer.id) ||
         this.#records.get(layer.id)!.managed.status !== 'ready'
@@ -958,8 +971,10 @@ export class MapController {
         retire();
         if (!this.#lifetime.signal.aborted)
           this.#callbacks.onready?.(this.#engine);
-        for (const error of tileErrors.values())
+        for (const [id, error] of tileErrors) {
           this.#callbacks.onlayererror?.(error);
+          this.#declarative.get(id)?.onerror?.(error);
+        }
       } catch (cause) {
         if (abort.signal.aborted || this.#lifetime.signal.aborted) return;
         if (committed) throw cause;
@@ -1018,12 +1033,13 @@ export class MapController {
       const id = error.details.id;
       if (
         typeof id === 'string' &&
-        this.#records.has(id) &&
+        (this.#records.has(id) || this.#declarative.has(id)) &&
         !this.#layerErrors.has(id)
       ) {
         this.#layerErrors.set(id, error);
         this.#emit();
         this.#callbacks.onlayererror?.(error);
+        this.#declarative.get(id)?.onerror?.(error);
       }
     });
     this.#offView = engine.on('viewchange', (event) => {
@@ -1065,6 +1081,116 @@ export class MapController {
       return;
     this.#engine.setView(view);
   }
+  /** Child components own these handles; config reconciliation never removes them. */
+  registerLayer(
+    spec: LayerSpec,
+    options: { onerror?: (error: MapError) => void } = {}
+  ): ManagedLayer {
+    if (!this.#ready || !this.#config || this.#lifetime.signal.aborted)
+      throw new MapError('ENGINE_STATE');
+    if (
+      this.#config.layers.some((layer) => layer.id === spec.id) ||
+      this.#declarative.has(spec.id)
+    )
+      throw new MapError('LAYER_DUPLICATE', { id: spec.id });
+    let generation = 0;
+    const active = () =>
+      this.#declarative.get(spec.id)?.managed === owned &&
+      !this.#lifetime.signal.aborted;
+    const report = (cause: unknown) => {
+      if (!active() || this.#layerErrors.has(spec.id)) return;
+      const error =
+        cause instanceof MapError
+          ? new MapError(cause.code, { ...cause.details, id: spec.id })
+          : new MapError('LAYER_LOAD_FAILED', { id: spec.id });
+      this.#layerErrors.set(spec.id, error);
+      this.#emit();
+      this.#callbacks.onlayererror?.(error);
+      options.onerror?.(error);
+    };
+    const managed = this.layers.add(spec, { onerror: report });
+    const refresh = () => {
+      const request = ++generation;
+      const display = this.#config!.display.crs;
+      const currentSpec = managed.spec;
+      this.#layerErrors.delete(spec.id);
+      const existing = this.#records.get(spec.id);
+      if (existing) existing.spec = currentSpec;
+      this.#emit();
+      void (async () => {
+        try {
+          const { accuracy } = await this.#runtime.transforms.forDisplay(
+            currentSpec.source.crs,
+            display
+          );
+          if (!active() || request !== generation) return;
+          // A concurrent switch has its own accuracy transaction. Retry against its committed CRS.
+          if (display !== this.#config!.display.crs) {
+            refresh();
+            return;
+          }
+          this.#records.set(spec.id, {
+            key: 'declarative',
+            spec: managed.spec,
+            accuracy,
+            managed: owned
+          });
+          this.#emit();
+          await managed.ready;
+          if (active() && request === generation) this.#emit();
+        } catch (cause) {
+          if (active() && request === generation) report(cause);
+        }
+      })();
+    };
+    const update = (next: LayerSpec) => {
+      if (!active()) throw new MapError('LAYER_REMOVED', { id: spec.id });
+      managed.update(next);
+      if (managed.status === 'error') managed.reload();
+      refresh();
+    };
+    const owned: ManagedLayer = {
+      id: managed.id,
+      get status() {
+        return managed.status;
+      },
+      get ready() {
+        return managed.ready;
+      },
+      get spec() {
+        return managed.spec;
+      },
+      update,
+      setVisible: (visible) => update({ ...managed.spec, visible }),
+      setOpacity: (opacity) => update({ ...managed.spec, opacity }),
+      setOrder: (order) => update({ ...managed.spec, order }),
+      setStyle: (style) => update({ ...managed.spec, style }),
+      reload: () => {
+        if (!active()) throw new MapError('LAYER_REMOVED', { id: spec.id });
+        managed.reload();
+        refresh();
+      },
+      remove: () => {
+        if (this.#declarative.get(spec.id)?.managed !== owned) return;
+        generation++;
+        this.#declarative.delete(spec.id);
+        try {
+          managed.remove();
+        } finally {
+          this.#records.delete(spec.id);
+          this.#layerErrors.delete(spec.id);
+          this.#emit();
+        }
+      }
+    };
+    this.#declarative.set(spec.id, {
+      managed: owned,
+      onerror: options.onerror
+    });
+    refresh();
+    return owned;
+  }
+
   updateLayer(
     id: string,
     patch: { visible?: boolean; opacity?: number; order?: number }
@@ -1110,6 +1236,7 @@ export class MapController {
       this.#host?.dispose();
       this.#mountingHost?.dispose();
       this.#records.clear();
+      this.#declarative.clear();
     }
   }
 }

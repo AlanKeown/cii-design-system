@@ -5,6 +5,7 @@ description: Leaflet, OpenLayers and MapLibre maps with confirmed source CRS, pr
 
 <script lang="ts">
   import MapEnginesExample from '#lib/examples/MapEnginesExample.svelte';
+  import LayerExample from '#lib/examples/LayerExample.svelte';
   import MapExample from '#lib/examples/MapExample.svelte';
   import RuntimeCrsExample from '#lib/examples/RuntimeCrsExample.svelte';
   import CrsConfirmExample from '#lib/examples/CrsConfirmExample.svelte';
@@ -193,6 +194,64 @@ unmounting cancels its requests and releases native resources.
 The implementation follows [WMS 1.3.0](https://docs.ogc.org/is/06-042/06-042.pdf)
 and [WMTS 1.0.0](https://www.ogc.org/standards/wmts/). The synthetic fixtures test
 these supported paths; they do not claim full OGC service certification.
+
+## Declarative layers
+
+<LayerExample />
+
+Import `Layer` from `@cii/maps/svelte` and place it inside `MapContainer`.
+Its required `spec: LayerSpec` contains an already opened `ResolvedSource`,
+including confirmed CRS provenance. Use `resolveSourceCrs()` and the registered
+provider's `open()` method to prepare it. For file/user declarations, use the
+`CrsConfirm` workflow below first. `Layer` does not infer
+CRS, open files, or initiate a metadata probe during SSR.
+
+```svelte
+<script lang="ts">
+  import { Layer, MapContainer } from '@cii/maps/svelte';
+  import type { LayerSpec, MapConfig } from '@cii/maps';
+
+  let { site }: { site: LayerSpec } = $props();
+  let visible = $state(true);
+  const config: MapConfig = {
+    engine: 'leaflet',
+    view: {
+      center: { crs: 'OGC:CRS84', coordinates: [151.21, -33.87] },
+      zoom: 14
+    },
+    controls: [{ id: 'layer-list' }],
+    layers: []
+  };
+</script>
+
+<label><input type="checkbox" bind:checked={visible} /> Show site</label>
+<MapContainer {config} label="Sites">
+  <Layer spec={site} {visible} opacity={0.8} />
+</MapContainer>
+```
+
+Declarations wait for their parent map to be ready. Each child owns its
+registration until it is removed or unmounted. Source identity changes
+(layer ID, provider, provider identity, confirmed CRS/axes/epoch/WKT) replace
+the registration. Other changes patch it; replace source data immutably rather
+than mutating provider-owned geometry. Optional `visible`, `opacity`, `order`
+and `style` props override the corresponding spec fields when supplied.
+Omitting them uses the spec's values and the normal layer defaults.
+
+Child layers participate in the same layer list, plain-text attribution,
+datum warnings, error notices and display-CRS preflight as config layers.
+Changing the map config does not remove child registrations. Successful CRS
+switches preserve their identity and provenance. Config and child layer IDs
+share one namespace; duplicates are rejected without taking ownership of the
+existing layer. Pending or failed child preparations block a CRS switch until
+retried or removed.
+
+`onerror` receives typed failures. Invalid props show an actionable child error;
+asynchronous renderer failures appear in the parent map's error list. Correct
+an invalid prop to retry its update. The exported component method `reload()`
+retries the current renderer; access it through `bind:this`. Reloading does not
+re-probe an already opened source. Unmounting cancels preparation and releases
+late resources. Convenience source-specific components remain later work.
 
 ## Engines and projected displays
 

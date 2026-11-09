@@ -384,10 +384,19 @@ export default class OpenLayersEngine extends BrowserEngine {
         })
       );
     source.on('tileloaderror', failed);
+    let retry = 0;
     map.addLayer(layer);
     return {
       setVisible: (visible) => {
-        if (visible) source.refresh();
+        if (visible) {
+          // A source whose first tiles all failed may not have a rendered cache key.
+          // Give retries a fresh public source key so cached errors cannot be reused.
+          source.setTileUrlFunction(
+            source.getTileUrlFunction(),
+            `retry-${++retry}`
+          );
+          source.refresh();
+        }
         layer.setVisible(visible);
       },
       setOpacity: (opacity) => layer.setOpacity(opacity),

@@ -205,3 +205,53 @@ test('production engine comparison switches engines and projected displays with 
   });
   expect(errors).toEqual([]);
 });
+
+test('declarative Layer documentation hydrates, patches and removes a child without remounting the map', async ({
+  page
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('components/map/');
+  const example = page.getByRole('region', {
+    name: 'Declarative layer example',
+    exact: true
+  });
+  await expect(
+    example.getByRole('checkbox', { name: 'declarative-site', exact: true })
+  ).toBeVisible();
+  const canvas = await example
+    .locator('.leaflet-container canvas')
+    .elementHandle();
+  await page
+    .getByRole('button', { name: 'Change child point size', exact: true })
+    .click();
+  await page
+    .getByRole('slider', { name: 'Child layer opacity', exact: true })
+    .fill('0.5');
+  await expect(
+    example.getByRole('slider', {
+      name: 'Opacity for declarative-site',
+      exact: true
+    })
+  ).toHaveValue('0.5');
+  expect(await canvas!.evaluate((node) => node.isConnected)).toBe(true);
+  const host = await example.locator('.leaflet-container').elementHandle();
+  await page
+    .getByRole('button', { name: 'Remove child layer', exact: true })
+    .click();
+  await expect(
+    example.getByRole('checkbox', { name: 'declarative-site', exact: true })
+  ).toHaveCount(0);
+  await expect(example.getByLabel('Map attribution')).not.toContainText(
+    'Synthetic demonstration location'
+  );
+  expect(await host!.evaluate((node) => node.isConnected)).toBe(true);
+  await page
+    .getByRole('button', { name: 'Add child layer', exact: true })
+    .click();
+  await expect(
+    example.getByRole('checkbox', { name: 'declarative-site', exact: true })
+  ).toBeVisible();
+  await expect(example.getByRole('alert')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

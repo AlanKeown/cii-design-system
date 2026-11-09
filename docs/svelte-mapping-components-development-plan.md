@@ -2521,6 +2521,25 @@ shortcuts. This closes that specific acceptance gap; it does not close Phase 1.
 The declarative `Layer` component and a complete R1/R2/accessibility acceptance
 review remain before the Phase 2 data-source work.
 
+### 16.11 Phase 1 declarative Layer component — 9 November 2026
+
+Added `Layer` with resolved `LayerSpec` inputs, optional visibility, opacity,
+order and style overrides, typed errors and an exported renderer retry method.
+Declarations wait for parent readiness; they do not probe or mount during SSR.
+The earlier §12.3 sketch is an architectural reference; the shipped component
+uses controller-managed ownership so child metadata reaches the map UI.
+
+Child registrations coexist with config layers in one ID namespace. Config
+reconciliation preserves them; duplicates never remove the existing owner. They
+participate in attribution, layer controls, datum warnings, errors and atomic
+CRS switching. Identity changes replace the registration; other updates patch
+it. Unmounting cancels preparation and late resources are released.
+
+Unit and browser regressions cover ownership, property/data patches, source
+replacement, conflict handling, retries, cancellation and CRS switching on the
+three supported adapters. The docs include a live example. A complete Phase 1
+R1/R2 and accessibility acceptance review remains before Phase 2 begins.
+
 ## 17. Dependency flags and risk register
 
 ### 17.1 Dependency flags (requirement R3)

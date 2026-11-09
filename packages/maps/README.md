@@ -567,3 +567,18 @@ The map documentation includes a three-engine example and a synthetic MGA grid
 configuration. These display transforms retain original data and datum warnings;
 they do not certify survey alignment. Labels, icons, style rules, editing and
 custom MapLibre projections remain outside this slice.
+
+## Declarative child layers
+
+`Layer` is exported from `@cii/maps/svelte` for use inside `MapContainer`. Pass
+`spec: LayerSpec` with an opened, CRS-confirmed source. Optional `visible`,
+`opacity`, `order` and `style` props override spec fields. The component waits
+for map readiness, patches non-identity updates and removes its own registration
+on unmount. Source identity changes replace the registration. `onerror` reports
+typed failures; `bind:this` exposes `reload()` for renderer retries.
+
+Child layers share controls, attribution, datum/error information and atomic CRS
+switching with config layers. Config reconciliation preserves children; config
+and child IDs cannot collide. Data must be replaced immutably. Source opening
+and confirmation remain the caller's responsibility. The map docs include a live
+add/remove/opacity example and a typed usage snippet.

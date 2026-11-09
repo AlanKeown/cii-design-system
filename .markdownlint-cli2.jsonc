@@ -28,6 +28,7 @@
             "AlertExample",
             "ButtonExample",
             "MapExample",
+            "LayerExample",
             "MapEnginesExample",
             "RuntimeCrsExample",
             "CrsConfirmExample",

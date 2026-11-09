@@ -91,6 +91,10 @@
     get switching() {
       return snapshot?.switching ?? false;
     },
+    registerLayer: (spec, options) => {
+      if (!controller) throw new MapError('ENGINE_STATE');
+      return controller.registerLayer(spec, options);
+    },
     setDisplayCrs: (code: string) =>
       controller
         ? controller.setDisplayCrs(code)
