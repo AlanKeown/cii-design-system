@@ -667,26 +667,7 @@ export function ogcTileUrl(
     const span = (mercator ? 2 * Math.PI * 6378137 : 180) / 2 ** coords.z;
     const west = (mercator ? -Math.PI * 6378137 : -180) + coords.x * span;
     const north = (mercator ? Math.PI * 6378137 : 90) - coords.y * span;
-    const bbox =
-      data.axisOrder === 'yx'
-        ? [north - span, west, north, west + span]
-        : [west, north - span, west + span, north];
-    return kvpUrl(data.url, {
-      SERVICE: 'WMS',
-      REQUEST: 'GetMap',
-      VERSION: data.version,
-      LAYERS: data.layers.join(','),
-      STYLES: data.layers.map(() => '').join(','),
-      FORMAT: data.format,
-      TRANSPARENT: 'TRUE',
-      WIDTH: '256',
-      HEIGHT: '256',
-      CRS: undefined,
-      SRS: undefined,
-      [data.version === '1.3.0' ? 'CRS' : 'SRS']:
-        data.requestCrs === 'OGC:CRS84' ? 'CRS:84' : data.requestCrs,
-      BBOX: bbox.join(',')
-    });
+    return wmsTileUrl(data, [west, north - span, west + span, north], 256, 256);
   }
   const matrix = data.matrices.find((item) => item.zoom === coords.z);
   if (
@@ -728,4 +709,39 @@ export function ogcTileUrl(
   return data.url.replace(/\{([^}]+)\}/g, (_, key: string) =>
     encodeURIComponent(replacements[key])
   );
+}
+
+/** Adapter-provided x/y envelope; WMS protocol axis order is applied exactly once. */
+export function wmsTileUrl(
+  data: WmsTileData,
+  bbox: readonly [number, number, number, number],
+  width: number,
+  height: number
+): string {
+  if (
+    !data.requestCrs ||
+    !data.axisOrder ||
+    !data.supportedCrs.includes(data.requestCrs)
+  )
+    throw metadataInvalid(
+      'WMS renderer has not selected an advertised request CRS.'
+    );
+  const axes =
+    data.axisOrder === 'yx' ? [bbox[1], bbox[0], bbox[3], bbox[2]] : bbox;
+  return kvpUrl(data.url, {
+    SERVICE: 'WMS',
+    REQUEST: 'GetMap',
+    VERSION: data.version,
+    LAYERS: data.layers.join(','),
+    STYLES: data.layers.map(() => '').join(','),
+    FORMAT: data.format,
+    TRANSPARENT: 'TRUE',
+    WIDTH: String(width),
+    HEIGHT: String(height),
+    CRS: undefined,
+    SRS: undefined,
+    [data.version === '1.3.0' ? 'CRS' : 'SRS']:
+      data.requestCrs === 'OGC:CRS84' ? 'CRS:84' : data.requestCrs,
+    BBOX: axes.join(',')
+  });
 }

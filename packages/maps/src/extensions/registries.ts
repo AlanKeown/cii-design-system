@@ -5,7 +5,7 @@ import { EngineRegistry } from '../engine/registry.ts';
 import { createCrsRegistry } from '../crs/registry.ts';
 import { createFeatureSources } from '../sources/geojson.ts';
 import type { CrsRegistry } from '../crs/registry.ts';
-import type { CrsDefinitionProvider } from '../crs/types.ts';
+import type { CrsDef, CrsDefinitionProvider } from '../crs/types.ts';
 import type { DataSourceProvider } from '../sources/geojson.ts';
 import type { LayerRenderer } from '../layers/types.ts';
 import type {
@@ -34,7 +34,11 @@ export interface Registries {
 
 /** One collection per map/application; built-ins use the same public registration methods. */
 export function createRegistries(
-  options: { australia?: boolean; fetch?: typeof fetch } = {}
+  options: {
+    australia?: boolean;
+    fetch?: typeof fetch;
+    definitions?: readonly CrsDef[];
+  } = {}
 ): Registries {
   const crs = createCrsRegistry(options);
   const sources = createFeatureSources(options.fetch);

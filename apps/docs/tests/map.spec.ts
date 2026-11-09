@@ -161,3 +161,47 @@ test('runtime display CRS docs preserve local layer settings through a round tri
   await site.check();
   expect(errors).toEqual([]);
 });
+
+test('production engine comparison switches engines and projected displays with bundled assets', async ({
+  page
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('components/map/');
+  const example = page.getByRole('region', {
+    name: 'Engine comparison sites',
+    exact: true
+  });
+  await expect(example).toHaveAttribute('data-map-ready', 'true');
+  await expect(example.locator('.ol-viewport canvas')).not.toHaveCount(0);
+  const display = page.getByRole('combobox', {
+    name: 'Engine display CRS',
+    exact: true
+  });
+  await display.selectOption('EPSG:7856');
+  await expect(
+    example.getByRole('region', { name: 'Coordinate readout', exact: true })
+  ).toContainText('EPSG:7856');
+  await expect(example.getByRole('alert')).toHaveCount(0);
+  const engine = page.getByRole('combobox', {
+    name: 'Map engine',
+    exact: true
+  });
+  await engine.selectOption('maplibre');
+  await expect(example).toHaveAttribute('data-map-ready', 'true');
+  await expect(example.locator('.maplibregl-canvas')).toHaveCount(1);
+  await expect(display).toBeDisabled();
+  await expect(example.getByLabel('Map attribution')).toContainText('MapLibre');
+  await engine.selectOption('leaflet');
+  await expect(example.locator('.leaflet-container canvas')).toHaveCount(1);
+  await display.selectOption('EPSG:7856');
+  await expect(
+    example.getByRole('region', { name: 'Coordinate readout', exact: true })
+  ).toContainText('EPSG:7856');
+  await expect(example.getByRole('alert')).toHaveCount(0);
+  await page.screenshot({
+    path: 'test-results/map-engines.png',
+    fullPage: true
+  });
+  expect(errors).toEqual([]);
+});

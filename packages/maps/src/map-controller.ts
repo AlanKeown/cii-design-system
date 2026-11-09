@@ -33,12 +33,26 @@ import type { ConfirmedCrs } from './crs/types.ts';
 import type { ViewState } from './view.ts';
 
 export function createLeafletRuntime(
-  options: { fetch?: typeof fetch; acknowledgeHintMismatch?: boolean } = {}
+  options: {
+    fetch?: typeof fetch;
+    acknowledgeHintMismatch?: boolean;
+    definitions?: readonly CrsDef[];
+  } = {}
 ) {
-  const registries = createRegistries(options);
+  const configured = structuredClone(options.definitions ?? []);
+  const registries = createRegistries({ ...options, definitions: configured });
   const { crs, engines, sources, renderers } = registries;
   const transforms = createTransformService(crs);
-  engines.register('leaflet', () => import('./leaflet.ts'));
+  engines.register('leaflet', async () => {
+    const { default: LeafletEngine } = await import('./leaflet.ts');
+    return {
+      default: class extends LeafletEngine {
+        constructor() {
+          super(crs, configured);
+        }
+      }
+    };
+  });
   renderers.register('leaflet:features', {
     compatibility: () => undefined,
     prepare: async (source, context) => {
@@ -126,6 +140,89 @@ export function createLeafletRuntime(
   };
 }
 
+/** OpenLayers shares source confirmation and controls with the Leaflet runtime. */
+export function createOpenLayersRuntime(
+  options: Parameters<typeof createLeafletRuntime>[0] = {}
+) {
+  const runtime = createLeafletRuntime(options);
+  const { transforms, crs, engines, renderers } = runtime;
+  engines.register('openlayers', () => import('./openlayers.ts'));
+  renderers.register('openlayers:features', {
+    compatibility: () => undefined,
+    prepare: async (source, context) => {
+      const transform = await transforms.forDisplay(
+        source.crs,
+        context.displayCrs.code
+      );
+      context.signal.throwIfAborted();
+      return { data: transform.features(source.data as FeatureBatch) };
+    }
+  });
+  renderers.register('openlayers:raster-tiles', {
+    compatibility: (source) =>
+      ['xyz', 'wms', 'wmts'].includes(source.provider)
+        ? undefined
+        : 'Only XYZ, WMS and WMTS raster tiles are implemented.',
+    prepare: async (source, context) => {
+      let tiles =
+        source.data as import('./openlayers.ts').OpenLayersRasterData['tiles'];
+      let code = source.crs.crs.code;
+      if ('kind' in tiles && tiles.kind === 'wms') {
+        if (tiles.supportedCrs.includes(context.displayCrs.code))
+          code = context.displayCrs.code;
+        const definition = await crs.resolve(code);
+        tiles = {
+          ...tiles,
+          requestCrs: code,
+          axisOrder:
+            tiles.version === '1.3.0' &&
+            code !== 'OGC:CRS84' &&
+            !definition.projected
+              ? 'yx'
+              : 'xy'
+        };
+      }
+      const [definition, forward, inverse] = await Promise.all([
+        crs.resolve(code),
+        transforms.prepare({ source: code, target: context.displayCrs.code }),
+        transforms.prepare({ source: context.displayCrs.code, target: code })
+      ]);
+      context.signal.throwIfAborted();
+      return {
+        data: {
+          tiles,
+          definition,
+          forward,
+          inverse
+        } satisfies import('./openlayers.ts').OpenLayersRasterData
+      };
+    }
+  });
+  return runtime;
+}
+
+export function createMapLibreRuntime(
+  options: Parameters<typeof createLeafletRuntime>[0] = {}
+) {
+  const runtime = createOpenLayersRuntime(options);
+  runtime.engines.register('maplibre', () => import('./maplibre.ts'));
+  // Both native renderers accept geographic x/y input. Share the Mercator
+  // latitude guard so neither engine can silently clip a polar feature.
+  runtime.renderers.register(
+    'maplibre:features',
+    runtime.renderers.require('leaflet:features')
+  );
+  // The production Web Mercator tile contract is identical to Leaflet's.
+  runtime.renderers.register(
+    'maplibre:raster-tiles',
+    runtime.renderers.require('leaflet:raster-tiles')
+  );
+  return runtime;
+}
+
+/** Register all adapters lazily; only the selected engine is downloaded on mount. */
+export const createMapRuntime = createMapLibreRuntime;
+
 export type MapRuntime = ReturnType<typeof createLeafletRuntime>;
 export interface MapLayerInfo {
   id: string;
@@ -169,7 +266,7 @@ export interface MapControllerCallbacks {
   onviewchange?: (view: ViewState, source: 'api' | 'user') => void;
 }
 
-/** Browser lifecycle coordinator for read-only Leaflet feature and XYZ layers. */
+/** Browser lifecycle coordinator shared by the registered display adapters. */
 export class MapController {
   readonly layers: LayerManager;
   #node: HTMLElement;

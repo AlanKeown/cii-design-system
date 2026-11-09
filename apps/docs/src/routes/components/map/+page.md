@@ -1,19 +1,19 @@
 ---
 title: Map
-description: Leaflet feature and XYZ/WMS/WMTS raster maps with explicit CRS confirmation and first-party layer controls.
+description: Leaflet, OpenLayers and MapLibre maps with confirmed source CRS, projected displays and first-party controls.
 ---
 
 <script lang="ts">
+  import MapEnginesExample from '#lib/examples/MapEnginesExample.svelte';
   import MapExample from '#lib/examples/MapExample.svelte';
   import RuntimeCrsExample from '#lib/examples/RuntimeCrsExample.svelte';
   import CrsConfirmExample from '#lib/examples/CrsConfirmExample.svelte';
 </script>
 
-`@cii/maps/svelte` provides an SSR-safe `MapContainer`. This first slice
-displays inline and fetched GeoJSON features and standard Web Mercator XYZ
-raster tiles, plus WMS and WMTS services, using Leaflet 1.9.4, first-party zoom
-and layer controls, and
-mandatory attribution.
+`@cii/maps/svelte` provides an SSR-safe `MapContainer` with Leaflet 1.9.4,
+OpenLayers 10.11 and MapLibre 6.15 adapters. All three use the same confirmed
+sources, first-party controls, theme tokens and plain-text attribution.
+Inline and fetched GeoJSON features, XYZ tiles, WMS and WMTS are supported.
 
 <MapExample />
 
@@ -194,13 +194,70 @@ The implementation follows [WMS 1.3.0](https://docs.ogc.org/is/06-042/06-042.pdf
 and [WMTS 1.0.0](https://www.ogc.org/standards/wmts/). The synthetic fixtures test
 these supported paths; they do not claim full OGC service certification.
 
+## Engines and projected displays
+
+<MapEnginesExample />
+
+Set `config.engine` to `leaflet`, `openlayers` or `maplibre`. The default
+`createMapRuntime()` registers all three lazily; only the chosen engine loads
+on mount. Install the selected engine's optional peer dependency in a consuming
+application: `leaflet`, `ol`, or `maplibre-gl`. Engine changes require a keyed
+remount, as the example demonstrates.
+
+| Adapter | Display CRS | Raster behaviour |
+| --- | --- | --- |
+| Leaflet | Web Mercator, WGS 84/CRS84, configured metre projections with explicit grids | Tiles must match the display grid; WMS must advertise the display CRS. |
+| OpenLayers | Registered horizontal CRS definitions, including MGA and NSW Lambert | XYZ and WMTS keep their native grids; OpenLayers reprojects raster tiles. WMS requests the advertised display CRS when available, otherwise its confirmed source CRS. |
+| MapLibre | EPSG:3857 | Standard Web Mercator XYZ/WMTS and WMS advertising EPSG:3857. |
+
+OpenLayers features are transformed from original source coordinates into the
+display CRS by the core transform service. MapLibre receives geographic copies
+from that same service. Original coordinates and confirmed CRS provenance stay
+unchanged. Custom MapLibre projections remain unsupported, including with
+`allowExperimental`; their earlier spike does not establish production support.
+MapLibre requires WebGL and bundles its worker as a separate asset. Include the
+worker asset when deploying the consuming application's build.
+
+OpenLayers accepts explicit `view.resolution` without a tile matrix. Leaflet
+needs an explicit metre grid for projected displays. Supply a definition with
+that grid when creating the runtime; its origin and resolution levels must
+match any tile service you intend to use:
+
+```ts
+import { createCrsRegistry } from '@cii/maps';
+import { createMapRuntime } from '@cii/maps/svelte';
+
+const mga = await createCrsRegistry().resolve('EPSG:7856');
+const runtime = createMapRuntime({
+  definitions: [{
+    ...mga,
+    tileMatrix: {
+      // Synthetic example grid, not metadata for an actual tile service.
+      origin: [0, 10_000_000],
+      resolutions: Array.from(
+        { length: 25 }, (_, zoom) => 10_000_000 / 256 / 2 ** zoom
+      )
+    }
+  }]
+});
+```
+
+Pass `{runtime}` to `MapContainer` and use `display: { crs: 'EPSG:7856' }`.
+For example, `view.resolution: 10` means ten projected metres per CSS pixel.
+No implicit grid, wrapping, datum shift or survey accuracy is inferred.
+Configured definitions are copied into an instance-scoped registry before the
+built-in definitions. Prepared transforms retain their definition snapshots.
+The narrower `createLeafletRuntime()`, `createOpenLayersRuntime()` and
+`createMapLibreRuntime()` factories remain available; the latter two also
+include the adapters registered by the earlier factories.
+
 ## Runtime display CRS
 
 <RuntimeCrsExample />
 
 Change `config.display.crs` to switch an existing map. Keep layer and control
 configuration unchanged during the switch; apply other edits separately first.
-The current Leaflet adapter supports EPSG:3857, EPSG:4326 and OGC:CRS84.
+Supported targets depend on the adapter and its configured definitions.
 
 ```svelte
 <script lang="ts">
@@ -232,7 +289,8 @@ prepared before handoff. Failure leaves the previous map usable and reports
 `DISPLAY_CRS_SWITCH_BLOCKED`; rapid requests discard obsolete replacements.
 Zoom and layer controls pause during staging, while the old map remains usable.
 
-Fixed-grid XYZ/WMTS layers can block geographic displays even when hidden.
+On Leaflet and MapLibre, fixed-grid XYZ/WMTS layers can block a different
+display even when hidden. OpenLayers can reproject these rasters.
 Errors name incompatible layers. Remove incompatible registrations in a separate
 update before retrying. Pending or failed layer preparations must finish or be
 retried first. Retained edit targets participate in preflight through
@@ -415,7 +473,7 @@ state, with no network requests or browser map creation.
 | `description`        | string                                               | —                        |
 | `height`             | CSS length                                           | `24rem`                  |
 | `view`               | `ViewState`, bindable                                | —                        |
-| `runtime`            | `MapRuntime`, read once when mounted                 | `createLeafletRuntime()` |
+| `runtime`            | `MapRuntime`, read once when mounted                 | `createMapRuntime()`     |
 | `children`           | Svelte snippet                                       | —                        |
 | `onready`            | `(engine: IMapEngine) => void`                       | —                        |
 | `ondisplaycrschange` | `(change: DisplayCrsChange) => void`                 | —                        |
@@ -455,9 +513,9 @@ EPSG:3857. Leaflet features are transformed from original coordinates into the
 display CRS's geographic base, and source coordinates remain available
 unchanged.
 
-The first adapter supports EPSG:3857, EPSG:4326 and CRS84 display. A display CRS
-without a registered tile matrix uses explicit `view.resolution` rather than
-zoom. Other display CRSs fail without fallback. GDA94/GDA2020 inputs can be
+Display support is listed in the adapter table above. A display CRS without a
+registered tile matrix uses explicit `view.resolution` rather than zoom.
+Unsupported display CRSs fail without fallback. GDA94/GDA2020 inputs can be
 shown on Web Mercator, with a visible datum warning; this does not certify
 survey alignment.
 
@@ -501,9 +559,10 @@ wraps within the container.
 
 ## Scope and limits
 
-This slice supports base path styling, circle points, theme tokens and standard
-Web Mercator XYZ/WMTS basemaps and WMS raster services. Labels, icons,
-data-driven rules, custom projected displays and editing are not implemented
+This slice supports base path styling, circle points, theme tokens and
+XYZ/WMTS basemaps and WMS raster services. OpenLayers also supports the
+capabilities-advertised WMTS grid and raster reprojection. Labels, icons,
+data-driven rules, editing and custom MapLibre projections are not implemented
 yet; unsupported options fail explicitly. GeoJSON reads are
 bounded to 5 MiB, 10,000 features and 100,000 positions. Properties are treated
 as data and never inserted as HTML.

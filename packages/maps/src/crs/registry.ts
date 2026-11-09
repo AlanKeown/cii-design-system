@@ -32,9 +32,15 @@ export const australianCrsProvider: CrsDefinitionProvider = {
 };
 
 export function createCrsRegistry(
-  options: { australia?: boolean } = {}
+  options: { australia?: boolean; definitions?: readonly CrsDef[] } = {}
 ): CrsRegistry {
   const registry = new CrsRegistry();
+  if (options.definitions) {
+    const custom = structuredClone(options.definitions);
+    registry.providers.register('configured', {
+      resolve: (code) => custom.find((definition) => definition.code === code)
+    });
+  }
   registry.providers.register('core', coreCrsProvider);
   if (options.australia !== false)
     registry.providers.register('australia', australianCrsProvider);

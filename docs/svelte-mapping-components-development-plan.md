@@ -2479,6 +2479,32 @@ example and callback/persistence guidance. Phase 1 remains in progress:
 production MapLibre/OpenLayers adapters and custom projected displays remain.
 Capture tools and actual staged geometries are later-phase work.
 
+### 16.9 OpenLayers, projected displays and MapLibre — 9 November 2026
+
+Implemented production OpenLayers and MapLibre adapters through the shared
+controller, source confirmation, layer manager and first-party controls.
+`createMapRuntime()` registers all three adapters lazily; engine changes require
+a keyed remount. Native engines and their styles load only during browser mount.
+The map docs include a live engine/display comparison and explicit grid setup.
+
+OpenLayers receives core-transformed feature geometry, renders registered
+horizontal display CRSs, and reprojects native raster grids. WMTS uses its
+advertised matrices, dimensions and tile limits; WMS selects an advertised
+request CRS and applies protocol axis order exactly once. Projected Leaflet
+displays use the first-party CRS factory and explicit, caller-configured metre
+grids. No projected grid is inferred from a CRS's geographic area of use.
+
+MapLibre production display remains EPSG:3857. It converts native 512px zoom
+levels to the core resolution contract, receives geographic feature copies, and
+uses an explicitly bundled worker. XYZ, standard Web Mercator WMTS and WMS share
+the validated request builders. Custom MapLibre projection support remains
+deferred under the existing policy.
+
+The new browser suite exercises native feature rendering, PostGIS-reference MGA
+positions, pixel/view conformance, keyboard navigation, controls, switching and
+teardown. Phase 1 exit acceptance still requires review of the full conformance
+and accessibility criteria; this slice does not imply capture/editing support.
+
 ## 17. Dependency flags and risk register
 
 ### 17.1 Dependency flags (requirement R3)

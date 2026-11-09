@@ -46,6 +46,16 @@
       "types": "./dist/config/extensions.d.ts",
       "development": "./src/config/extensions.ts",
       "default": "./dist/config/extensions.js"
+    },
+    "./openlayers": {
+      "types": "./dist/openlayers.d.ts",
+      "development": "./src/openlayers.ts",
+      "default": "./dist/openlayers.js"
+    },
+    "./maplibre": {
+      "types": "./dist/maplibre.d.ts",
+      "development": "./src/maplibre.ts",
+      "default": "./dist/maplibre.js"
     }
   },
   "scripts": {
@@ -87,7 +97,9 @@
     "ajv": "^8.20.0",
     "leaflet": ">=1.9.4 <2",
     "proj4": ">=2.20.9 <3",
-    "svelte": "^5.57.2"
+    "svelte": "^5.57.2",
+    "ol": ">=10.11.0 <11",
+    "maplibre-gl": ">=6.15.0 <7"
   },
   "peerDependenciesMeta": {
     "leaflet": {
@@ -97,6 +109,12 @@
       "optional": true
     },
     "ajv": {
+      "optional": true
+    },
+    "ol": {
+      "optional": true
+    },
+    "maplibre-gl": {
       "optional": true
     }
   },

@@ -6,8 +6,7 @@
   import LayerList from './LayerList.svelte';
   import MapErrorNotice from './MapErrorNotice.svelte';
   import { Alert, Button } from '@cii/svelte';
-  import 'leaflet/dist/leaflet.css';
-  import { MapController, createLeafletRuntime } from '../map-controller.js';
+  import { MapController, createMapRuntime } from '../map-controller.js';
   import type {
     MapRuntime,
     MapSnapshot,
@@ -57,10 +56,18 @@
       .filter(Boolean)
       .join(' ') || undefined
   );
-  const selectedRuntime = untrack(() => runtime) ?? createLeafletRuntime();
+  const selectedRuntime = untrack(() => runtime) ?? createMapRuntime();
   let controller = $state.raw<MapController | null>(null);
   let snapshot = $state.raw<MapSnapshot | null>(null);
   let error = $state.raw<MapError | null>(null);
+  const engineCredits: Record<string, { name: string; url: string }> = {
+    leaflet: { name: 'Leaflet', url: 'https://leafletjs.com/' },
+    openlayers: { name: 'OpenLayers', url: 'https://openlayers.org/' },
+    maplibre: { name: 'MapLibre', url: 'https://maplibre.org/' }
+  };
+  const engineCredit = $derived(
+    engineCredits[snapshot?.engine?.id ?? config.engine]
+  );
   const ready = $derived(snapshot?.ready ?? false);
   const datumDiffers = $derived(
     snapshot?.layers.some(
@@ -237,8 +244,9 @@
     {#if !ready && !error}<p class="loading" role="status">Loading map…</p>{/if}
   </div>
   <div class="attribution" aria-label="Map attribution">
-    <a href="https://leafletjs.com/">Leaflet</a
-    >{#each snapshot?.attributions ?? [] as attribution (attribution)}<span>
+    {#if engineCredit}<a href={engineCredit.url}>{engineCredit.name}</a
+      >{/if}{#each snapshot?.attributions ?? [] as attribution (attribution)}<span
+      >
         · {attribution}</span
       >{/each}
   </div>

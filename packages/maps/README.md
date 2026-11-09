@@ -2,10 +2,11 @@
 
 Foundations and the first read-only rendering slice for the
 [mapping development plan](../../docs/svelte-mapping-components-development-plan.md).
-This private workspace package renders inline/fetched GeoJSON and standard Web
-Mercator XYZ raster tiles with Leaflet 1.9.4 through an SSR-safe Svelte
-component. Enable `controls: [{ id: 'zoom' }, { id: 'layer-list' }]` for
-first-party visibility, opacity and stacking controls.
+This private workspace package renders inline/fetched GeoJSON, XYZ tiles and
+WMS/WMTS services through an SSR-safe Svelte component, with lazy Leaflet,
+OpenLayers and MapLibre adapters. Enable
+`controls: [{ id: 'zoom' }, { id: 'layer-list' }]` for first-party visibility,
+opacity and stacking controls.
 
 ```svelte
 <script lang="ts">
@@ -47,14 +48,14 @@ attributes and `class` are forwarded; description IDs are combined. Errors show
 recovery guidance and configuration paths, while `onerror` retains typed
 diagnostic details.
 
-The component includes Leaflet CSS, first-party zoom controls, optional scale
-and coordinate readouts, keyboard navigation, resize observation, mandatory text
-attribution, typed errors and datum warnings. Provide a text alternative for map
-content. `view` is bindable; `onready`, `onviewchange` and `onerror` expose
-lifecycle events. `getMapContext()` supplies descendants with the engine and
-layer manager. The initial `runtime` prop accepts
-`createLeafletRuntime({ fetch })` for app-owned requests and registries. Keep
-credentials out of serialised config.
+The selected adapter loads its native CSS. The component supplies first-party
+zoom controls, optional scale and coordinate readouts, keyboard navigation,
+resize observation, mandatory text attribution, typed errors and datum warnings.
+Provide a text alternative for map content. `view` is bindable; `onready`,
+`onviewchange` and `onerror` expose lifecycle events. `getMapContext()` supplies
+descendants with the engine and layer manager. The initial `runtime` prop
+accepts `createMapRuntime({ fetch })` for app-owned requests and registries.
+Keep credentials out of serialised config.
 
 `@cii/maps/leaflet` exports the adapter as its default export; it imports
 Leaflet only during mounting. It supports native EPSG:3857, EPSG:4326 and
@@ -70,10 +71,11 @@ Config updates reconcile existing layers and preserve the map and user view for
 visual-only changes. Superseded requests and unmounts cancel pending work.
 Display-only changes rebuild atomically with rollback; engine changes require
 remounting. Base paths, circle points, CII colour tokens, XYZ/WMTS basemaps and
-WMS raster services are supported; custom projected displays, labels, icons,
-rules, capture and other controls remain pending and fail explicitly. GeoJSON
-reads are limited to 5 MiB, 10,000 features and 100,000 positions; hit testing
-currently scans the bounded feature set without a spatial index. See the
+WMS raster services are supported. OpenLayers accepts registered projected
+displays; Leaflet supports configured metre grids. Labels, icons, rules, capture
+and other controls remain pending and fail explicitly. GeoJSON reads are limited
+to 5 MiB, 10,000 features and 100,000 positions; hit testing currently scans the
+bounded feature set without a spatial index. See the
 [working documentation example](../../apps/docs/src/routes/components/map/+page.md).
 
 Install Leaflet (`>=1.9.4 <2`) and Svelte 5 for the rendering entry points; they
@@ -400,11 +402,9 @@ scope. Shared registries, strict extension schema composition, CI and the S1–S
 feasibility findings are recorded in
 [the Phase 0 evidence and closeout](../../docs/mapping-phase-0-spike-report.md).
 Measured Supabase pipeline/grid limitations are enforced by the server
-capability preflight; production named browser grids remain disabled. Spike-only
-MapLibre/OpenLayers bridges, capture and custom Leaflet CRS construction do not
-expand the production adapter's capabilities. Phase 1 now includes XYZ raster
-basemaps and layer controls, plus WMS/WMTS services; the remaining display work
-follows.
+capability preflight; production named browser grids remain disabled. The
+production adapters described below replace the earlier display-only spikes.
+Capture and custom MapLibre projections remain separate future work.
 
 `createRegistries({ australia, fetch })` exposes engines, CRS providers, data
 sources, renderers, controls, capture modes, validators, persistence adapters,
@@ -430,14 +430,13 @@ runtime dependencies mgrs and wkt-parser are also MIT. Build tooling uses Ajv
 (MIT) for configuration types. CRS definitions come from PROJ's EPSG dataset;
 see [PROJ licensing](https://proj.org/en/stable/about.html#license).
 
-Phase 0 development dependencies, isolated from production exports: MapLibre GL
-JS 6.15.0 (BSD-3-Clause) and OpenLayers 10.11.0 (BSD-2-Clause) exercise actual
-rendering/interaction surfaces; official SQLite WASM 3.54.1-build1 (Apache-2.0
-package wrapper, upstream SQLite public domain) and sql.js 1.15.2 (MIT) compare
-worker readers; GeoTIFF 3.1.0-beta.0 (MIT) decodes checksum-pinned Australian
-shift grids in the CLI comparison. None provide library controls. The optional
-Python test environment is pinned separately in
-`spikes/pygeoapi-requirements.txt`.
+MapLibre GL JS 6.15.0 (BSD-3-Clause) and OpenLayers 10.11.0 (BSD-2-Clause) are
+optional production peers as well as development dependencies. Spike-only
+dependencies include official SQLite WASM 3.54.1-build1 (Apache-2.0 package
+wrapper, upstream SQLite public domain) and sql.js 1.15.2 (MIT) compare worker
+readers; GeoTIFF 3.1.0-beta.0 (MIT) decodes checksum-pinned Australian shift
+grids in the CLI comparison. None provide library controls. The optional Python
+test environment is pinned separately in `spikes/pygeoapi-requirements.txt`.
 
 `routeGeoPackageFile(fileBytes, { opfsAvailable, opfsLimitBytes })` implements
 the approved 16 MiB browser-memory default. Above that, files route to the
@@ -541,6 +540,30 @@ An unchanged config is a no-op; a display-only change preserves local layer
 settings. Save the transformed centre with its CRS and explicit resolution when
 persisting a switched view for a fresh mount. An initial zoom declaration is not
 sufficient for a geographic display without a registered tile matrix.
-Out-of-range Mercator centres fail without clipping. Production MapLibre and
-OpenLayers adapters, custom projected Leaflet displays and capture remain
-pending.
+Out-of-range Mercator centres fail without clipping. Production adapter
+capabilities and projected-display requirements are described below; capture
+remains pending.
+
+## Production display adapters
+
+`MapContainer` now defaults to `createMapRuntime()`, with lazy registration of
+Leaflet, OpenLayers and MapLibre. Choose `config.engine`; use a keyed remount to
+change engines. The selected engine needs its optional peer installed:
+`leaflet`, `ol`, or `maplibre-gl`. Adapter subpath exports are
+`@cii/maps/leaflet`, `@cii/maps/openlayers` and `@cii/maps/maplibre`.
+
+All adapters support confirmed inline/GeoJSON features, XYZ, WMS and WMTS,
+first-party controls, layer patches and the shared interaction surface.
+OpenLayers renders registered horizontal display CRSs with explicit resolution
+and can reproject native raster grids. Leaflet supports configured metre
+projections with explicit tile matrices, supplied in the runtime's `definitions`
+option. Built-in CRS definitions do not invent projected tile grids. MapLibre
+supports EPSG:3857 only and uses a bundled worker asset; deploy that asset with
+the consuming application's build. Its internal 512px zoom scale is converted to
+the core's 256px grid/resolution contract. No engine controls or projection
+plugins are used.
+
+The map documentation includes a three-engine example and a synthetic MGA grid
+configuration. These display transforms retain original data and datum warnings;
+they do not certify survey alignment. Labels, icons, style rules, editing and
+custom MapLibre projections remain outside this slice.

@@ -4,7 +4,7 @@ import type { PreparedTransform } from '../crs/transform-types.ts';
 import { MapError } from '../errors.ts';
 import { resolutionToZoom, zoomToResolution } from '../view.ts';
 
-/** Phase 0 feasibility factory; production capabilities remain native-only until adapter integration. */
+/** First-party projected CRS with an explicit grid and same-datum transforms. */
 export function createProjectedLeafletCrs(
   library: typeof Leaflet,
   definition: CrsDef,

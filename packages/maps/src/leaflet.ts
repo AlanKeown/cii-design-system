@@ -1,5 +1,13 @@
 import type * as Leaflet from 'leaflet';
-import { assertWmtsLeafletGrid, ogcTileUrl } from './sources/ogc-raster.ts';
+import { createCrsRegistry } from './crs/registry.ts';
+import { createTransformService } from './crs/transform.ts';
+import { createProjectedLeafletCrs } from './engine/leaflet-crs.ts';
+import { zoomToResolution } from './view.ts';
+import {
+  assertWmtsLeafletGrid,
+  ogcTileUrl,
+  wmsTileUrl
+} from './sources/ogc-raster.ts';
 import type { OgcTileData } from './sources/ogc-raster.ts';
 import type { XyzTileData } from './sources/xyz.ts';
 import { assertXyzTileData } from './sources/xyz.ts';
@@ -46,7 +54,8 @@ export default class LeafletEngine implements IMapEngine {
   readonly id = 'leaflet';
   readonly capabilities: EngineCapabilities = {
     displayCrs: (code) =>
-      ['EPSG:3857', 'EPSG:4326', 'OGC:CRS84'].includes(code)
+      ['EPSG:3857', 'EPSG:4326', 'OGC:CRS84'].includes(code) ||
+      this.#projectedCodes.has(code)
         ? 'native'
         : 'unsupported',
     renderKinds: new Set(['features', 'raster-tiles']),
@@ -54,6 +63,26 @@ export default class LeafletEngine implements IMapEngine {
     rotation: false,
     styleFeatures: new Set(['dash'])
   };
+  #registry: ReturnType<typeof createCrsRegistry>;
+  #projectedCodes: Set<string>;
+  #projectedCrs?: Leaflet.CRS;
+  constructor(
+    registry = createCrsRegistry(),
+    configured: readonly CrsDef[] = []
+  ) {
+    this.#registry = registry;
+    this.#projectedCodes = new Set(
+      configured
+        .filter(
+          (definition) =>
+            definition.tileMatrix &&
+            definition.projected &&
+            definition.units === 'metres' &&
+            definition.code !== 'EPSG:3857'
+        )
+        .map((definition) => definition.code)
+    );
+  }
   #library?: typeof Leaflet;
   #map?: Leaflet.Map;
   #definition?: CrsDef;
@@ -89,6 +118,7 @@ export default class LeafletEngine implements IMapEngine {
     return this.#map;
   }
   #crs(): Leaflet.CRS {
+    if (this.#projectedCrs) return this.#projectedCrs;
     return this.#definition?.code === 'EPSG:3857'
       ? this.#library!.CRS.EPSG3857
       : this.#library!.CRS.EPSG4326;
@@ -97,6 +127,11 @@ export default class LeafletEngine implements IMapEngine {
     return this.#definition?.code === 'EPSG:3857'
       ? (2 * Math.PI * 6378137) / 256
       : 180 / 256;
+  }
+  #resolution(zoom: number): number {
+    return this.#projectedCrs
+      ? zoomToResolution(zoom, this.#definition!.tileMatrix!)
+      : this.#baseResolution() / 2 ** zoom;
   }
   #emit<K extends keyof EngineEvents>(type: K, event: EngineEvents[K]): void {
     for (const callback of [...this.#events[type]]) callback(event);
@@ -130,6 +165,31 @@ export default class LeafletEngine implements IMapEngine {
         throw new MapError('ENGINE_MOUNT_ABORTED');
       this.#library = L;
       this.#definition = structuredClone(init.displayCrs);
+      if (
+        !['EPSG:3857', 'EPSG:4326', 'OGC:CRS84'].includes(init.displayCrs.code)
+      ) {
+        const transforms = createTransformService(this.#registry);
+        const [forward, inverse] = await Promise.all([
+          transforms.prepare({
+            source: init.displayCrs.geographicBase,
+            target: init.displayCrs.code,
+            datumPolicy: 'require-same-datum'
+          }),
+          transforms.prepare({
+            source: init.displayCrs.code,
+            target: init.displayCrs.geographicBase,
+            datumPolicy: 'require-same-datum'
+          })
+        ]);
+        if (this.#destroyed || init.signal?.aborted)
+          throw new MapError('ENGINE_MOUNT_ABORTED');
+        this.#projectedCrs = createProjectedLeafletCrs(
+          L,
+          init.displayCrs,
+          forward,
+          inverse
+        );
+      }
       const reduced = matchMedia('(prefers-reduced-motion: reduce)');
       this.#map = new L.Map(container, {
         crs: this.#crs(),
@@ -259,7 +319,7 @@ export default class LeafletEngine implements IMapEngine {
               this.#getMap().getZoom() + (event.key === '-' ? -1 : 1)
             )
           );
-          this.#applyView(view.center, this.#baseResolution() / 2 ** zoom);
+          this.#applyView(view.center, this.#resolution(zoom));
         }
       };
       container.addEventListener('keydown', key);
@@ -290,7 +350,9 @@ export default class LeafletEngine implements IMapEngine {
       resolution <= 0
     )
       throw new MapError('VIEW_INVALID');
-    const zoom = Math.log2(this.#baseResolution() / resolution);
+    const zoom = this.#projectedCrs
+      ? resolutionToZoom(resolution, this.#definition!.tileMatrix!)
+      : Math.log2(this.#baseResolution() / resolution);
     if (!Number.isFinite(zoom) || zoom < -24 || zoom > 32)
       throw new MapError('VIEW_INVALID', {
         reason: 'Resolution is outside Leaflet adapter limits.'
@@ -310,7 +372,7 @@ export default class LeafletEngine implements IMapEngine {
   getView(): ViewState {
     const map = this.#getMap();
     const center = this.#crs().project(map.getCenter());
-    const resolution = this.#baseResolution() / 2 ** map.getZoom();
+    const resolution = this.#resolution(map.getZoom());
     const size = map.getSize();
     const lower = this.pixelToCoord([0, size.y]);
     const upper = this.pixelToCoord([size.x, 0]);
@@ -378,7 +440,7 @@ export default class LeafletEngine implements IMapEngine {
     const map = this.#getMap();
     const center = this.#crs().project(map.getCenter());
     const size = map.getSize();
-    const resolution = this.#baseResolution() / 2 ** map.getZoom();
+    const resolution = this.#resolution(map.getZoom());
     return [
       center.x + (pixel[0] - size.x / 2) * resolution,
       center.y - (pixel[1] - size.y / 2) * resolution
@@ -388,7 +450,7 @@ export default class LeafletEngine implements IMapEngine {
     const map = this.#getMap();
     const center = this.#crs().project(map.getCenter());
     const size = map.getSize();
-    const resolution = this.#baseResolution() / 2 ** map.getZoom();
+    const resolution = this.#resolution(map.getZoom());
     return [
       size.x / 2 + (coord[0] - center.x) / resolution,
       size.y / 2 - (coord[1] - center.y) / resolution
@@ -592,8 +654,25 @@ export default class LeafletEngine implements IMapEngine {
     pane.style.zIndex = String(400 + input.order);
     pane.style.pointerEvents = 'none';
     const L = this.#library!;
+    const definition = this.#definition!;
     class OgcTileLayer extends L.TileLayer {
       override getTileUrl(coords: Leaflet.Coords): string {
+        if (
+          service?.kind === 'wms' &&
+          definition.tileMatrix &&
+          definition.code !== 'EPSG:3857'
+        ) {
+          const resolution = zoomToResolution(coords.z, definition.tileMatrix);
+          const span = resolution * 256;
+          const west = definition.tileMatrix.origin[0] + coords.x * span;
+          const north = definition.tileMatrix.origin[1] - coords.y * span;
+          return wmsTileUrl(
+            service,
+            [west, north - span, west + span, north],
+            256,
+            256
+          );
+        }
         return ogcTileUrl(service!, coords) ?? L.Util.emptyImageUrl;
       }
     }
