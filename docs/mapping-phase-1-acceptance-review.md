@@ -1,14 +1,16 @@
 # Mapping Phase 1 acceptance review
 
-Review date: **9 November 2026**. Result: **Phase 1 remains open**.
+Review date: **9 November 2026**. Result: **R1.6 contract resolved; final
+sign-off remains open**.
 
 The display implementation is present on Leaflet, OpenLayers and MapLibre. This
 review checks the supported Phase 1 source types and display paths against
 [the development plan](./svelte-mapping-components-development-plan.md). The
-remaining contract issue is R1.6: configuration intentionally stores CRS
-declarations, whereas the criterion asks for the resolved confirmation and its
-provenance to be serialised in that configuration. Passing browser tests does
-not resolve that conflict or establish WCAG certification.
+R1.6 follow-up now stores resolved provenance in a versioned companion snapshot,
+while configuration retains declarations and policies. Restoration revalidates
+configuration and uses a fresh runtime to resolve sources again. Passing browser
+tests does not establish WCAG certification; manual accessibility and
+publication sign-off remain open.
 
 ## Scope
 
@@ -26,24 +28,25 @@ features. Their acceptance criteria are not counted as implemented here.
 
 ## R1: source CRS confirmation
 
-| Criterion                                                   | Result                       | Evidence                                                                                                                                                                                                                                                                                                               |
-| ----------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1.1: reject unconfirmed sources before engine work         | Pass for supported sources   | `packages/maps/tests/layers.test.ts` rejects missing/incomplete confirmations. `tests/browser/layers.spec.ts` checks an actionable child error without an engine registration. The manager is shared across adapters.                                                                                                  |
-| R1.2: service metadata and provenance                       | Pass for WMS/WMTS            | `tests/ogc-raster.test.ts` and `tests/crs.test.ts` verify advertised candidates, document/element provenance and rejection of manual service declarations. Native raster rendering runs on all adapters in `tests/browser/adapters.spec.ts`.                                                                           |
-| R1.3: declaration required; embedded hints do not confirm   | Pass for inline/GeoJSON/XYZ  | `tests/crs.test.ts`, `tests/crs-confirmation.test.ts` and `tests/browser/crs-confirm.spec.ts` check missing declarations, mismatch acknowledgement, source-scoped evidence and changed-hint invalidation. Later file/database formats are outside Phase 1.                                                             |
-| R1.4: explicit multi-CRS policy                             | Pass                         | `tests/crs.test.ts` and `tests/crs-confirmation.test.ts` exercise `prefer-native` and `prefer-display`, retaining the selected record.                                                                                                                                                                                 |
-| R1.5: axis order retained and applied correctly             | Pass for supported protocols | `tests/ogc-raster.test.ts`, `tests/browser/ogc-raster.spec.ts` and display-switch tests cover WMS versions, EPSG:4326/CRS84 axes and WMTS grid interpretation. Core uses x/y after the source boundary.                                                                                                                |
-| R1.6: runtime inspection and serialisation in configuration | Partial; open contract issue | `MapController.snapshot().layers[].crs` and `ManagedLayer.spec.source.crs` expose the confirmed record and provenance as JSON-compatible data. `MapConfig` accepts declarations/policies, not the resolved `ConfirmedCrs`. Plan §12.5 expressly excludes `confirmedAt` from config and resolves sources again on load. |
+| Criterion                                                   | Result                       | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1.1: reject unconfirmed sources before engine work         | Pass for supported sources   | `packages/maps/tests/layers.test.ts` rejects missing/incomplete confirmations. `tests/browser/layers.spec.ts` checks an actionable child error without an engine registration. The manager is shared across adapters.                                                                                                                                                                                                                                                        |
+| R1.2: service metadata and provenance                       | Pass for WMS/WMTS            | `tests/ogc-raster.test.ts` and `tests/crs.test.ts` verify advertised candidates, document/element provenance and rejection of manual service declarations. Native raster rendering runs on all adapters in `tests/browser/adapters.spec.ts`.                                                                                                                                                                                                                                 |
+| R1.3: declaration required; embedded hints do not confirm   | Pass for inline/GeoJSON/XYZ  | `tests/crs.test.ts`, `tests/crs-confirmation.test.ts` and `tests/browser/crs-confirm.spec.ts` check missing declarations, mismatch acknowledgement, source-scoped evidence and changed-hint invalidation. Later file/database formats are outside Phase 1.                                                                                                                                                                                                                   |
+| R1.4: explicit multi-CRS policy                             | Pass                         | `tests/crs.test.ts` and `tests/crs-confirmation.test.ts` exercise `prefer-native` and `prefer-display`, retaining the selected record.                                                                                                                                                                                                                                                                                                                                       |
+| R1.5: axis order retained and applied correctly             | Pass for supported protocols | `tests/ogc-raster.test.ts`, `tests/browser/ogc-raster.spec.ts` and display-switch tests cover WMS versions, EPSG:4326/CRS84 axes and WMTS grid interpretation. Core uses x/y after the source boundary.                                                                                                                                                                                                                                                                      |
+| R1.6: runtime inspection and serialisation in configuration | Pass for companion snapshot  | `MapController.snapshot().layers[].crs` and `ManagedLayer.spec.source.crs` expose the confirmed record and provenance as JSON-compatible data. `MapConfigSnapshot` version 1 serialises the applied config plus historical per-layer `ConfirmedCrs` records. `tests/config-snapshot.test.ts` covers round trips, changed service metadata, invalid input and refusal to reuse saved mismatch approvals. Restore returns validated declarations/policies for a fresh runtime. |
 
 Test paths without a package prefix in this document are relative to
 `packages/maps/`.
 
-Do not fix R1.6 by trusting a saved timestamp or bypassing source confirmation.
-The next implementation should define a versioned, serialisable companion
-snapshot containing the input config plus inspection-only resolved provenance.
-Restoration must revalidate declarations and re-probe service metadata. Update
-R1.6 and §12.5 together to describe that distinction, and add round-trip and
-changed-metadata tests. This is follow-up work, not a shipped export API.
+R1.6 and plan §12.5 now distinguish input configuration from its companion
+inspection snapshot. `MapContainer.exportSnapshot()` refuses incomplete/failed
+layers and active updates. `restoreMapConfigSnapshot()` validates the envelope
+and returns only input config; a fresh mount/runtime re-probes metadata and
+revalidates declarations. Saved timestamps and acknowledgements never confirm
+sources. Declarative children retain inspection records but must be recreated
+separately; local view/control changes require application-owned configuration.
 
 ## R2: display CRS
 
@@ -92,5 +95,6 @@ themes; selection interactions themselves remain later-phase work.
 The documentation collection includes this review and builds it under
 `/design/mapping-phase-1-review/`. A local build does not establish that this
 revision has been published. No deployment, commit or push is performed by this
-review. Phase 2 should follow resolution of R1.6 and the remaining acceptance
-sign-off, rather than silently treating Phase 1 as closed.
+review. R1.6 is resolved by the companion snapshot contract. Phase 2 should
+follow the remaining acceptance sign-off; Phase 1 is not silently treated as
+closed.

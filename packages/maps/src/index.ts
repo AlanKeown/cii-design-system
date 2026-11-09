@@ -23,3 +23,4 @@ export type {
 export * from './extensions/types.ts';
 export * from './extensions/registries.ts';
 export * from './sources/file-routing.ts';
+export * from './config/snapshot.ts';

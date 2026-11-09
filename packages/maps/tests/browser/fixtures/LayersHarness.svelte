@@ -6,7 +6,12 @@
     createMapRuntime
   } from '../../../src/svelte/index.ts';
   import LayerProbe from './LayerProbe.svelte';
-  import type { LayerSpec, MapConfig } from '../../../src/index.ts';
+  import type {
+    LayerSpec,
+    MapConfig,
+    MapConfigSnapshot
+  } from '../../../src/index.ts';
+  let map: { exportSnapshot(): MapConfigSnapshot } | undefined = $state();
   const runtime = createMapRuntime();
   const engine =
     new URLSearchParams(location.search).get('engine') ?? 'leaflet';
@@ -59,6 +64,7 @@
         spec = value;
       },
       config: () => structuredClone(config),
+      snapshot: () => map!.exportSnapshot(),
       configure: (value) => {
         config = value;
       },
@@ -82,6 +88,7 @@
 <output aria-label="Ready count">{ready}</output>
 {#if mounted}
   <MapContainer
+    bind:this={map}
     {config}
     {runtime}
     label="Declarative sites"

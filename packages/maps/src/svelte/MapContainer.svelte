@@ -14,6 +14,7 @@
   } from '../map-controller.js';
   import { MapError } from '../errors.js';
   import type { MapConfig } from '../config/types.js';
+  import type { MapConfigSnapshot } from '../config/snapshot.js';
   import type { IMapEngine } from '../engine/types.js';
   import type { ViewState } from '../view.js';
   import { setMapContext } from './context.js';
@@ -60,6 +61,10 @@
   let controller = $state.raw<MapController | null>(null);
   let snapshot = $state.raw<MapSnapshot | null>(null);
   let error = $state.raw<MapError | null>(null);
+  export function exportSnapshot(): MapConfigSnapshot {
+    if (!controller) throw new MapError('ENGINE_STATE');
+    return controller.exportSnapshot();
+  }
   const engineCredits: Record<string, { name: string; url: string }> = {
     leaflet: { name: 'Leaflet', url: 'https://leafletjs.com/' },
     openlayers: { name: 'OpenLayers', url: 'https://openlayers.org/' },

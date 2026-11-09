@@ -18,6 +18,8 @@ import { resolveSourceCrs } from './crs/resolve.ts';
 import { LayerManager } from './layers/manager.ts';
 import { layerIdentityKey } from './layers/compatibility.ts';
 import { validateMapConfig } from './config/index.ts';
+import { validateMapConfigSnapshot } from './config/snapshot.ts';
+import type { MapConfigSnapshot } from './config/snapshot.ts';
 import { resolveViewResolution } from './view.ts';
 import { MapError } from './errors.ts';
 import { assertLeafletStyle } from './engine/leaflet-style.ts';
@@ -297,6 +299,7 @@ export class MapController {
   #switchAbort?: AbortController;
   #switching = false;
   #request = 0;
+  #pendingConfig?: symbol;
   #lastSwitchView?: ViewState;
   constructor(
     node: HTMLElement,
@@ -352,6 +355,35 @@ export class MapController {
         this.#config?.controls?.some((control) => control.id === 'zoom') ?? true
     };
   }
+  /** Export the applied configuration and historical provenance, never engine resources. */
+  exportSnapshot(): MapConfigSnapshot {
+    if (
+      !this.#config ||
+      !this.#ready ||
+      this.#pendingConfig ||
+      this.#switching ||
+      this.#lifetime.signal.aborted ||
+      this.#layerErrors.size ||
+      this.#records.size !==
+        this.#config.layers.length + this.#declarative.size ||
+      [...this.#records.values()].some(
+        (entry) => entry.managed.status !== 'ready'
+      )
+    )
+      throw new MapError('ENGINE_STATE', {
+        reason:
+          'Wait for all layers and configuration updates to finish before exporting.'
+      });
+    return validateMapConfigSnapshot({
+      version: 1,
+      config: this.#config,
+      provenance: [...this.#records].map(([id, entry]) => ({
+        id,
+        origin: this.#declarative.has(id) ? 'declarative' : 'config',
+        crs: entry.spec.source.crs
+      }))
+    });
+  }
   #emit(): void {
     if (!this.#lifetime.signal.aborted)
       this.#callbacks.onstate?.(this.snapshot());
@@ -406,6 +438,16 @@ export class MapController {
       });
   }
   async applyConfig(input: unknown): Promise<void> {
+    const pending = Symbol();
+    this.#pendingConfig = pending;
+    try {
+      await this.#applyConfig(input);
+    } finally {
+      if (this.#pendingConfig === pending) this.#pendingConfig = undefined;
+    }
+  }
+
+  async #applyConfig(input: unknown): Promise<void> {
     const validated = validateMapConfig(input);
     if (!validated.ok) throw validated.error;
     this.#assertConfig(validated.value);

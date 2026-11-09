@@ -240,7 +240,7 @@ form part of the conformance suite (§14).
 | R1.3 | For all other sources (files, GeoPackage, SpatiaLite, inline data), the creator must declare the CRS. Any CRS embedded in the file (`.prj`, `gpkg_spatial_ref_sys`, a FlatGeobuf header, the RFC 7946 default) is offered only as a **pre-filled suggestion**. If the declaration and the embedded hint disagree, a blocking warning is shown. |
 | R1.4 | If a service advertises several CRSs, the choice is made by an explicit, documented policy (§5.4). The chosen CRS is recorded.                                                                                                                                                                                                                 |
 | R1.5 | Axis order is part of the confirmed CRS record. Example: WMS 1.3.0 with EPSG:4326 uses latitude/longitude order.                                                                                                                                                                                                                               |
-| R1.6 | The confirmed CRS and its provenance can be serialised in the map configuration and inspected at runtime.                                                                                                                                                                                                                                      |
+| R1.6 | The confirmed CRS and its provenance can be serialised alongside map configuration in a versioned companion snapshot and inspected at runtime. Restoration revalidates declarations and re-probes metadata; historical confirmation never authorises a source.                                                                                 |
 
 ### R2 — Display CRS is configurable, with a specified default
 
@@ -1981,6 +1981,18 @@ same contract. Extensions merge their own schema fragments into it (§11.2).
   Loading a config runs `resolveSourceCrs()` on every source. Only after that
   does the config become a set of `SourceSpec`s that the layer manager accepts.
   `confirmedAt` is stamped at resolution and is never written in config.
+  `MapConfigSnapshot` is the version 1 companion envelope:
+  `{ version: 1, config, provenance: [{ id, origin, crs }] }`. Its `crs` records
+  are historical `ConfirmedCrs` values, including timestamps, for inspection
+  only. `MapContainer.exportSnapshot()` (also available on `MapController`)
+  exports the applied config after all layers are ready. Local view/control
+  changes require application-owned config to persist. Declarative child records
+  use `origin: 'declarative'`; their data/registrations must be recreated
+  separately. `validateMapConfigSnapshot()` validates a detached envelope;
+  `restoreMapConfigSnapshot()` returns only validated declarations/policies.
+  Restore through a fresh mount and runtime to re-probe metadata, revalidate
+  declarations and renew any mismatch acceptance. Historical records must never
+  be supplied to `rememberConfirmation()` as renewed user acceptance.
 - `"fromMetadata": true` is only allowed for service and PostGIS providers. For
   file providers, the schema _requires_ `code` plus
   `provenance.kind = "declared"`. That makes R1 a schema rule as well as a
@@ -2548,11 +2560,12 @@ R1/R2, accessibility and lifecycle evidence across the three production engines.
 The review corrected undersized input/disclosure targets and OpenLayers'
 animated pinch-rotation release, with new native browser checks.
 
-Phase 1 remains open. R1.6 asks for resolved provenance in the configuration,
-while §12.5 requires declarations and excludes confirmation timestamps. Runtime
-inspection exists, but a versioned companion provenance snapshot and an explicit
-restore/revalidation contract remain follow-up work. Manual accessibility and
-publication sign-off are recorded separately from automated test results.
+The R1.6 follow-up now implements the versioned companion snapshot in §12.5.
+`tests/config-snapshot.test.ts` covers JSON round trips, detached inspection,
+changed service metadata and refusal to reuse saved mismatch acknowledgements.
+R1.6 and §12.5 now explicitly separate configuration declarations from
+historical resolved provenance. This closes the recorded contract issue; manual
+accessibility and publication sign-off remain separate acceptance work.
 
 ## 17. Dependency flags and risk register
 

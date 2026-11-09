@@ -629,10 +629,79 @@ pixel targets, and reduced-motion checks cover view requests, drag inertia and
 OpenLayers pinch-rotation release. These automated checks do not establish WCAG
 certification or contrast against an application's chosen raster basemaps.
 
-Phase 1 remains open: runtime CRS provenance is inspectable, but its saved
-configuration/export contract still needs resolution. Input `MapConfig` stores
-declarations and metadata policies; loading it resolves sources again. A saved
-timestamp must not be treated as a new confirmation.
+The versioned snapshot API preserves applied configuration alongside historical
+CRS provenance. Restoration validates the config and resolves sources again;
+saved timestamps and mismatch acknowledgements do not confirm a source.
+Manual accessibility and publication sign-off remain outstanding.
+
+## Save and restore configuration
+
+Use `bind:this` to call the component's `exportSnapshot()` method after all
+layers have loaded. It returns a JSON-compatible `MapConfigSnapshot` with
+`version: 1`, the applied `config`, and per-layer `provenance` records containing
+`id`, `origin` (`config` or `declarative`) and the resolved `crs` record.
+
+```svelte
+<script lang="ts">
+  import { MapContainer } from '@cii/maps/svelte';
+  import { restoreMapConfigSnapshot } from '@cii/maps';
+  import type { MapConfig, MapConfigSnapshot } from '@cii/maps';
+
+  let { initialConfig }: { initialConfig: MapConfig } = $props();
+  let config = $state(initialConfig);
+  let map: { exportSnapshot(): MapConfigSnapshot } | undefined = $state();
+  let generation = $state(0);
+  let saved = $state('');
+  let message = $state('');
+
+  function save() {
+    try {
+      if (!map) return;
+      saved = JSON.stringify(map.exportSnapshot());
+      message = 'Configuration saved.';
+    } catch {
+      message = 'Wait for the map and every layer to load before saving.';
+    }
+  }
+
+  function restore() {
+    try {
+      config = restoreMapConfigSnapshot(JSON.parse(saved));
+      generation += 1;
+      message = 'Restoring configuration and checking sources again.';
+    } catch {
+      message = 'The saved configuration is invalid or uses an unsupported version.';
+    }
+  }
+</script>
+
+<button onclick={save}>Save configuration</button>
+<button onclick={restore} disabled={!saved}>Restore configuration</button>
+<p role="status">{message}</p>
+{#key generation}
+  <MapContainer bind:this={map} {config} label="Saved community map" />
+{/key}
+```
+
+The keyed remount creates a fresh default runtime. If you supply a custom
+runtime, create a fresh one too so providers re-probe metadata and previous
+runtime acknowledgements are not reused. Restoration returns validated
+configuration only; source errors still reach the map's `onerror` and error
+notices. A changed service catalogue may select a different CRS or fail current
+compatibility checks. A hint mismatch requires renewed user acceptance through
+`CrsConfirm`. Never pass historical provenance to `rememberConfirmation()`.
+
+`validateMapConfigSnapshot()` validates and returns a detached snapshot for
+inspection. It does not establish that historical provenance is authentic or
+current. Unknown versions, malformed records, duplicate IDs and missing
+configured-layer provenance fail with typed errors.
+
+The export contains the last applied configuration. It does not capture local
+pan/zoom or layer-control changes; keep those in application-owned configuration
+when they must persist. Declarative child provenance is included for inspection,
+but its opened source data and component registration are not restored. Recreate
+those children through their normal source-confirmation workflow. Pending or
+failed layers, active configuration updates and unmounted maps refuse export.
 
 ## Scope and limits
 

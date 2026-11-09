@@ -13,6 +13,21 @@ for (const engine of ['leaflet', 'openlayers', 'maplibre']) {
       )
       .toBe('ready');
     expect(await page.evaluate(() => window.layerProbe!.same())).toBe(true);
+    const saved = await page.evaluate(() => window.layersFixture!.snapshot());
+    expect(saved.version).toBe(1);
+    expect(saved.config.engine).toBe(engine);
+    expect(saved.config.layers).toEqual([]);
+    expect(saved.provenance).toEqual([
+      {
+        id: 'child',
+        origin: 'declarative',
+        crs: {
+          crs: { code: 'OGC:CRS84', axisOrder: 'xy' },
+          provenance: { kind: 'declared', by: 'fixture' },
+          confirmedAt: '2026-11-09T00:00:00Z'
+        }
+      }
+    ]);
     await expect(page.getByLabel('Map attribution')).toContainText(
       'Declarative attribution'
     );
