@@ -90,6 +90,9 @@ test('a mismatch blocks acceptance, acknowledges only the chosen source, and res
     'CRS declaration differs'
   );
   await expect(button).toBeDisabled();
+  const checkboxTarget = (await checkbox.boundingBox())!;
+  expect(checkboxTarget.width).toBeGreaterThanOrEqual(24);
+  expect(checkboxTarget.height).toBeGreaterThanOrEqual(24);
   await checkbox.focus();
   await page.keyboard.press('Space');
   await expect(button).toBeEnabled();

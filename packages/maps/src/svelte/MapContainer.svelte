@@ -417,6 +417,7 @@
     line-height: var(--cii-line-caption);
   }
   summary {
+    min-height: 24px;
     cursor: pointer;
   }
   summary:focus-visible,

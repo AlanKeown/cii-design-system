@@ -91,10 +91,13 @@ export default class OpenLayersEngine extends BrowserEngine {
             zoomDuration: 0,
             keyboard: false,
             altShiftDragRotate: false,
-            pinchRotate: true,
+            pinchRotate: false,
             onFocusOnly: true
           })
-          .extend([new api.DragPan({ onFocusOnly: true })]),
+          .extend([
+            new api.DragPan({ onFocusOnly: true }),
+            new api.PinchRotate({ duration: 0 })
+          ]),
         view: new api.View({
           projection: this.#projection,
           center: [...center],

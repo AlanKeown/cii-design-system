@@ -140,6 +140,72 @@
           node.remove();
         }
       },
+      lifecycle: async () => {
+        const failures: string[] = [];
+        const definition = await runtime.crs.resolve(display);
+        const transform = await runtime.transforms.prepare({
+          source: 'EPSG:7844',
+          target: display
+        });
+        for (let iteration = 0; iteration < 5; iteration++) {
+          const node = document.createElement('div');
+          node.style.cssText = 'position:relative;width:768px;height:512px';
+          document.body.append(node);
+          const candidate = await runtime.engines.create(engineId);
+          let ready = 0;
+          candidate.on('ready', () => ready++);
+          try {
+            await candidate.mount(node, {
+              displayCrs: definition,
+              view: {
+                center: transform.coordinate([151.21, -33.87]),
+                resolution: 10
+              }
+            });
+            candidate.destroy();
+            candidate.destroy();
+            if (ready !== 1) failures.push(`ready count ${iteration}`);
+            if (node.childElementCount)
+              failures.push(`retained DOM ${iteration}`);
+          } finally {
+            candidate.destroy();
+            node.remove();
+          }
+        }
+        const node = document.createElement('div');
+        node.style.cssText = 'width:768px;height:512px';
+        document.body.append(node);
+        const candidate = await runtime.engines.create(engineId);
+        let ready = 0;
+        candidate.on('ready', () => ready++);
+        const abort = new AbortController();
+        const pending = candidate.mount(node, {
+          displayCrs: definition,
+          view: {
+            center: transform.coordinate([151.21, -33.87]),
+            resolution: 10
+          },
+          signal: abort.signal
+        });
+        abort.abort();
+        try {
+          await pending;
+          failures.push('cancelled mount resolved');
+        } catch (error) {
+          if (
+            !(error instanceof Error) ||
+            !('code' in error) ||
+            error.code !== 'ENGINE_MOUNT_ABORTED'
+          )
+            failures.push('unexpected cancellation error');
+        } finally {
+          candidate.destroy();
+        }
+        if (ready) failures.push('ready after cancellation');
+        if (node.childElementCount) failures.push('DOM after cancellation');
+        node.remove();
+        return failures;
+      },
       unmount: () => {
         mounted = false;
       }
@@ -162,6 +228,7 @@
       {config}
       {runtime}
       label="Adapter sites"
+      description="Synthetic site at longitude 151.21°, latitude −33.87° (GDA2020)."
       height="512px"
       onready={(value) => {
         engine = value;

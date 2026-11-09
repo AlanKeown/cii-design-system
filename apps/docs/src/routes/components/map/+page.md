@@ -621,6 +621,19 @@ viewport height, with a minimum of 12rem. On small screens, choose a height that
 leaves the text alternative and surrounding content easy to reach. Attribution
 wraps within the container.
 
+## Acceptance status
+
+The [Phase 1 acceptance review](/design/mapping-phase-1-review/) records the
+requirement evidence and remaining work. Native controls have minimum 24×24
+pixel targets, and reduced-motion checks cover view requests, drag inertia and
+OpenLayers pinch-rotation release. These automated checks do not establish WCAG
+certification or contrast against an application's chosen raster basemaps.
+
+Phase 1 remains open: runtime CRS provenance is inspectable, but its saved
+configuration/export contract still needs resolution. Input `MapConfig` stores
+declarations and metadata policies; loading it resolves sources again. A saved
+timestamp must not be treated as a new confirmation.
+
 ## Scope and limits
 
 This slice supports base path styling, circle points, theme tokens and

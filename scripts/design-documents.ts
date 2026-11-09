@@ -14,8 +14,17 @@ export const designDocuments = [
     slug: 'mapping',
     title: 'Mapping development plan',
     description:
-      'The current proposal for the unified Svelte mapping components.',
-    status: 'Draft for review — v0.3',
+      'The mapping architecture, delivery roadmap and current acceptance status.',
+    status: 'Phase 1 acceptance reviewed — v0.12',
+    archived: false
+  },
+  {
+    source: 'mapping-phase-1-acceptance-review.md',
+    slug: 'mapping-phase-1-review',
+    title: 'Mapping Phase 1 review',
+    description:
+      'Requirement evidence, accessibility checks and remaining Phase 1 acceptance work.',
+    status: 'Reviewed — Phase 1 remains open',
     archived: false
   },
   {

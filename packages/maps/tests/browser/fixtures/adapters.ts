@@ -19,6 +19,7 @@ declare global {
       rendered(): number;
       switchTo(code: string): void;
       contract(): Promise<string[]>;
+      lifecycle(): Promise<string[]>;
       unmount(): void;
     };
   }

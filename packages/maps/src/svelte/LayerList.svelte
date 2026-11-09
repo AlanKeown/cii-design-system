@@ -113,6 +113,8 @@
     gap: var(--cii-space-2);
   }
   input {
+    min-width: 24px;
+    min-height: 24px;
     accent-color: var(--cii-map-feature);
   }
   input:focus-visible {

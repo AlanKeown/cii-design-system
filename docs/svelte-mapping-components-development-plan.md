@@ -1,12 +1,12 @@
 # Svelte Unified Mapping Components — Development Plan
 
-|                   |                                              |
-| ----------------- | -------------------------------------------- |
-| **Status**        | Phase 0 complete; Phase 1 in progress — v0.9 |
-| **Date**          | 6 November 2026                              |
-| **Engines**       | Leaflet, MapLibre GL JS, OpenLayers          |
-| **Framework**     | Svelte 5 (runes) / SvelteKit                 |
-| **Spatial store** | PostGIS (authoritative output)               |
+|                   |                                                        |
+| ----------------- | ------------------------------------------------------ |
+| **Status**        | Phase 0 complete; Phase 1 reviewed, open items — v0.12 |
+| **Date**          | 9 November 2026                                        |
+| **Engines**       | Leaflet, MapLibre GL JS, OpenLayers                    |
+| **Framework**     | Svelte 5 (runes) / SvelteKit                           |
+| **Spatial store** | PostGIS (authoritative output)                         |
 
 ## Decisions already taken for this plan
 
@@ -2539,6 +2539,19 @@ Unit and browser regressions cover ownership, property/data patches, source
 replacement, conflict handling, retries, cancellation and CRS switching on the
 three supported adapters. The docs include a live example. A complete Phase 1
 R1/R2 and accessibility acceptance review remains before Phase 2 begins.
+
+### 16.12 Phase 1 acceptance review — 9 November 2026
+
+The [acceptance review](./mapping-phase-1-acceptance-review.md) records scoped
+R1/R2, accessibility and lifecycle evidence across the three production engines.
+The review corrected undersized input/disclosure targets and OpenLayers'
+animated pinch-rotation release, with new native browser checks.
+
+Phase 1 remains open. R1.6 asks for resolved provenance in the configuration,
+while §12.5 requires declarations and excludes confirmation timestamps. Runtime
+inspection exists, but a versioned companion provenance snapshot and an explicit
+restore/revalidation contract remain follow-up work. Manual accessibility and
+publication sign-off are recorded separately from automated test results.
 
 ## 17. Dependency flags and risk register
 

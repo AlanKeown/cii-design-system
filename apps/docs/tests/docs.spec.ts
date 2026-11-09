@@ -60,7 +60,8 @@ test('design documents load directly on mobile', async ({ page }) => {
       'product',
       'Community Organisation Portal — Product Design Specification (v1.0)'
     ],
-    ['portal-backend', 'Community Portal Backend — Development Plan']
+    ['portal-backend', 'Community Portal Backend — Development Plan'],
+    ['mapping-phase-1-review', 'Mapping Phase 1 acceptance review']
   ]) {
     const response = await page.goto(`design/${slug}/`);
     expect(response?.status()).toBe(200);

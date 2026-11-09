@@ -17,5 +17,6 @@ export { defaults as interactions } from 'ol/interaction/defaults.js';
 export { default as DragPan } from 'ol/interaction/DragPan.js';
 export { default as DoubleClickZoom } from 'ol/interaction/DoubleClickZoom.js';
 export { default as DragZoom } from 'ol/interaction/DragZoom.js';
+export { default as PinchRotate } from 'ol/interaction/PinchRotate.js';
 export { asArray } from 'ol/color.js';
 import 'ol/ol.css';
