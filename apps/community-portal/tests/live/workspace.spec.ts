@@ -3,7 +3,22 @@ import { randomUUID } from 'node:crypto';
 import { signIn } from './helpers.ts';
 import { emptyForm } from '../../src/lib/records.ts';
 import { permissions } from '../../src/lib/data.ts';
-import type { PortalRecord } from '../../src/lib/model.ts';
+import type { PortalRecord, Role } from '../../src/lib/model.ts';
+
+async function selectRole(page: Page, role: Role) {
+  const selector = page.getByLabel('Preview role');
+  // The selector and navigation change optimistically, before the membership RPC commits.
+  const saved = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/role' &&
+      response.request().method() === 'POST'
+  );
+  await selector.selectOption(role);
+  expect((await saved).status()).toBe(200);
+  // changeRole keeps this disabled until refreshAll has loaded the new workspace.
+  await expect(selector).toBeEnabled();
+  await expect(selector).toHaveValue(role);
+}
 
 async function api(
   page: Page,
@@ -134,7 +149,7 @@ test('owner role changes enforce server permissions and Board reports contain no
         .map((row) => row.module)
         .sort()
     ).toEqual([...modules].sort());
-  await page.getByLabel('Preview role').selectOption('Board Member');
+  await selectRole(page, 'Board Member');
   await expect(
     page.getByRole('navigation').getByRole('link', { name: 'Members' })
   ).toHaveCount(0);
@@ -188,7 +203,7 @@ test('owner role changes enforce server permissions and Board reports contain no
     .click();
   await page.getByLabel('From', { exact: true }).fill('2020-01-01');
   await expect(page.getByText('De-identified record').first()).toBeVisible();
-  await page.getByLabel('Preview role').selectOption('Admin');
+  await selectRole(page, 'Admin');
   await expect(
     page.getByRole('navigation').getByRole('link', { name: 'Administration' })
   ).toBeVisible();
