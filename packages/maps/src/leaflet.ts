@@ -12,6 +12,7 @@ import type { OgcTileData } from './sources/ogc-raster.ts';
 import type { XyzTileData } from './sources/xyz.ts';
 import { assertXyzTileData } from './sources/xyz.ts';
 import { MapError } from './errors.ts';
+import { createLeafletCanvas } from './engine/leaflet-canvas.ts';
 import { loadLeaflet } from './engine/leaflet-api.ts';
 import { assertDisplayCrs } from './engine/registry.ts';
 import { resolveViewResolution, resolutionToZoom } from './view.ts';
@@ -527,7 +528,7 @@ export default class LeafletEngine implements IMapEngine {
     const pane = map.createPane(paneName);
     pane.style.zIndex = String(400 + input.order);
     pane.style.pointerEvents = 'none';
-    const renderer = new L.Canvas({ pane: paneName });
+    const renderer = createLeafletCanvas(L, { pane: paneName });
     const entry: Entry = {
       ...input,
       data,

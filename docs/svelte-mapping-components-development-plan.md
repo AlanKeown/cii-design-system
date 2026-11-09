@@ -2169,8 +2169,9 @@ not optional extras.
   `--cii-map-feature-invalid` aliases `--cii-status-error`), but map code never
   uses UI or brand tokens directly.
 - `--cii-map-feature-selected` meets 3:1 against `--cii-map-surface` and differs
-  from both `--cii-map-feature` and `--cii-focus-ring` in each theme. Its values
-  are not chosen yet. `--cii-brand-secondary` is not suitable: it measures
+  from both `--cii-map-feature` and `--cii-focus-ring` in each theme. Its
+  light/dark values are `#007F86` and `#4DD0C8`, respectively (4.26:1 and 7.94:1
+  on the default surfaces). `--cii-brand-secondary` is not suitable: it measures
   2.39:1 in the light theme and is identical to `--cii-map-feature` (`#B39BFF`)
   in the dark theme. A 3:1 ratio between selected and unselected features is not
   required, and cannot be met against both a light and a dark default feature

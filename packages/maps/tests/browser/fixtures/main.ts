@@ -14,6 +14,8 @@ declare global {
       setView(view: Partial<ViewState>): void;
       setBoundView(view: ViewState): void;
       stats(): Promise<{ count: number; radius: number; color: string }>;
+      captureCanvasRedraw(): Promise<void>;
+      invokeRetiredRedraw(): void;
       hit(): (string | number | undefined)[];
       contract(): Promise<string[]>;
     };

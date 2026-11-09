@@ -10,31 +10,19 @@ const tokens: { base: TokenGroup; light: TokenGroup; dark: TokenGroup } =
   );
 const themes = { light: tokens.light, dark: tokens.dark };
 
-/**
- * A rule whose tokens have no approved values yet. It runs as a node:test todo,
- * so it is reported without failing CI. Remove `pending` when the values land.
- */
-interface Pending {
-  pending?: string;
-}
-
-const selectionPending =
-  'Choose light and dark values for --cii-map-feature-selected in tokens.json.';
-
 /** Pairs that must meet a minimum contrast in every theme. */
-const requirements: readonly (Pending & {
+const requirements: readonly {
   foreground: string;
   background: string;
   minimum: number;
-})[] = [
+}[] = [
   // WCAG 1.4.11: default map features are meaningful graphics on the map surface.
   { foreground: 'map-feature', background: 'map-surface', minimum: 3 },
   { foreground: 'map-feature-invalid', background: 'map-surface', minimum: 3 },
   {
     foreground: 'map-feature-selected',
     background: 'map-surface',
-    minimum: 3,
-    pending: selectionPending
+    minimum: 3
   }
 ];
 
@@ -43,11 +31,10 @@ const requirements: readonly (Pending & {
  * Selection is also shown by a thicker outline and a point ring, so this checks
  * that colour adds a cue rather than requiring a contrast ratio between features.
  */
-const distinct: readonly (Pending & { token: string; from: string[] })[] = [
+const distinct: readonly { token: string; from: string[] }[] = [
   {
     token: 'map-feature-selected',
-    from: ['map-feature', 'focus-ring'],
-    pending: selectionPending
+    from: ['map-feature', 'focus-ring']
   }
 ];
 
@@ -104,41 +91,29 @@ test('map colour tokens are defined in both themes as canvas-readable hex colour
     }
 });
 
-for (const { foreground, background, minimum, pending } of requirements)
-  test(
-    `--cii-${foreground} meets ${minimum}:1 against --cii-${background} in both themes`,
-    {
-      todo: pending
-    },
-    () => {
-      for (const [themeName, theme] of Object.entries(themes)) {
-        const ratio = contrast(
-          resolve(theme, foreground),
-          resolve(theme, background)
-        );
-        assert.ok(
-          ratio >= minimum,
-          `${themeName}: --cii-${foreground} on --cii-${background} is ${ratio.toFixed(2)}:1; at least ${minimum}:1 is required.`
-        );
-      }
+for (const { foreground, background, minimum } of requirements)
+  test(`--cii-${foreground} meets ${minimum}:1 against --cii-${background} in both themes`, () => {
+    for (const [themeName, theme] of Object.entries(themes)) {
+      const ratio = contrast(
+        resolve(theme, foreground),
+        resolve(theme, background)
+      );
+      assert.ok(
+        ratio >= minimum,
+        `${themeName}: --cii-${foreground} on --cii-${background} is ${ratio.toFixed(2)}:1; at least ${minimum}:1 is required.`
+      );
     }
-  );
+  });
 
-for (const { token, from, pending } of distinct)
-  test(
-    `--cii-${token} differs from ${from.map((name) => `--cii-${name}`).join(' and ')} in both themes`,
-    {
-      todo: pending
-    },
-    () => {
-      for (const [themeName, theme] of Object.entries(themes)) {
-        const colour = resolve(theme, token).toLowerCase();
-        for (const other of from)
-          assert.notEqual(
-            colour,
-            resolve(theme, other).toLowerCase(),
-            `${themeName}: --cii-${token} and --cii-${other} are both ${colour}.`
-          );
-      }
+for (const { token, from } of distinct)
+  test(`--cii-${token} differs from ${from.map((name) => `--cii-${name}`).join(' and ')} in both themes`, () => {
+    for (const [themeName, theme] of Object.entries(themes)) {
+      const colour = resolve(theme, token).toLowerCase();
+      for (const other of from)
+        assert.notEqual(
+          colour,
+          resolve(theme, other).toLowerCase(),
+          `${themeName}: --cii-${token} and --cii-${other} are both ${colour}.`
+        );
     }
-  );
+  });

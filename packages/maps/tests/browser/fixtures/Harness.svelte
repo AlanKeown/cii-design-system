@@ -12,6 +12,7 @@
     EngineInit
   } from '../../../src/index.ts';
   import type { Map as LeafletMap } from 'leaflet';
+  let retiredRedraw: (() => void) | undefined;
   const viewEvents: { view: ViewState; source: 'api' | 'user' }[] = [];
   let overrideConfig = $state.raw<MapConfig | undefined>();
   let mounted = $state(true);
@@ -192,6 +193,25 @@
           }
         });
         return { count, radius, color };
+      },
+      captureCanvasRedraw: async () => {
+        const L = await import('leaflet');
+        let canvas: import('leaflet').Canvas | undefined;
+        engine!.native<LeafletMap>().eachLayer((layer) => {
+          if (layer instanceof L.Canvas) canvas = layer;
+        });
+        if (!canvas)
+          throw new Error('Expected an active native Canvas renderer.');
+        // Retain the native redraw callback before its renderer is retired.
+        const renderer = canvas as import('leaflet').Canvas & {
+          _redraw(): void;
+        };
+        retiredRedraw = renderer._redraw.bind(renderer);
+      },
+      invokeRetiredRedraw: () => {
+        if (!retiredRedraw)
+          throw new Error('Capture a renderer before retiring it.');
+        retiredRedraw();
       },
       hit: () => {
         const map = engine!.native<LeafletMap>();

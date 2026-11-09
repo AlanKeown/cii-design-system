@@ -54,6 +54,7 @@
   --cii-map-feature: #122B4D;
   --cii-map-feature-invalid: var(--cii-status-error);
   --cii-map-surface: var(--cii-bg-subtle);
+  --cii-map-feature-selected: #007F86;
 }
 [data-cii-theme="dark"] {
   color-scheme: dark;
@@ -81,4 +82,5 @@
   --cii-map-feature: #B39BFF;
   --cii-map-feature-invalid: var(--cii-status-error);
   --cii-map-surface: var(--cii-bg-subtle);
+  --cii-map-feature-selected: #4DD0C8;
 }

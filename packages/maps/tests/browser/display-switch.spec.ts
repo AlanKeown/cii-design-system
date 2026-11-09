@@ -191,3 +191,44 @@ test('WMS switches request CRS and BBOX axis order without fetching capabilities
   );
   expect(metadata).toBe(1);
 });
+
+for (const retirement of ['CRS switch', 'layer removal', 'map unmount']) {
+  test(`a Canvas redraw captured before ${retirement} is inert after retirement`, async ({
+    page
+  }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto('/');
+    await expect(page.getByLabel('Ready count')).toHaveText('1');
+    await expect
+      .poll(() => page.evaluate(() => window.mapHarness?.stats()))
+      .toMatchObject({ count: 1 });
+    await page.evaluate(() => window.mapHarness!.captureCanvasRedraw());
+    await page.evaluate(() => window.mapHarness!.invokeRetiredRedraw());
+    if (retirement === 'CRS switch') {
+      await display(page, 'EPSG:4326');
+      await expect(page.getByLabel('Ready count')).toHaveText('2');
+      await expect
+        .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+        .toMatchObject({ count: 1 });
+    } else if (retirement === 'layer removal') {
+      await page.evaluate(() => {
+        const config = window.mapHarness!.config();
+        config.layers = [];
+        window.mapHarness!.setConfig(config);
+      });
+      await expect
+        .poll(() => page.evaluate(() => window.mapHarness!.stats()))
+        .toMatchObject({ count: 0 });
+      await expect(page.locator('.leaflet-container canvas')).toHaveCount(0);
+    } else {
+      await page
+        .getByRole('button', { name: 'Toggle mount', exact: true })
+        .click();
+      await expect(page.locator('.leaflet-container')).toHaveCount(0);
+    }
+    // Exercise a retained callback after native teardown has removed its drawing context.
+    await page.evaluate(() => window.mapHarness!.invokeRetiredRedraw());
+    expect(errors).toEqual([]);
+  });
+}

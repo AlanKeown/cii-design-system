@@ -86,8 +86,8 @@ The review is checked by `npm run check`, `npm run build`, `npm test`, Markdown
 lint and formatting checks. The acceptance cases live in
 `packages/maps/tests/browser/phase-one.spec.ts`; the existing protocol,
 confirmation, switching, declarative-layer and keyboard suites remain part of
-`npm test`. Existing selected-feature token TODOs relate to selection work that
-has not shipped in Phase 1.
+`npm test`. Selected-feature token contrast and distinction are enforced in both
+themes; selection interactions themselves remain later-phase work.
 
 The documentation collection includes this review and builds it under
 `/design/mapping-phase-1-review/`. A local build does not establish that this
