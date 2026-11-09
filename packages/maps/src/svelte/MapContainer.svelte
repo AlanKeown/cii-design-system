@@ -269,6 +269,10 @@
     <p id={`${id}-shortcuts`}>
       Focus the map. Arrow keys pan; + and − zoom. Tab moves to the controls and
       out of the map.
+      {#if snapshot?.engine?.capabilities.rotation}
+        Shift + Right or Up rotates clockwise by 15°; Shift + Left or Down
+        rotates anticlockwise by 15°.
+      {/if}
     </p>
   </details>
   {#if snapshot?.layers.length}<details>

@@ -189,6 +189,17 @@ export abstract class BrowserEngine implements IMapEngine {
       const shift = delta[event.key];
       if (shift) {
         event.preventDefault();
+        if (event.shiftKey && this.capabilities.rotation) {
+          const direction = ['ArrowLeft', 'ArrowDown'].includes(event.key)
+            ? -1
+            : 1;
+          const angle = this.getView().rotation + direction * (Math.PI / 12);
+          this.setView(
+            { rotation: Math.atan2(Math.sin(angle), Math.cos(angle)) },
+            { source: 'user' }
+          );
+          return;
+        }
         this.setView(
           {
             center: this.pixelToCoord([

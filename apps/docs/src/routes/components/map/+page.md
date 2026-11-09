@@ -486,7 +486,12 @@ are combined with the component description.
 
 ## Behaviour and accessibility
 
-The canvas becomes tabbable after it is ready. Arrow keys pan and +/− zoom. Zoom
+The canvas becomes tabbable after it is ready. Arrow keys pan and +/− zoom.
+On OpenLayers and MapLibre, Shift + Right/Up rotates clockwise by 15°;
+Shift + Left/Down rotates anticlockwise by 15°, keeping the centre and resolution
+unchanged. The shortcut disclosure shows rotation help only when the active
+engine supports it. Leaflet retains its existing arrow-key panning behaviour.
+Rotation jumps immediately, including with reduced motion enabled. Zoom
 controls have accessible names and visible focus styles; Tab leaves the map
 normally. Reduced-motion settings disable inertia and animated view requests.
 Attribution is always present and remote data attribution is rendered as text.

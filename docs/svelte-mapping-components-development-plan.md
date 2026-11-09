@@ -2505,6 +2505,22 @@ positions, pixel/view conformance, keyboard navigation, controls, switching and
 teardown. Phase 1 exit acceptance still requires review of the full conformance
 and accessibility criteria; this slice does not imply capture/editing support.
 
+### 16.10 Phase 1 keyboard rotation — 9 November 2026
+
+Closed the keyboard-rotation gap in §15.4 item 2. On OpenLayers and MapLibre,
+Shift + Right/Up rotates clockwise by 15 degrees; Shift + Left/Down rotates
+anticlockwise by 15 degrees. Rotation keeps the live centre and resolution,
+wraps at a full turn and reports a user view change. Updates jump immediately,
+including when reduced motion is requested. Ordinary arrow-key panning and
+Leaflet's existing Shift + arrow behaviour remain available.
+
+The shortcut disclosure includes rotation only when the active engine advertises
+it. Browser regressions cover all four directions, preserved view/focus, Tab to
+controls, nested keyboard suspension, tool interception and browser modifier
+shortcuts. This closes that specific acceptance gap; it does not close Phase 1.
+The declarative `Layer` component and a complete R1/R2/accessibility acceptance
+review remain before the Phase 2 data-source work.
+
 ## 17. Dependency flags and risk register
 
 ### 17.1 Dependency flags (requirement R3)
